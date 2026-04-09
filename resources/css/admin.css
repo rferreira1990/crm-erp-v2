@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+:root {
+    --admin-sidebar-width: 280px;
+}
+
+.admin-layout {
+    min-height: 100vh;
+}
+
+.admin-shell {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--phoenix-body-bg, #f5f7fa);
+}
+
+.admin-sidebar {
+    width: var(--admin-sidebar-width);
+    flex: 0 0 var(--admin-sidebar-width);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1020;
+}
+
+.admin-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-width: 0;
+    flex: 1;
+}
+
+.admin-main {
+    flex: 1;
+}
+
+.admin-sidebar .nav-link {
+    border-radius: 0.5rem;
+    font-weight: 500;
+}
+
+.admin-sidebar .nav-link.active {
+    background-color: rgba(44, 123, 229, 0.12);
+    color: var(--phoenix-primary, #2c7be5) !important;
+}
+
+.admin-sidebar .nav-link.is-placeholder {
+    opacity: 0.75;
+}
+
+.admin-nav-icon {
+    width: 1rem;
+    display: inline-block;
+}
+
+.admin-nav-icon::before {
+    content: '•';
+    font-weight: 700;
+}
+
+@media (max-width: 991.98px) {
+    .admin-sidebar {
+        position: fixed;
+        left: 0;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .admin-sidebar.is-open {
+        transform: translateX(0);
+    }
+}
