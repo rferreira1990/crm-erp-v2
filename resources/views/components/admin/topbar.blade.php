@@ -6,7 +6,7 @@
             data-sidebar-toggle
             aria-controls="adminSidebar"
             aria-expanded="false"
-            aria-label="Alternar menu lateral"
+            aria-label="Alternar menu"
         >
             Menu
         </button>
@@ -26,15 +26,15 @@
             </button>
             <div class="dropdown-menu dropdown-menu-end" data-dropdown-menu>
                 <a class="dropdown-item" href="#">Perfil</a>
-                <a class="dropdown-item" href="#">Preferências</a>
+                <a class="dropdown-item" href="#">Preferencias</a>
                 <div class="dropdown-divider"></div>
                 @if (Route::has('logout'))
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="dropdown-item">Terminar sessão</button>
+                        <button type="submit" class="dropdown-item">Terminar sessao</button>
                     </form>
                 @else
-                    <button type="button" class="dropdown-item disabled" aria-disabled="true">Terminar sessão</button>
+                    <button type="button" class="dropdown-item disabled" aria-disabled="true">Terminar sessao</button>
                 @endif
             </div>
         </div>
