@@ -1,48 +1,121 @@
 @php
-    $items = [
-        ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'home', 'enabled' => true],
-        ['label' => 'Clientes', 'route' => null, 'icon' => 'users', 'enabled' => false],
-        ['label' => 'Produtos', 'route' => null, 'icon' => 'box', 'enabled' => false],
-        ['label' => 'Orcamentos', 'route' => null, 'icon' => 'file-text', 'enabled' => false],
-        ['label' => 'Faturas', 'route' => null, 'icon' => 'receipt', 'enabled' => false],
-        ['label' => 'Stocks', 'route' => null, 'icon' => 'archive', 'enabled' => false],
-        ['label' => 'Utilizadores', 'route' => null, 'icon' => 'user-check', 'enabled' => false],
-        ['label' => 'Definicoes', 'route' => null, 'icon' => 'settings', 'enabled' => false],
-    ];
+    $user = auth()->user();
+    $isSuperAdmin = $user?->isSuperAdmin() === true;
 @endphp
 
-<aside class="admin-sidebar border-end bg-body" id="adminSidebar" aria-label="Main navigation">
-    <div class="admin-sidebar-brand px-3 py-3 border-bottom">
-        <a href="{{ route('admin.dashboard') }}" class="d-flex align-items-center text-decoration-none">
-            <span class="fw-bold fs-5">{{ config('app.name', 'Laravel') }}</span>
-        </a>
-        <small class="text-body-secondary">CRM/ERP</small>
+<nav class="navbar navbar-vertical navbar-expand-lg">
+    <div class="collapse navbar-collapse" id="navbarVerticalCollapse">
+        <div class="navbar-vertical-content">
+            <ul class="navbar-nav flex-column" id="navbarVerticalNav">
+                @if ($isSuperAdmin)
+                    <li class="nav-item">
+                        <p class="navbar-vertical-label">Superadmin</p>
+                        <hr class="navbar-vertical-line" />
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('superadmin.companies.*') ? 'active' : '' }}" href="{{ route('superadmin.companies.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="briefcase"></span></span>
+                                <span class="nav-link-text">Empresas</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('superadmin.invitations.*') ? 'active' : '' }}" href="{{ route('superadmin.invitations.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="mail"></span></span>
+                                <span class="nav-link-text">Convites</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item mt-3">
+                        <p class="navbar-vertical-label">Definicoes</p>
+                        <hr class="navbar-vertical-line" />
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('superadmin.settings.email.*') ? 'active' : '' }}" href="{{ route('superadmin.settings.email.edit') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="settings"></span></span>
+                                <span class="nav-link-text">Email</span>
+                            </div>
+                        </a>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <p class="navbar-vertical-label">Administracao</p>
+                        <hr class="navbar-vertical-line" />
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="pie-chart"></span></span>
+                                <span class="nav-link-text">Dashboard</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-3">
+                        <p class="navbar-vertical-label">Modulos</p>
+                        <hr class="navbar-vertical-line" />
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="users"></span></span>
+                                <span class="nav-link-text">Clientes</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="package"></span></span>
+                                <span class="nav-link-text">Produtos</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="file-text"></span></span>
+                                <span class="nav-link-text">Orcamentos</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="credit-card"></span></span>
+                                <span class="nav-link-text">Faturas</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="archive"></span></span>
+                                <span class="nav-link-text">Stocks</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="user-check"></span></span>
+                                <span class="nav-link-text">Utilizadores</span>
+                            </div>
+                        </a>
+                    </li>
+                @endif
+            </ul>
+        </div>
     </div>
 
-    <nav class="admin-sidebar-nav p-3">
-        <p class="text-uppercase text-body-tertiary fw-semibold small mb-2">Admin</p>
-        <ul class="nav flex-column gap-1" role="list">
-            @foreach ($items as $item)
-                @php
-                    $isActive = $item['route'] && request()->routeIs($item['route']);
-                    $href = $item['route'] ? route($item['route']) : '#';
-                @endphp
-
-                {{--
-                    Future permissions:
-                    Replace with @can('permission-name') ... @endcan when policies/permissions are ready.
-                --}}
-                <li class="nav-item">
-                    <a
-                        href="{{ $href }}"
-                        class="nav-link d-flex align-items-center gap-2 {{ $isActive ? 'active' : 'text-body' }} {{ $item['enabled'] ? '' : 'is-placeholder' }}"
-                        @if (! $item['enabled']) aria-disabled="true" @endif
-                    >
-                        <span class="admin-nav-icon" aria-hidden="true" data-icon="{{ $item['icon'] }}"></span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
-                </li>
-            @endforeach
-        </ul>
-    </nav>
-</aside>
+    <div class="navbar-vertical-footer">
+        <button class="btn navbar-vertical-toggle border-0 fw-semibold w-100 white-space-nowrap d-flex align-items-center" type="button">
+            <span class="uil uil-left-arrow-to-left fs-8"></span>
+            <span class="uil uil-arrow-from-right fs-8"></span>
+            <span class="navbar-vertical-footer-text ms-2">Collapsed View</span>
+        </button>
+    </div>
+</nav>

@@ -11,7 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'company.context' => \App\Http\Middleware\ResolveCurrentCompany::class,
+            'not.superadmin' => \App\Http\Middleware\EnsureNotSuperAdmin::class,
+            'superadmin.only' => \App\Http\Middleware\SuperAdminOnly::class,
+            'no.cache' => \App\Http\Middleware\NoCacheHeaders::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
