@@ -18,5 +18,5 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-    return view('welcome');
+  return redirect()->route('dashboard');
 });
