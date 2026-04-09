@@ -8,8 +8,8 @@
     <title>@yield('title', 'Dashboard') - {{ config('app.name', 'Laravel') }}</title>
 
     {{-- Phoenix vendor styles (public/vendor/phoenix) --}}
-    <link rel="stylesheet" href="{{ asset('vendor/phoenix/assets/css/theme.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/phoenix/assets/css/user.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/phoenix/css/theme.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/phoenix/css/user.min.css') }}">
 
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
     @stack('styles')
@@ -58,8 +58,8 @@
     </div>
 
     {{-- Phoenix vendor scripts (public/vendor/phoenix) --}}
-    <script src="{{ asset('vendor/phoenix/assets/js/bootstrap.bundle.min.js') }}" defer></script>
-    <script src="{{ asset('vendor/phoenix/assets/js/phoenix.js') }}" defer></script>
+    <script src="{{ asset('vendor/phoenix/vendors/bootstrap/bootstrap.min.js') }}" defer></script>
+    <script src="{{ asset('vendor/phoenix/js/phoenix.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>
