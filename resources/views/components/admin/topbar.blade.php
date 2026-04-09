@@ -28,10 +28,14 @@
                 <a class="dropdown-item" href="#">Perfil</a>
                 <a class="dropdown-item" href="#">Preferências</a>
                 <div class="dropdown-divider"></div>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="dropdown-item">Terminar sessão</button>
-                </form>
+                @if (Route::has('logout'))
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="dropdown-item">Terminar sessão</button>
+                    </form>
+                @else
+                    <button type="button" class="dropdown-item disabled" aria-disabled="true">Terminar sessão</button>
+                @endif
             </div>
         </div>
     </div>
