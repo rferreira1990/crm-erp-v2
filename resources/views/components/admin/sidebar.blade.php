@@ -3,11 +3,11 @@
         ['label' => 'Dashboard', 'route' => 'admin.dashboard', 'icon' => 'home', 'enabled' => true],
         ['label' => 'Clientes', 'route' => null, 'icon' => 'users', 'enabled' => false],
         ['label' => 'Produtos', 'route' => null, 'icon' => 'box', 'enabled' => false],
-        ['label' => 'Orçamentos', 'route' => null, 'icon' => 'file-text', 'enabled' => false],
+        ['label' => 'Orcamentos', 'route' => null, 'icon' => 'file-text', 'enabled' => false],
         ['label' => 'Faturas', 'route' => null, 'icon' => 'receipt', 'enabled' => false],
         ['label' => 'Stocks', 'route' => null, 'icon' => 'archive', 'enabled' => false],
         ['label' => 'Utilizadores', 'route' => null, 'icon' => 'user-check', 'enabled' => false],
-        ['label' => 'Definições', 'route' => null, 'icon' => 'settings', 'enabled' => false],
+        ['label' => 'Definicoes', 'route' => null, 'icon' => 'settings', 'enabled' => false],
     ];
 @endphp
 
