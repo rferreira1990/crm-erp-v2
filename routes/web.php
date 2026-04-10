@@ -56,14 +56,19 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         })->name('dashboard.version_old');
 
         Route::get('/users', [CompanyUserController::class, 'index'])->name('users.index');
-        Route::patch('/users/{companyUser}', [CompanyUserController::class, 'update'])->name('users.update');
-        Route::patch('/users/{companyUser}/toggle-active', [CompanyUserController::class, 'toggleActive'])->name('users.toggle-active');
+        Route::patch('/users/{companyUser}', [CompanyUserController::class, 'update'])
+            ->whereNumber('companyUser')
+            ->name('users.update');
+        Route::patch('/users/{companyUser}/toggle-active', [CompanyUserController::class, 'toggleActive'])
+            ->whereNumber('companyUser')
+            ->name('users.toggle-active');
 
         Route::get('/user-invitations/create', [CompanyUserInvitationController::class, 'create'])->name('user-invitations.create');
         Route::post('/user-invitations', [CompanyUserInvitationController::class, 'store'])
-            ->middleware('throttle:superadmin-invitations')
+            ->middleware('throttle:company-user-invitations')
             ->name('user-invitations.store');
         Route::delete('/user-invitations/{invitation}', [CompanyUserInvitationController::class, 'destroy'])
+            ->whereNumber('invitation')
             ->name('user-invitations.destroy');
     });
 
