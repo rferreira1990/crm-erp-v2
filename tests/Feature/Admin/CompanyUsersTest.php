@@ -236,6 +236,32 @@ class CompanyUsersTest extends TestCase
         $this->actingAs($superAdmin)->get(route('admin.users.index'))->assertForbidden();
     }
 
+    public function test_guest_is_redirected_to_login_for_company_users_module_routes(): void
+    {
+        $company = $this->createCompany('Empresa Guest');
+        $target = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
+
+        $this->get(route('admin.users.index'))->assertRedirect(route('login'));
+        $this->patch(route('admin.users.update', $target->id), [
+            'role' => User::ROLE_COMPANY_ADMIN,
+        ])->assertRedirect(route('login'));
+        $this->patch(route('admin.users.toggle-active', $target->id))
+            ->assertRedirect(route('login'));
+    }
+
+    public function test_reactivating_user_returns_success_feedback_and_updates_state(): void
+    {
+        $company = $this->createCompany('Empresa Reativar');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $target = $this->createCompanyUser($company, User::ROLE_COMPANY_USER, false);
+
+        $response = $this->actingAs($admin)->patch(route('admin.users.toggle-active', $target->id));
+
+        $response->assertRedirect(route('admin.users.index'));
+        $response->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'ativado'));
+        $this->assertTrue($target->fresh()->is_active);
+    }
+
     private function createCompany(string $name): Company
     {
         return Company::query()->create([

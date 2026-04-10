@@ -231,6 +231,28 @@ class CompanyUserInvitationsTest extends TestCase
         $this->actingAs($noPermUser)->delete(route('admin.user-invitations.destroy', $invitation->id))->assertForbidden();
     }
 
+    public function test_guest_is_redirected_to_login_for_internal_invitation_routes(): void
+    {
+        $company = $this->createCompany('Empresa Guest Convites');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $invitation = Invitation::query()->create([
+            'company_id' => $company->id,
+            'invited_by' => $admin->id,
+            'email' => 'guest-cancel@gmail.com',
+            'role' => User::ROLE_COMPANY_USER,
+            'token' => Invitation::hashToken('guest-cancel-token'),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $this->get(route('admin.user-invitations.create'))->assertRedirect(route('login'));
+        $this->post(route('admin.user-invitations.store'), [
+            'email' => 'guest-store@gmail.com',
+            'role' => User::ROLE_COMPANY_USER,
+        ])->assertRedirect(route('login'));
+        $this->delete(route('admin.user-invitations.destroy', $invitation->id))
+            ->assertRedirect(route('login'));
+    }
+
     private function createCompany(string $name): Company
     {
         return Company::query()->create([
