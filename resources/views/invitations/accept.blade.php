@@ -20,10 +20,16 @@
     <main class="main" id="top">
         <div class="container">
             <div class="row flex-center min-vh-100 py-5">
-                <div class="col-sm-11 col-md-9 col-lg-7 col-xl-6">
-                    <div class="text-center mb-6">
-                        <h2 class="text-body-highlight mb-2">Aceitar convite</h2>
-                        <p class="text-body-tertiary mb-0">Complete os dados para criar a sua conta.</p>
+                <div class="col-sm-10 col-md-8 col-lg-6 col-xl-5 col-xxl-4">
+                    <a class="d-flex flex-center text-decoration-none mb-4" href="{{ url('/') }}">
+                        <div class="d-flex align-items-center fw-bolder fs-3 d-inline-block">
+                            <img src="{{ asset('vendor/phoenix/img/icons/logo.png') }}" alt="logo" width="58">
+                        </div>
+                    </a>
+
+                    <div class="text-center mb-7">
+                        <h3 class="text-body-highlight">Aceitar convite</h3>
+                        <p class="text-body-tertiary mb-0">Crie a sua conta para entrar na plataforma.</p>
                     </div>
 
                     @if ($errors->any())
@@ -32,67 +38,71 @@
                         </div>
                     @endif
 
-                    <div class="card border border-translucent mb-4">
-                        <div class="card-body">
-                            <h5 class="mb-3">Detalhes do convite</h5>
-                            <div class="row g-3 fs-9">
-                                <div class="col-md-6">
-                                    <span class="text-body-tertiary d-block">Empresa</span>
-                                    <strong>{{ $invitation->company?->name ?? '-' }}</strong>
+                    <div class="border border-translucent rounded-3 p-3 p-sm-4 mb-4 bg-body-emphasis">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge badge-phoenix badge-phoenix-primary">Convite ativo</span>
+                            <small class="text-body-tertiary">Perfil: {{ $invitation->role }}</small>
+                        </div>
+                        <div class="fs-9">
+                            <div class="mb-1"><span class="text-body-tertiary">Empresa:</span> <span class="fw-semibold">{{ $invitation->company?->name ?? '-' }}</span></div>
+                            <div class="mb-1"><span class="text-body-tertiary">Email:</span> <span class="fw-semibold">{{ $invitation->email }}</span></div>
+                            <div><span class="text-body-tertiary">Validade:</span> <span class="fw-semibold">{{ $invitation->expires_at?->format('d/m/Y H:i') ?? '-' }}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="position-relative mt-4">
+                        <hr class="bg-body-secondary">
+                        <div class="divider-content-center">dados da conta</div>
+                    </div>
+
+                    <form method="POST" action="{{ route('invitations.accept.store') }}" class="mt-4">
+                        @csrf
+                        <input type="hidden" name="token" value="{{ old('token', $token) }}">
+
+                        <div class="mb-3 text-start">
+                            <label class="form-label" for="name">Nome</label>
+                            <input type="text" id="name" name="name" value="{{ old('name') }}" class="form-control @error('name') is-invalid @enderror" placeholder="Nome completo" required autocomplete="name">
+                            @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="mb-3 text-start">
+                            <label class="form-label" for="invitation_email">Email</label>
+                            <input type="email" id="invitation_email" class="form-control" value="{{ $invitation->email }}" readonly>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label" for="password">Palavra-passe</label>
+                                <div class="position-relative" data-password="data-password">
+                                    <input class="form-control form-icon-input pe-6 @error('password') is-invalid @enderror" id="password" name="password" type="password" placeholder="Palavra-passe" data-password-input="data-password-input" required autocomplete="new-password">
+                                    <button class="btn px-3 py-0 h-100 position-absolute top-0 end-0 fs-7 text-body-tertiary" type="button" data-password-toggle="data-password-toggle">
+                                        <span class="uil uil-eye show"></span>
+                                        <span class="uil uil-eye-slash hide"></span>
+                                    </button>
                                 </div>
-                                <div class="col-md-6">
-                                    <span class="text-body-tertiary d-block">Perfil</span>
-                                    <strong>{{ $invitation->role }}</strong>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="text-body-tertiary d-block">Email</span>
-                                    <strong>{{ $invitation->email }}</strong>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="text-body-tertiary d-block">Validade</span>
-                                    <strong>{{ $invitation->expires_at?->format('d/m/Y H:i') ?? '-' }}</strong>
+                                @error('password')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="password_confirmation">Confirmar palavra-passe</label>
+                                <div class="position-relative" data-password="data-password">
+                                    <input class="form-control form-icon-input pe-6" id="password_confirmation" name="password_confirmation" type="password" placeholder="Confirmar palavra-passe" data-password-input="data-password-input" required autocomplete="new-password">
+                                    <button class="btn px-3 py-0 h-100 position-absolute top-0 end-0 fs-7 text-body-tertiary" type="button" data-password-toggle="data-password-toggle">
+                                        <span class="uil uil-eye show"></span>
+                                        <span class="uil uil-eye-slash hide"></span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="card border border-translucent">
-                        <div class="card-body">
-                            <form method="POST" action="{{ route('invitations.accept.store') }}" class="row g-3">
-                                @csrf
-                                <input type="hidden" name="token" value="{{ old('token', $token) }}">
+                        <button type="submit" class="btn btn-primary w-100 mb-3">Criar conta e entrar</button>
 
-                                <div class="col-12">
-                                    <label for="name" class="form-label">Nome</label>
-                                    <input type="text" id="name" name="name" value="{{ old('name') }}" class="form-control @error('name') is-invalid @enderror" required autocomplete="name">
-                                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-control" value="{{ $invitation->email }}" readonly>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label for="password" class="form-label">Palavra-passe</label>
-                                    <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror" required autocomplete="new-password">
-                                    @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label for="password_confirmation" class="form-label">Confirmar palavra-passe</label>
-                                    <input type="password" id="password_confirmation" name="password_confirmation" class="form-control" required autocomplete="new-password">
-                                </div>
-
-                                <div class="col-12 d-grid">
-                                    <button type="submit" class="btn btn-primary">Criar conta e entrar</button>
-                                </div>
-                            </form>
+                        <div class="text-center">
+                            <a href="{{ route('login') }}" class="fs-9 fw-bold">Ja tem conta? Iniciar sessao</a>
                         </div>
-                    </div>
+                    </form>
 
-                    <div class="text-center mt-4">
-                        <a href="{{ route('login') }}" class="fs-9 fw-semibold">Ja tem conta? Iniciar sessao</a>
+                    <div class="text-center mt-3">
+                        <small class="text-body-tertiary fs-10">Se nao reconhece este convite, pode ignorar.</small>
                     </div>
                 </div>
             </div>
