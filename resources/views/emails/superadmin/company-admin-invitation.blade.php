@@ -1,24 +1,30 @@
-<!DOCTYPE html>
-<html lang="pt-PT">
-<head>
-    <meta charset="utf-8">
-    <title>Convite de acesso</title>
-</head>
-<body>
-    <h2>Convite para acesso a empresa</h2>
-    <p>Recebeu um convite para entrar na plataforma <strong>{{ $appName }}</strong>.</p>
+<x-mail::message>
+# Convite para aceder a plataforma
 
-    <ul>
-        <li><strong>Empresa:</strong> {{ $companyName }}</li>
-        <li><strong>Perfil:</strong> {{ $role }}</li>
-        @if ($expiresAt)
-            <li><strong>Expira em:</strong> {{ $expiresAt }}</li>
-        @endif
-    </ul>
+Foi convidado para aceder ao **{{ $appName }}** como utilizador da empresa **{{ $companyName }}**.
 
-    <p>Use o link abaixo para aceitar o convite:</p>
-    <p><a href="{{ $invitationUrl }}">{{ $invitationUrl }}</a></p>
+Se pretende ativar este acesso, confirme agora atraves do botao abaixo.
 
-    <p>Se nao reconhece este convite, pode ignorar este email.</p>
-</body>
-</html>
+<x-mail::panel>
+**Resumo do convite**
+
+- **Empresa:** {{ $companyName }}
+- **Perfil:** {{ $role }}
+@if ($expiresAt)
+- **Validade:** {{ $expiresAt }}
+@endif
+</x-mail::panel>
+
+<x-mail::button :url="$invitationUrl" color="primary">
+Aceitar convite
+</x-mail::button>
+
+Se o botao nao funcionar, copie e cole este link no navegador:
+
+{{ $invitationUrl }}
+
+Se nao reconhece este convite, pode ignorar este email com seguranca.
+
+Cumprimentos,  
+Equipa {{ $appName }}
+</x-mail::message>
