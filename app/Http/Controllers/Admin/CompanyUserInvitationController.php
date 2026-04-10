@@ -18,11 +18,15 @@ use Throwable;
 
 class CompanyUserInvitationController extends Controller
 {
+    private const INTERNAL_ROLES = ['company_admin', 'company_user'];
+
     public function create(): View
     {
         $this->authorize('create', Invitation::class);
 
-        return view('admin.users.invitations.create');
+        return view('admin.users.invitations.create', [
+            'assignableRoles' => self::INTERNAL_ROLES,
+        ]);
     }
 
     public function store(StoreCompanyUserInvitationRequest $request): RedirectResponse
@@ -42,6 +46,12 @@ class CompanyUserInvitationController extends Controller
         $invitation = DB::transaction(function () use ($request, $data, $normalizedEmail, $tokenHash): Invitation {
             $companyId = (int) $request->user()->company_id;
             $role = (string) $data['role'];
+
+            if (! in_array($role, self::INTERNAL_ROLES, true)) {
+                throw ValidationException::withMessages([
+                    'role' => 'Role invalida para este contexto.',
+                ]);
+            }
 
             $duplicatePending = Invitation::query()
                 ->pending()
@@ -100,22 +110,23 @@ class CompanyUserInvitationController extends Controller
             );
     }
 
-    public function destroy(Invitation $invitation): RedirectResponse
+    public function destroy(int $invitation): RedirectResponse
     {
-        $this->authorize('delete', $invitation);
+        $companyId = (int) auth()->user()->company_id;
+        $companyInvitation = Invitation::query()
+            ->where('company_id', $companyId)
+            ->whereKey($invitation)
+            ->firstOrFail();
+        $this->authorize('delete', $companyInvitation);
 
-        if ((int) auth()->user()->company_id !== (int) $invitation->company_id) {
-            abort(403);
-        }
-
-        $cancelled = $invitation->markAsCancelled();
+        $cancelled = $companyInvitation->markAsCancelled();
 
         if ($cancelled) {
             Log::info('Company admin invitation cancelled', [
                 'context' => 'company_users',
-                'invitation_id' => $invitation->id,
-                'company_id' => $invitation->company_id,
-                'email' => $invitation->email,
+                'invitation_id' => $companyInvitation->id,
+                'company_id' => $companyInvitation->company_id,
+                'email' => $companyInvitation->email,
                 'cancelled_by' => auth()->id(),
             ]);
         }
