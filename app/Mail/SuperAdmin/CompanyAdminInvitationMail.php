@@ -43,7 +43,7 @@ class CompanyAdminInvitationMail extends Mailable
                 'companyName' => $this->invitation->company?->name ?? 'Empresa',
                 'role' => (string) $this->invitation->role,
                 'expiresAt' => $this->invitation->expires_at?->format('d/m/Y H:i'),
-                'invitationUrl' => url('/invitations/accept?token='.urlencode($this->plainToken)),
+                'invitationUrl' => route('invitations.accept.create', ['token' => $this->plainToken]),
             ]
         );
     }
