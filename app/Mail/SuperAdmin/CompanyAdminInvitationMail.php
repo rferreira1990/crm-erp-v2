@@ -37,7 +37,7 @@ class CompanyAdminInvitationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.superadmin.company-admin-invitation',
+            markdown: 'emails.superadmin.company-admin-invitation',
             with: [
                 'appName' => setting('app.name', (string) config('app.name')),
                 'companyName' => $this->invitation->company?->name ?? 'Empresa',
