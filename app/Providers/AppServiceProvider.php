@@ -45,6 +45,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(15)->by($key);
         });
 
+        RateLimiter::for('company-user-invitations', function (Request $request) {
+            $key = $request->user()?->id
+                ? 'company-user:'.$request->user()->id
+                : 'ip:'.$request->ip();
+
+            return Limit::perMinute(10)->by($key);
+        });
+
         $this->applyPlatformMailBranding();
     }
 
