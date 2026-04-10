@@ -35,7 +35,7 @@ class StoreCompanyUserInvitationRequest extends FormRequest
     {
         return [
             'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'lowercase'],
-            'role' => ['required', 'string', Rule::in(['company_admin', 'company_user'])],
+            'role' => ['required', 'string', Rule::in(User::companyRoleNames())],
             'expires_at' => ['nullable', 'date', 'after:now'],
         ];
     }

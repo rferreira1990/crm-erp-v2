@@ -16,6 +16,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasRoles;
 
+    public const ROLE_COMPANY_ADMIN = 'company_admin';
+    public const ROLE_COMPANY_USER = 'company_user';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -99,6 +102,17 @@ class User extends Authenticatable
 
     public function canManageCompanyUsers(): bool
     {
-        return $this->isCompanyUser() && $this->hasRole('company_admin');
+        return $this->isCompanyUser() && $this->hasRole(self::ROLE_COMPANY_ADMIN);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function companyRoleNames(): array
+    {
+        return [
+            self::ROLE_COMPANY_ADMIN,
+            self::ROLE_COMPANY_USER,
+        ];
     }
 }

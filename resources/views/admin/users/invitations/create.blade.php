@@ -13,6 +13,7 @@
 @endsection
 
 @section('content')
+    @php($defaultRole = \App\Models\User::ROLE_COMPANY_USER)
     <div class="card">
         <div class="card-header bg-body-tertiary">
             <h5 class="mb-0">Dados do convite</h5>
@@ -31,7 +32,7 @@
                     <label for="role" class="form-label">Role</label>
                     <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
                         @foreach ($assignableRoles as $role)
-                            <option value="{{ $role }}" @selected(old('role', 'company_user') === $role)>{{ $role }}</option>
+                            <option value="{{ $role }}" @selected(old('role', $defaultRole) === $role)>{{ $role }}</option>
                         @endforeach
                     </select>
                     @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror

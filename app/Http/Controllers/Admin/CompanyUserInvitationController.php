@@ -19,14 +19,12 @@ use Throwable;
 
 class CompanyUserInvitationController extends Controller
 {
-    private const INTERNAL_ROLES = ['company_admin', 'company_user'];
-
     public function create(): View
     {
         $this->authorize('create', Invitation::class);
 
         return view('admin.users.invitations.create', [
-            'assignableRoles' => self::INTERNAL_ROLES,
+            'assignableRoles' => User::companyRoleNames(),
         ]);
     }
 
@@ -48,7 +46,7 @@ class CompanyUserInvitationController extends Controller
             $companyId = (int) $request->user()->company_id;
             $role = (string) $data['role'];
 
-            if (! in_array($role, self::INTERNAL_ROLES, true)) {
+            if (! in_array($role, User::companyRoleNames(), true)) {
                 throw ValidationException::withMessages([
                     'role' => 'Role invalida para este contexto.',
                 ]);

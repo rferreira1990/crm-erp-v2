@@ -18,6 +18,8 @@
 @endsection
 
 @section('content')
+    @php($adminRoleName = \App\Models\User::ROLE_COMPANY_ADMIN)
+
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">
             {{ $errors->first() }}
@@ -78,7 +80,7 @@
                                 <td class="text-nowrap">
                                     <div class="mb-2 d-flex flex-wrap gap-1">
                                         @forelse ($companyUser->roles as $assignedRole)
-                                            <span class="badge badge-phoenix {{ $assignedRole->name === 'company_admin' ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
+                                            <span class="badge badge-phoenix {{ $assignedRole->name === $adminRoleName ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
                                                 {{ $assignedRole->name }}
                                             </span>
                                         @empty
@@ -155,7 +157,7 @@
                             <tr>
                                 <td class="ps-3">{{ $invitation->email }}</td>
                                 <td>
-                                    <span class="badge badge-phoenix {{ $invitation->role === 'company_admin' ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
+                                    <span class="badge badge-phoenix {{ $invitation->role === $adminRoleName ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
                                         {{ $invitation->role }}
                                     </span>
                                 </td>

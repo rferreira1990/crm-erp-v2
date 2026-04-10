@@ -9,13 +9,13 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class CompanyUserController extends Controller
 {
-    private const INTERNAL_ROLES = ['company_admin', 'company_user'];
-
     public function index(Request $request): View
     {
         $this->authorize('viewAny', User::class);
@@ -42,7 +42,7 @@ class CompanyUserController extends Controller
             $usersQuery->where('is_active', $status === 'active');
         }
 
-        if (in_array($role, self::INTERNAL_ROLES, true)) {
+        if (in_array($role, User::companyRoleNames(), true)) {
             $usersQuery->role($role, 'web');
         }
 
@@ -58,7 +58,7 @@ class CompanyUserController extends Controller
             ->withQueryString();
 
         $assignableRoles = Role::query()
-            ->whereIn('name', self::INTERNAL_ROLES)
+            ->whereIn('name', User::companyRoleNames())
             ->where('guard_name', 'web')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -77,19 +77,11 @@ class CompanyUserController extends Controller
 
     public function update(UpdateCompanyUserRequest $request, int $companyUser): RedirectResponse
     {
-        $companyId = (int) $request->user()->company_id;
-        $companyUserModel = $this->findCompanyUserOrFail($companyId, $companyUser);
-        $this->authorize('update', $companyUserModel);
-
-        if ((int) $request->user()->id === (int) $companyUserModel->id) {
-            return back()->withErrors([
-                'role' => 'Nao pode alterar a sua propria role.',
-            ]);
-        }
-
+        $authUser = $request->user();
+        $companyId = (int) $authUser->company_id;
         $roleName = (string) $request->validated('role');
 
-        if (! in_array($roleName, self::INTERNAL_ROLES, true)) {
+        if (! in_array($roleName, User::companyRoleNames(), true)) {
             return back()->withErrors([
                 'role' => 'Role invalida para este contexto.',
             ]);
@@ -101,24 +93,41 @@ class CompanyUserController extends Controller
             ]);
         }
 
-        if (
-            $companyUserModel->is_active
-            && $companyUserModel->hasRole('company_admin')
-            && $roleName !== 'company_admin'
-            && $this->activeCompanyAdminCount($companyId) <= 1
-        ) {
-            return back()->withErrors([
-                'role' => 'Nao e possivel remover a role de administrador ao ultimo admin ativo da empresa.',
-            ]);
-        }
+        try {
+            $companyUserModel = DB::transaction(function () use ($authUser, $companyId, $companyUser, $roleName): User {
+                $companyUserModel = $this->findCompanyUserForUpdateOrFail($companyId, $companyUser);
+                $this->authorize('update', $companyUserModel);
 
-        $companyUserModel->syncRoles([$roleName]);
+                if ((int) $authUser->id === (int) $companyUserModel->id) {
+                    throw ValidationException::withMessages([
+                        'role' => 'Nao pode alterar a sua propria role.',
+                    ]);
+                }
+
+                if (
+                    $companyUserModel->is_active
+                    && $companyUserModel->hasRole(User::ROLE_COMPANY_ADMIN)
+                    && $roleName !== User::ROLE_COMPANY_ADMIN
+                    && $this->activeCompanyAdminCountForUpdate($companyId) <= 1
+                ) {
+                    throw ValidationException::withMessages([
+                        'role' => 'Nao e possivel remover a role de administrador ao ultimo admin ativo da empresa.',
+                    ]);
+                }
+
+                $companyUserModel->syncRoles([$roleName]);
+
+                return $companyUserModel;
+            }, 3);
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
 
         Log::info('Company user role updated', [
             'context' => 'company_users',
             'company_id' => $companyId,
             'target_user_id' => $companyUserModel->id,
-            'updated_by' => $request->user()->id,
+            'updated_by' => $authUser->id,
             'role' => $roleName,
         ]);
 
@@ -129,35 +138,45 @@ class CompanyUserController extends Controller
 
     public function toggleActive(Request $request, int $companyUser): RedirectResponse
     {
-        $companyId = (int) $request->user()->company_id;
-        $companyUserModel = $this->findCompanyUserOrFail($companyId, $companyUser);
-        $this->authorize('update', $companyUserModel);
+        $authUser = $request->user();
+        $companyId = (int) $authUser->company_id;
 
-        if ((int) $request->user()->id === (int) $companyUserModel->id) {
-            return back()->withErrors([
-                'user' => 'Nao pode desativar a sua propria conta.',
-            ]);
+        try {
+            $companyUserModel = DB::transaction(function () use ($authUser, $companyId, $companyUser): User {
+                $companyUserModel = $this->findCompanyUserForUpdateOrFail($companyId, $companyUser);
+                $this->authorize('update', $companyUserModel);
+
+                if ((int) $authUser->id === (int) $companyUserModel->id) {
+                    throw ValidationException::withMessages([
+                        'user' => 'Nao pode desativar a sua propria conta.',
+                    ]);
+                }
+
+                if (
+                    $companyUserModel->is_active
+                    && $companyUserModel->hasRole(User::ROLE_COMPANY_ADMIN)
+                    && $this->activeCompanyAdminCountForUpdate($companyId) <= 1
+                ) {
+                    throw ValidationException::withMessages([
+                        'user' => 'Nao e possivel desativar o ultimo administrador ativo da empresa.',
+                    ]);
+                }
+
+                $companyUserModel->forceFill([
+                    'is_active' => ! $companyUserModel->is_active,
+                ])->save();
+
+                return $companyUserModel;
+            }, 3);
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
         }
-
-        if (
-            $companyUserModel->is_active
-            && $companyUserModel->hasRole('company_admin')
-            && $this->activeCompanyAdminCount($companyId) <= 1
-        ) {
-            return back()->withErrors([
-                'user' => 'Nao e possivel desativar o ultimo administrador ativo da empresa.',
-            ]);
-        }
-
-        $companyUserModel->forceFill([
-            'is_active' => ! $companyUserModel->is_active,
-        ])->save();
 
         Log::info('Company user active state toggled', [
             'context' => 'company_users',
             'company_id' => $companyId,
             'target_user_id' => $companyUserModel->id,
-            'changed_by' => $request->user()->id,
+            'changed_by' => $authUser->id,
             'is_active' => $companyUserModel->is_active,
         ]);
 
@@ -171,25 +190,28 @@ class CompanyUserController extends Controller
             );
     }
 
-    private function findCompanyUserOrFail(int $companyId, int $userId): User
+    private function findCompanyUserForUpdateOrFail(int $companyId, int $userId): User
     {
         return User::query()
             ->where('company_id', $companyId)
             ->where('is_super_admin', false)
             ->whereKey($userId)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
-    private function activeCompanyAdminCount(int $companyId): int
+    private function activeCompanyAdminCountForUpdate(int $companyId): int
     {
         return User::query()
             ->where('company_id', $companyId)
             ->where('is_super_admin', false)
             ->where('is_active', true)
             ->whereHas('roles', function ($query): void {
-                $query->where('name', 'company_admin')
+                $query->where('name', User::ROLE_COMPANY_ADMIN)
                     ->where('guard_name', 'web');
             })
+            ->lockForUpdate()
+            ->get(['id'])
             ->count();
     }
 }
