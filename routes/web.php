@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\SuperAdmin\CompanyController;
 use App\Http\Controllers\SuperAdmin\EmailSettingsController;
+use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\SuperAdminInvitationController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware(['no.cache'])->group(function () {
+    Route::get('/invitations/accept', [InvitationAcceptanceController::class, 'create'])
+        ->name('invitations.accept.create');
+    Route::post('/invitations/accept', [InvitationAcceptanceController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('invitations.accept.store');
 });
 
 Route::middleware(['auth', 'company.context', 'not.superadmin'])
