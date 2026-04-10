@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SuperAdmin\StoreSuperAdminInvitationRequest;
+use App\Mail\SuperAdmin\CompanyAdminInvitationMail;
 use App\Models\Company;
 use App\Models\Invitation;
 use App\Models\User;
@@ -11,8 +12,10 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class SuperAdminInvitationController extends Controller
 {
@@ -107,9 +110,16 @@ class SuperAdminInvitationController extends Controller
             'expires_at' => optional($invitation->expires_at)->toDateTimeString(),
         ]);
 
+        $emailSent = $this->sendInvitationEmail($invitation, $plainToken);
+
         return redirect()
             ->route('superadmin.invitations.index')
-            ->with('status', 'Convite criado com sucesso.');
+            ->with(
+                'status',
+                $emailSent
+                    ? 'Convite criado e email enviado com sucesso.'
+                    : 'Convite criado, mas o envio do email falhou. Verifique a configuracao SMTP.'
+            );
     }
 
     public function destroy(Invitation $invitation): RedirectResponse
@@ -131,5 +141,24 @@ class SuperAdminInvitationController extends Controller
         return redirect()
             ->route('superadmin.invitations.index')
             ->with('status', 'Convite cancelado com sucesso.');
+    }
+
+    private function sendInvitationEmail(Invitation $invitation, string $plainToken): bool
+    {
+        try {
+            Mail::to($invitation->email)->send(new CompanyAdminInvitationMail($invitation, $plainToken));
+
+            return true;
+        } catch (Throwable $exception) {
+            Log::warning('Superadmin invitation email sending failed', [
+                'context' => 'invitation_create',
+                'invitation_id' => $invitation->id,
+                'company_id' => $invitation->company_id,
+                'email' => $invitation->email,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 }
