@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Role;
 use Throwable;
 
 class CompanyUserInvitationController extends Controller
@@ -50,6 +51,12 @@ class CompanyUserInvitationController extends Controller
             if (! in_array($role, self::INTERNAL_ROLES, true)) {
                 throw ValidationException::withMessages([
                     'role' => 'Role invalida para este contexto.',
+                ]);
+            }
+
+            if (! Role::query()->where('name', $role)->where('guard_name', 'web')->exists()) {
+                throw ValidationException::withMessages([
+                    'role' => 'Role invalida para a empresa.',
                 ]);
             }
 

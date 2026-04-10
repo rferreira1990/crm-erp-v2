@@ -30,8 +30,9 @@
                 <div class="col-12 col-md-6">
                     <label for="role" class="form-label">Role</label>
                     <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
-                        <option value="company_user" @selected(old('role', 'company_user') === 'company_user')>company_user</option>
-                        <option value="company_admin" @selected(old('role') === 'company_admin')>company_admin</option>
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role }}" @selected(old('role', 'company_user') === $role)>{{ $role }}</option>
+                        @endforeach
                     </select>
                     @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>

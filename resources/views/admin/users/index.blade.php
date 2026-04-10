@@ -28,6 +28,35 @@
         <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Utilizadores da empresa</h5>
         </div>
+        <div class="card-body border-bottom border-translucent">
+            <form method="GET" action="{{ route('admin.users.index') }}" class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label for="q" class="form-label">Pesquisar</label>
+                    <input type="text" id="q" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="Nome ou email">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="status" class="form-label">Estado</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="active" @selected(($filters['status'] ?? '') === 'active')>Ativo</option>
+                        <option value="inactive" @selected(($filters['status'] ?? '') === 'inactive')>Inativo</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="role_filter" class="form-label">Role</label>
+                    <select id="role_filter" name="role" class="form-select">
+                        <option value="">Todas</option>
+                        @foreach ($assignableRoles as $role)
+                            <option value="{{ $role->name }}" @selected(($filters['role'] ?? '') === $role->name)>{{ $role->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-phoenix-secondary flex-fill">Limpar</a>
+                </div>
+            </form>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">
@@ -47,6 +76,15 @@
                                 <td class="ps-3">{{ $companyUser->name }}</td>
                                 <td>{{ $companyUser->email }}</td>
                                 <td class="text-nowrap">
+                                    <div class="mb-2 d-flex flex-wrap gap-1">
+                                        @forelse ($companyUser->roles as $assignedRole)
+                                            <span class="badge badge-phoenix {{ $assignedRole->name === 'company_admin' ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
+                                                {{ $assignedRole->name }}
+                                            </span>
+                                        @empty
+                                            <span class="badge badge-phoenix badge-phoenix-secondary">Sem role</span>
+                                        @endforelse
+                                    </div>
                                     <form method="POST" action="{{ route('admin.users.update', $companyUser) }}" class="d-flex gap-2 align-items-center">
                                         @csrf
                                         @method('PATCH')
@@ -70,7 +108,7 @@
                                     @endif
                                 </td>
                                 <td class="text-end pe-3">
-                                    <form method="POST" action="{{ route('admin.users.toggle-active', $companyUser) }}">
+                                    <form method="POST" action="{{ route('admin.users.toggle-active', $companyUser) }}" data-confirm="{{ $companyUser->is_active ? 'Tem a certeza que pretende desativar este utilizador?' : 'Tem a certeza que pretende ativar este utilizador?' }}">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="btn btn-sm {{ $companyUser->is_active ? 'btn-phoenix-danger' : 'btn-phoenix-success' }}" @disabled($isSelf)>
@@ -116,7 +154,11 @@
                             @php($status = $invitation->status())
                             <tr>
                                 <td class="ps-3">{{ $invitation->email }}</td>
-                                <td><code>{{ $invitation->role }}</code></td>
+                                <td>
+                                    <span class="badge badge-phoenix {{ $invitation->role === 'company_admin' ? 'badge-phoenix-primary' : 'badge-phoenix-info' }}">
+                                        {{ $invitation->role }}
+                                    </span>
+                                </td>
                                 <td>
                                     @if ($status === 'pending')
                                         <span class="badge badge-phoenix badge-phoenix-info">Pendente</span>
@@ -131,7 +173,7 @@
                                 <td>{{ $invitation->expires_at?->format('d/m/Y H:i') ?? '-' }}</td>
                                 <td class="text-end pe-3">
                                     @if ($invitation->isPending())
-                                        <form method="POST" action="{{ route('admin.user-invitations.destroy', $invitation) }}">
+                                        <form method="POST" action="{{ route('admin.user-invitations.destroy', $invitation->id) }}" data-confirm="Tem a certeza que pretende cancelar este convite?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-phoenix-danger btn-sm">Cancelar</button>
