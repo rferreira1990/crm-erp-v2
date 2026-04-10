@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Company;
 use App\Models\Invitation;
+use App\Models\User;
+use App\Policies\CompanyUserPolicy;
 use App\Policies\CompanyPolicy;
 use App\Policies\InvitationPolicy;
 use App\Support\CurrentCompany;
@@ -33,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Invitation::class, InvitationPolicy::class);
+        Gate::policy(User::class, CompanyUserPolicy::class);
 
         RateLimiter::for('superadmin-invitations', function (Request $request) {
             $key = $request->user()?->id

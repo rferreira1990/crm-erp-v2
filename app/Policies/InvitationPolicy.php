@@ -12,21 +12,39 @@ class InvitationPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->isSuperAdmin()
+            || ($user->isCompanyUser() && $user->can('company.users.view'));
     }
 
     public function view(User $user, Invitation $invitation): bool
     {
-        return $user->isSuperAdmin();
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->isCompanyUser()
+            && $user->can('company.users.view')
+            && (int) $user->company_id === (int) $invitation->company_id;
     }
 
     public function create(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->isSuperAdmin()
+            || ($user->isCompanyUser() && $user->can('company.users.create'));
     }
 
     public function delete(User $user, Invitation $invitation): bool
     {
-        return $user->isSuperAdmin() && $invitation->isPending();
+        if (! $invitation->isPending()) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->isCompanyUser()
+            && $user->can('company.users.delete')
+            && (int) $user->company_id === (int) $invitation->company_id;
     }
 }

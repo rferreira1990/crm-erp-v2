@@ -99,7 +99,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link {{ request()->routeIs('admin.users.*', 'admin.user-invitations.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="user-check"></span></span>
                                 <span class="nav-link-text">Utilizadores</span>

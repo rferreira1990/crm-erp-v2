@@ -3,6 +3,8 @@
 use App\Http\Controllers\SuperAdmin\CompanyController;
 use App\Http\Controllers\SuperAdmin\EmailSettingsController;
 use App\Http\Controllers\InvitationAcceptanceController;
+use App\Http\Controllers\Admin\CompanyUserController;
+use App\Http\Controllers\Admin\CompanyUserInvitationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\SuperAdminInvitationController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +54,17 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/dashboard/version-old', function () {
             return view('admin.dashboard.version_old');
         })->name('dashboard.version_old');
+
+        Route::get('/users', [CompanyUserController::class, 'index'])->name('users.index');
+        Route::patch('/users/{companyUser}', [CompanyUserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{companyUser}/toggle-active', [CompanyUserController::class, 'toggleActive'])->name('users.toggle-active');
+
+        Route::get('/user-invitations/create', [CompanyUserInvitationController::class, 'create'])->name('user-invitations.create');
+        Route::post('/user-invitations', [CompanyUserInvitationController::class, 'store'])
+            ->middleware('throttle:superadmin-invitations')
+            ->name('user-invitations.store');
+        Route::delete('/user-invitations/{invitation}', [CompanyUserInvitationController::class, 'destroy'])
+            ->name('user-invitations.destroy');
     });
 
 Route::middleware(['auth', 'superadmin.only'])
