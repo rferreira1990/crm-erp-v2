@@ -20,16 +20,34 @@
     <main class="main" id="top">
         <div class="container">
             <div class="row flex-center min-vh-100 py-5">
-                <div class="col-sm-11 col-md-8 col-lg-6">
-                    <div class="card border border-translucent text-center">
-                        <div class="card-body py-6 px-4">
-                            <h3 class="text-body-highlight mb-3">Convite indisponivel</h3>
-                            <p class="text-body-tertiary mb-4">{{ $message ?? 'Este convite nao e valido ou ja nao esta disponivel.' }}</p>
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{{ route('login') }}" class="btn btn-primary">Iniciar sessao</a>
-                                <a href="{{ url('/') }}" class="btn btn-phoenix-secondary">Voltar ao inicio</a>
+                <div class="col-sm-10 col-md-8 col-lg-5 col-xl-5 col-xxl-4">
+                    <a class="d-flex flex-center text-decoration-none mb-4" href="{{ url('/') }}">
+                        <div class="d-flex align-items-center fw-bolder fs-3 d-inline-block">
+                            <img src="{{ asset('vendor/phoenix/img/icons/logo.png') }}" alt="logo" width="58">
+                        </div>
+                    </a>
+
+                    <div class="text-center mb-7">
+                        <h3 class="text-body-highlight">Convite indisponivel</h3>
+                        <p class="text-body-tertiary mb-0">Nao foi possivel validar este convite.</p>
+                    </div>
+
+                    <div class="border border-warning-subtle rounded-3 bg-warning-subtle p-3 mb-4 text-start">
+                        <div class="d-flex align-items-start gap-2">
+                            <span class="fas fa-triangle-exclamation text-warning mt-1"></span>
+                            <div class="fs-9 text-body-emphasis">
+                                {{ $message ?? 'Este convite nao e valido ou ja nao esta disponivel.' }}
                             </div>
                         </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('login') }}" class="btn btn-primary">Iniciar sessao</a>
+                        <a href="{{ url('/') }}" class="btn btn-phoenix-secondary">Voltar ao inicio</a>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <small class="text-body-tertiary fs-10">Se precisar de acesso, contacte o administrador da sua empresa.</small>
                     </div>
                 </div>
             </div>
