@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Category extends Model
@@ -39,7 +38,6 @@ class Category extends Model
      */
     protected $fillable = [
         'company_id',
-        'parent_id',
         'is_system',
         'name',
     ];
@@ -57,16 +55,6 @@ class Category extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
-    }
-
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'parent_id');
-    }
-
-    public function children(): HasMany
-    {
-        return $this->hasMany(self::class, 'parent_id');
     }
 
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
@@ -92,27 +80,6 @@ class Category extends Model
     public function isSystem(): bool
     {
         return $this->is_system;
-    }
-
-    public function hierarchyPathLabel(int $maxDepth = 10): string
-    {
-        $parts = [$this->name];
-        $seenIds = [$this->id => true];
-        $depth = 0;
-        $cursor = $this->parent;
-
-        while ($cursor !== null && $depth < $maxDepth) {
-            if (isset($seenIds[$cursor->id])) {
-                break;
-            }
-
-            $parts[] = $cursor->name;
-            $seenIds[$cursor->id] = true;
-            $cursor = $cursor->parent;
-            $depth++;
-        }
-
-        return implode(' > ', array_reverse($parts));
     }
 
     public function setNameAttribute(?string $value): void
