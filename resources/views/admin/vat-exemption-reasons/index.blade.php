@@ -25,7 +25,7 @@
 
         <div class="card-body border-bottom border-translucent">
             <div class="alert alert-info mb-0" role="alert">
-                A ativacao de motivos de isencao e independente da ativacao da taxa Isento.
+                Ativar um motivo nao ativa automaticamente a taxa Isento; se existir taxa Isento ativa, mantenha pelo menos um motivo ativo.
             </div>
         </div>
 
