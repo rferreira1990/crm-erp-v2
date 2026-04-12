@@ -13,11 +13,11 @@ class PaymentTermSeeder extends Seeder
     public function run(): void
     {
         $defaults = [
-            ['name' => 'Pronto pagamento', 'days' => 0, 'legacy' => []],
-            ['name' => '30 Dias', 'days' => 30, 'legacy' => []],
-            ['name' => '60 Dias', 'days' => 60, 'legacy' => []],
-            ['name' => '90 Dias', 'days' => 90, 'legacy' => []],
-            ['name' => '120 Dias', 'days' => 120, 'legacy' => []],
+            ['name' => 'Pronto pagamento', 'days' => 0, 'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS, 'legacy' => []],
+            ['name' => '30 Dias', 'days' => 30, 'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS, 'legacy' => []],
+            ['name' => '60 Dias', 'days' => 60, 'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS, 'legacy' => []],
+            ['name' => '90 Dias', 'days' => 90, 'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS, 'legacy' => []],
+            ['name' => '120 Dias', 'days' => 120, 'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS, 'legacy' => []],
         ];
 
         foreach ($defaults as $default) {
@@ -42,6 +42,7 @@ class PaymentTermSeeder extends Seeder
                     'company_id' => null,
                     'is_system' => true,
                     'name' => $canonicalName,
+                    'calculation_type' => $default['calculation_type'],
                     'days' => (int) $default['days'],
                 ])->save();
             } else {
@@ -49,6 +50,7 @@ class PaymentTermSeeder extends Seeder
                     'company_id' => null,
                     'is_system' => true,
                     'name' => $canonicalName,
+                    'calculation_type' => $default['calculation_type'],
                     'days' => (int) $default['days'],
                 ]);
             }
@@ -62,4 +64,3 @@ class PaymentTermSeeder extends Seeder
         }
     }
 }
-
