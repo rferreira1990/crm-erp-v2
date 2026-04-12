@@ -59,7 +59,7 @@ class UpdatePaymentTermRequest extends FormRequest
             if ($existsInContext) {
                 $validator->errors()->add(
                     'name',
-                    'Já existe uma condição de pagamento visível no seu contexto com este nome.'
+                    'Ja existe uma condicao de pagamento visivel no seu contexto com este nome.'
                 );
             }
         });
