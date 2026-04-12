@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanyVatRateOverride;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -73,6 +74,14 @@ class VatRateController extends Controller
         $companyId = (int) $request->user()->company_id;
         $vatRate = $this->findSystemVatRateOrFail($companyId, $vatRateId);
 
+        if ($isEnabled && $vatRate->is_exempt && ! $this->hasEnabledExemptionReason($companyId)) {
+            return redirect()
+                ->route('admin.vat-rates.index')
+                ->withErrors([
+                    'vat_rate' => 'Para ativar a taxa Isento, ative primeiro pelo menos um motivo de isencao.',
+                ]);
+        }
+
         CompanyVatRateOverride::query()->updateOrCreate(
             [
                 'company_id' => $companyId,
@@ -104,5 +113,19 @@ class VatRateController extends Controller
             ->visibleToCompany($companyId)
             ->whereKey($vatRateId)
             ->firstOrFail();
+    }
+
+    private function hasEnabledExemptionReason(int $companyId): bool
+    {
+        $reasons = VatExemptionReason::query()
+            ->with([
+                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+            ])
+            ->visibleToCompany($companyId)
+            ->get();
+
+        return $reasons->contains(
+            fn (VatExemptionReason $reason): bool => $reason->isEnabledForCompany($companyId)
+        );
     }
 }
