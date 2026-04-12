@@ -25,6 +25,7 @@ use App\Policies\VatRatePolicy;
 use App\Support\CurrentCompany;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Brand::class, BrandPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
