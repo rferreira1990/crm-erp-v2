@@ -21,6 +21,8 @@ class VatRate extends Model
     protected static function booted(): void
     {
         static::saving(function (self $vatRate): void {
+            // Legacy company-specific VAT rates are no longer supported.
+            // This catalog is system-managed and companies only toggle availability via overrides.
             if ($vatRate->company_id !== null || ! $vatRate->is_system) {
                 throw new DomainException('VAT rates are system managed and cannot belong to a company context.');
             }
@@ -43,10 +45,6 @@ class VatRate extends Model
 
             if ($vatRate->is_exempt && (float) $vatRate->rate !== 0.0) {
                 throw new DomainException('Exempt VAT rate must have rate 0.');
-            }
-
-            if ($vatRate->is_exempt && ! $vatRate->is_system && $vatRate->vat_exemption_reason_id === null) {
-                throw new DomainException('Exempt company VAT rate must have an exemption reason.');
             }
         });
     }
