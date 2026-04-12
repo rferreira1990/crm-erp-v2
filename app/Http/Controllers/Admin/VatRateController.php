@@ -28,8 +28,21 @@ class VatRateController extends Controller
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', '%'.$search.'%');
             })
-            ->orderBy('region')
-            ->orderBy('rate')
+            ->orderByRaw(
+                'CASE region
+                    WHEN ? THEN 1
+                    WHEN ? THEN 2
+                    WHEN ? THEN 3
+                    ELSE 99
+                END',
+                [
+                    VatRate::REGION_MAINLAND,
+                    VatRate::REGION_MADEIRA,
+                    VatRate::REGION_AZORES,
+                ]
+            )
+            ->orderBy('is_exempt')
+            ->orderByDesc('rate')
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
@@ -81,8 +94,8 @@ class VatRateController extends Controller
         return redirect()
             ->route('admin.vat-rates.index')
             ->with('status', $isEnabled
-                ? 'Taxa de IVA ativada com sucesso.'
-                : 'Taxa de IVA desativada com sucesso.');
+                ? 'Disponibilidade da taxa de IVA atualizada para ativa.'
+                : 'Disponibilidade da taxa de IVA atualizada para inativa.');
     }
 
     private function findSystemVatRateOrFail(int $companyId, int $vatRateId): VatRate
@@ -93,4 +106,3 @@ class VatRateController extends Controller
             ->firstOrFail();
     }
 }
-

@@ -81,8 +81,8 @@ class VatExemptionReasonController extends Controller
         return redirect()
             ->route('admin.vat-exemption-reasons.index')
             ->with('status', $isEnabled
-                ? 'Motivo de isencao ativado com sucesso.'
-                : 'Motivo de isencao desativado com sucesso.');
+                ? 'Disponibilidade do motivo de isencao atualizada para ativa.'
+                : 'Disponibilidade do motivo de isencao atualizada para inativa.');
     }
 
     private function findSystemReasonOrFail(int $companyId, int $reasonId): VatExemptionReason
@@ -93,4 +93,3 @@ class VatExemptionReasonController extends Controller
             ->firstOrFail();
     }
 }
-
