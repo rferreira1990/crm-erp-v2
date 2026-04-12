@@ -250,6 +250,20 @@ class PaymentTermsTest extends TestCase
         ]);
     }
 
+    public function test_default_system_payment_terms_are_seeded_as_fixed_days(): void
+    {
+        $defaults = ['Pronto pagamento', '30 Dias', '60 Dias', '90 Dias', '120 Dias'];
+
+        foreach ($defaults as $name) {
+            $this->assertDatabaseHas('payment_terms', [
+                'company_id' => null,
+                'is_system' => true,
+                'name' => $name,
+                'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
+            ]);
+        }
+    }
+
     public function test_company_admin_can_create_payment_term_with_end_of_month_plus_days(): void
     {
         $company = $this->createCompany('Empresa PT EOM');
