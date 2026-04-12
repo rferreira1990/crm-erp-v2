@@ -27,6 +27,8 @@ class PaymentTermController extends Controller
                 $query->where('name', 'like', '%'.$search.'%');
             })
             ->orderByDesc('is_system')
+            ->orderBy('calculation_type')
+            ->orderBy('days')
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
