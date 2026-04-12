@@ -4,6 +4,8 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\PaymentTerm;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StorePaymentTermRequest extends FormRequest
@@ -55,7 +57,7 @@ class StorePaymentTermRequest extends FormRequest
             if ($existsInContext) {
                 $validator->errors()->add(
                     'name',
-                    'Já existe uma condição de pagamento visível no seu contexto com este nome.'
+                    'Ja existe uma condicao de pagamento visivel no seu contexto com este nome.'
                 );
             }
         });

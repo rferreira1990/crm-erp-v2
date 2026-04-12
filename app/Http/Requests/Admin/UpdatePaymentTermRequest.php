@@ -4,6 +4,8 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\PaymentTerm;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdatePaymentTermRequest extends FormRequest
@@ -12,6 +14,7 @@ class UpdatePaymentTermRequest extends FormRequest
     {
         $this->merge([
             'name' => PaymentTerm::normalizeName((string) $this->input('name')),
+            'calculation_type' => trim(Str::lower((string) $this->input('calculation_type'))),
         ]);
     }
 
@@ -31,6 +34,7 @@ class UpdatePaymentTermRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:120'],
+            'calculation_type' => ['required', 'string', Rule::in(PaymentTerm::calculationTypes())],
             'days' => ['required', 'integer', 'min:0'],
         ];
     }
@@ -61,4 +65,3 @@ class UpdatePaymentTermRequest extends FormRequest
         });
     }
 }
-
