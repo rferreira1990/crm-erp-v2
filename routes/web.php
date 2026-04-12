@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyUserInvitationController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\SuperAdminInvitationController;
@@ -130,6 +131,25 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])
             ->whereNumber('paymentMethod')
             ->name('payment-methods.destroy');
+
+        Route::get('/payment-terms', [PaymentTermController::class, 'index'])->name('payment-terms.index');
+        Route::get('/payment-terms/create', [PaymentTermController::class, 'create'])->name('payment-terms.create');
+        Route::post('/payment-terms', [PaymentTermController::class, 'store'])->name('payment-terms.store');
+        Route::get('/payment-terms/{paymentTerm}/edit', [PaymentTermController::class, 'edit'])
+            ->whereNumber('paymentTerm')
+            ->name('payment-terms.edit');
+        Route::patch('/payment-terms/{paymentTerm}', [PaymentTermController::class, 'update'])
+            ->whereNumber('paymentTerm')
+            ->name('payment-terms.update');
+        Route::delete('/payment-terms/{paymentTerm}', [PaymentTermController::class, 'destroy'])
+            ->whereNumber('paymentTerm')
+            ->name('payment-terms.destroy');
+        Route::patch('/payment-terms/{paymentTerm}/deactivate-system', [PaymentTermController::class, 'deactivateSystemTerm'])
+            ->whereNumber('paymentTerm')
+            ->name('payment-terms.deactivate-system');
+        Route::patch('/payment-terms/{paymentTerm}/reactivate-system', [PaymentTermController::class, 'reactivateSystemTerm'])
+            ->whereNumber('paymentTerm')
+            ->name('payment-terms.reactivate-system');
     });
 
 Route::middleware(['auth', 'superadmin.only'])

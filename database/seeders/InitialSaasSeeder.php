@@ -41,6 +41,11 @@ class InitialSaasSeeder extends Seeder
             'company.payment_methods.create',
             'company.payment_methods.update',
             'company.payment_methods.delete',
+            'company.payment_terms.view',
+            'company.payment_terms.create',
+            'company.payment_terms.update',
+            'company.payment_terms.delete',
+            'company.payment_terms.manage_defaults',
         ];
 
         foreach ($permissions as $permissionName) {
@@ -87,6 +92,11 @@ class InitialSaasSeeder extends Seeder
             'company.payment_methods.create',
             'company.payment_methods.update',
             'company.payment_methods.delete',
+            'company.payment_terms.view',
+            'company.payment_terms.create',
+            'company.payment_terms.update',
+            'company.payment_terms.delete',
+            'company.payment_terms.manage_defaults',
         ]);
         $companyUserRole->syncPermissions([]);
 
@@ -133,6 +143,7 @@ class InitialSaasSeeder extends Seeder
             UnitSeeder::class,
             CategorySeeder::class,
             PaymentMethodSeeder::class,
+            PaymentTermSeeder::class,
         ]);
     }
 }

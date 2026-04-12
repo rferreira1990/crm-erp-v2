@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Invitation;
 use App\Models\PaymentMethod;
+use App\Models\PaymentTerm;
 use App\Models\Unit;
 use App\Models\User;
 use App\Policies\CategoryPolicy;
@@ -15,6 +16,7 @@ use App\Policies\CompanyUserPolicy;
 use App\Policies\CompanyPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\PaymentMethodPolicy;
+use App\Policies\PaymentTermPolicy;
 use App\Policies\UnitPolicy;
 use App\Support\CurrentCompany;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -46,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Invitation::class, InvitationPolicy::class);
         Gate::policy(PaymentMethod::class, PaymentMethodPolicy::class);
+        Gate::policy(PaymentTerm::class, PaymentTermPolicy::class);
         Gate::policy(Unit::class, UnitPolicy::class);
         Gate::policy(User::class, CompanyUserPolicy::class);
 

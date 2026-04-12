@@ -140,6 +140,13 @@
                             </div>
                         </a>
                     </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.payment-terms.*') ? 'active' : '' }}" href="{{ route('admin.payment-terms.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Condições de pagamento</span>
+                            </div>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.users.*', 'admin.user-invitations.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                             <div class="d-flex align-items-center">
