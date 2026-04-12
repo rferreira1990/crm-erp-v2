@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanyVatExemptionReasonOverride;
+use App\Models\VatRate;
 use App\Models\VatExemptionReason;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -59,6 +60,15 @@ class VatExemptionReasonController extends Controller
 
         $companyId = (int) $request->user()->company_id;
         $reason = $this->findSystemReasonOrFail($companyId, $reasonId);
+        $isCurrentlyEnabled = $reason->isEnabledForCompany($companyId);
+
+        if (! $isEnabled && $isCurrentlyEnabled && $this->isLastEnabledReason($companyId) && $this->hasEnabledExemptVatRate($companyId)) {
+            return redirect()
+                ->route('admin.vat-exemption-reasons.index')
+                ->withErrors([
+                    'vat_exemption_reason' => 'Nao pode desativar o ultimo motivo ativo enquanto existir uma taxa Isento ativa.',
+                ]);
+        }
 
         CompanyVatExemptionReasonOverride::query()->updateOrCreate(
             [
@@ -91,5 +101,31 @@ class VatExemptionReasonController extends Controller
             ->visibleToCompany($companyId)
             ->whereKey($reasonId)
             ->firstOrFail();
+    }
+
+    private function isLastEnabledReason(int $companyId): bool
+    {
+        $enabledReasons = VatExemptionReason::query()
+            ->with([
+                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+            ])
+            ->visibleToCompany($companyId)
+            ->get()
+            ->filter(fn (VatExemptionReason $reason): bool => $reason->isEnabledForCompany($companyId));
+
+        return $enabledReasons->count() <= 1;
+    }
+
+    private function hasEnabledExemptVatRate(int $companyId): bool
+    {
+        $exemptRates = VatRate::query()
+            ->with([
+                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+            ])
+            ->visibleToCompany($companyId)
+            ->where('is_exempt', true)
+            ->get();
+
+        return $exemptRates->contains(fn (VatRate $rate): bool => $rate->isEnabledForCompany($companyId));
     }
 }
