@@ -24,6 +24,12 @@
         </div>
 
         <div class="card-body border-bottom border-translucent">
+            <div class="alert alert-info mb-0" role="alert">
+                A ativacao da taxa Isento e independente da ativacao de motivos de isencao.
+            </div>
+        </div>
+
+        <div class="card-body border-bottom border-translucent">
             <form method="GET" action="{{ route('admin.vat-rates.index') }}" class="row g-3 align-items-end">
                 <div class="col-12 col-md-6">
                     <label for="q" class="form-label">Pesquisar</label>
@@ -60,10 +66,18 @@
                         @forelse ($vatRates as $vatRate)
                             @php
                                 $isEnabled = $vatRate->isEnabledForCompany((int) auth()->user()->company_id);
+                                $regionBadgeClass = match ($vatRate->region) {
+                                    'mainland' => 'badge-phoenix-primary',
+                                    'madeira' => 'badge-phoenix-info',
+                                    'azores' => 'badge-phoenix-warning',
+                                    default => 'badge-phoenix-secondary',
+                                };
                             @endphp
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $vatRate->name }}</td>
-                                <td>{{ $vatRate->regionLabel() }}</td>
+                                <td>
+                                    <span class="badge badge-phoenix {{ $regionBadgeClass }}">{{ $vatRate->regionLabel() }}</span>
+                                </td>
                                 <td>{{ number_format((float) $vatRate->rate, 2, ',', '.') }}%</td>
                                 <td>
                                     @if ($vatRate->is_exempt)
