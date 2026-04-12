@@ -24,6 +24,12 @@
         </div>
 
         <div class="card-body border-bottom border-translucent">
+            <div class="alert alert-info mb-0" role="alert">
+                A ativacao de motivos de isencao e independente da ativacao da taxa Isento.
+            </div>
+        </div>
+
+        <div class="card-body border-bottom border-translucent">
             <form method="GET" action="{{ route('admin.vat-exemption-reasons.index') }}" class="row g-3 align-items-end">
                 <div class="col-12 col-md-6">
                     <label for="q" class="form-label">Pesquisar</label>
@@ -66,9 +72,9 @@
                                 <td>{{ $reason->legal_reference ?? '-' }}</td>
                                 <td>
                                     @if ($isEnabled)
-                                        <span class="badge badge-phoenix badge-phoenix-success">Ativo</span>
+                                        <span class="badge badge-phoenix badge-phoenix-success">Ativa</span>
                                     @else
-                                        <span class="badge badge-phoenix badge-phoenix-secondary">Inativo</span>
+                                        <span class="badge badge-phoenix badge-phoenix-secondary">Inativa</span>
                                     @endif
                                 </td>
                                 <td class="text-end pe-3">
