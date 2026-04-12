@@ -17,6 +17,8 @@ class VatExemptionReason extends Model
     protected static function booted(): void
     {
         static::saving(function (self $reason): void {
+            // Legacy company-specific reasons are no longer supported.
+            // This catalog is system-managed and companies only toggle availability via overrides.
             if ($reason->company_id !== null || ! $reason->is_system) {
                 throw new DomainException('VAT exemption reasons are system managed and cannot belong to a company context.');
             }
