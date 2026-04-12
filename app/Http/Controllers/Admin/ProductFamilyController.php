@@ -26,7 +26,6 @@ class ProductFamilyController extends Controller
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', '%'.$search.'%');
             })
-            ->orderByDesc('is_system')
             ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END')
             ->orderBy('name')
             ->paginate(20)
@@ -327,4 +326,3 @@ class ProductFamilyController extends Controller
             ->all();
     }
 }
-

@@ -17,20 +17,8 @@ class ProductFamily extends Model
     protected static function booted(): void
     {
         static::saving(function (self $productFamily): void {
-            if ($productFamily->is_system) {
-                $productFamily->company_id = null;
-
-                $duplicateSystemName = self::query()
-                    ->where('is_system', true)
-                    ->whereNull('company_id')
-                    ->where('parent_id', $productFamily->parent_id)
-                    ->whereRaw('LOWER(name) = ?', [self::normalizeNameKey((string) $productFamily->name)])
-                    ->when($productFamily->exists, fn (Builder $query) => $query->whereKeyNot($productFamily->id))
-                    ->exists();
-
-                if ($duplicateSystemName) {
-                    throw new DomainException('Duplicate global product family name is not allowed for this parent.');
-                }
+            if ($productFamily->company_id === null || $productFamily->is_system) {
+                throw new DomainException('Product families are company-managed and cannot be system records.');
             }
         });
     }
@@ -72,12 +60,8 @@ class ProductFamily extends Model
 
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
-        return $query->where(function (Builder $builder) use ($companyId): void {
-            $builder->where(function (Builder $systemQuery): void {
-                $systemQuery->where('is_system', true)
-                    ->whereNull('company_id');
-            })->orWhere('company_id', $companyId);
-        });
+        return $query->where('company_id', $companyId)
+            ->where('is_system', false);
     }
 
     public static function normalizeName(string $name): string
@@ -123,4 +107,3 @@ class ProductFamily extends Model
             : null;
     }
 }
-

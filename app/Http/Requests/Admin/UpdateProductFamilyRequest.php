@@ -41,10 +41,8 @@ class UpdateProductFamilyRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('product_families', 'id')->where(function ($query) use ($companyId): void {
-                    $query->where(function ($systemQuery): void {
-                        $systemQuery->where('is_system', true)
-                            ->whereNull('company_id');
-                    })->orWhere('company_id', $companyId);
+                    $query->where('company_id', $companyId)
+                        ->where('is_system', false);
                 }),
             ],
         ];
@@ -63,12 +61,8 @@ class UpdateProductFamilyRequest extends FormRequest
             $parentId = $this->input('parent_id') !== null ? (int) $this->input('parent_id') : null;
 
             $existsInContextAndParent = ProductFamily::query()
-                ->where(function ($query) use ($companyId): void {
-                    $query->where(function ($systemQuery): void {
-                        $systemQuery->where('is_system', true)
-                            ->whereNull('company_id');
-                    })->orWhere('company_id', $companyId);
-                })
+                ->where('company_id', $companyId)
+                ->where('is_system', false)
                 ->whereRaw('LOWER(name) = ?', [$nameKey])
                 ->whereKeyNot($familyId)
                 ->where(function ($query) use ($parentId): void {
@@ -143,4 +137,3 @@ class UpdateProductFamilyRequest extends FormRequest
         return false;
     }
 }
-
