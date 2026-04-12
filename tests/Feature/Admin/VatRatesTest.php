@@ -104,8 +104,8 @@ class VatRatesTest extends TestCase
         $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
 
         $rate = VatRate::query()
-            ->where('region', VatRate::REGION_MAINLAND)
-            ->where('name', 'Isento')
+            ->where('region', VatRate::REGION_MADEIRA)
+            ->where('name', 'IVA 22%')
             ->firstOrFail();
 
         $response = $this->actingAs($adminA)->patch(route('admin.vat-rates.enable', $rate->id));
