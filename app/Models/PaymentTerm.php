@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +15,9 @@ use Illuminate\Support\Str;
 class PaymentTerm extends Model
 {
     use HasFactory;
+
+    public const CALCULATION_FIXED_DAYS = 'fixed_days';
+    public const CALCULATION_END_OF_MONTH_PLUS_DAYS = 'end_of_month_plus_days';
 
     protected static function booted(): void
     {
@@ -37,6 +42,10 @@ class PaymentTerm extends Model
                     throw new DomainException('Duplicate global payment term name is not allowed.');
                 }
             }
+
+            if (! in_array($paymentTerm->calculation_type, self::calculationTypes(), true)) {
+                throw new DomainException('Invalid payment term calculation type.');
+            }
         });
     }
 
@@ -46,6 +55,7 @@ class PaymentTerm extends Model
     protected $fillable = [
         'company_id',
         'name',
+        'calculation_type',
         'days',
         'is_system',
     ];
@@ -56,6 +66,7 @@ class PaymentTerm extends Model
     protected function casts(): array
     {
         return [
+            'calculation_type' => 'string',
             'days' => 'integer',
             'is_system' => 'boolean',
         ];
@@ -97,6 +108,28 @@ class PaymentTerm extends Model
         return preg_replace('/\s+/', ' ', trim($name)) ?? '';
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function calculationTypes(): array
+    {
+        return [
+            self::CALCULATION_FIXED_DAYS,
+            self::CALCULATION_END_OF_MONTH_PLUS_DAYS,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function calculationTypeLabels(): array
+    {
+        return [
+            self::CALCULATION_FIXED_DAYS => 'Dias fixos',
+            self::CALCULATION_END_OF_MONTH_PLUS_DAYS => 'Final do mes + dias',
+        ];
+    }
+
     public static function normalizeNameKey(string $name): string
     {
         return Str::lower(self::normalizeName($name));
@@ -107,6 +140,23 @@ class PaymentTerm extends Model
         return $this->is_system;
     }
 
+    public function calculationTypeLabel(): string
+    {
+        return self::calculationTypeLabels()[$this->calculation_type] ?? $this->calculation_type;
+    }
+
+    public function calculateDueDate(CarbonInterface|string $referenceDate): CarbonImmutable
+    {
+        $baseDate = $referenceDate instanceof CarbonInterface
+            ? CarbonImmutable::instance($referenceDate)
+            : CarbonImmutable::parse($referenceDate);
+
+        return match ($this->calculation_type) {
+            self::CALCULATION_END_OF_MONTH_PLUS_DAYS => $baseDate->endOfMonth()->addDays($this->days),
+            default => $baseDate->addDays($this->days),
+        };
+    }
+
     public function setNameAttribute(?string $value): void
     {
         $this->attributes['name'] = $value !== null
@@ -114,4 +164,3 @@ class PaymentTerm extends Model
             : null;
     }
 }
-
