@@ -3,9 +3,11 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Company;
+use App\Models\CompanyVatExemptionReasonOverride;
 use App\Models\User;
 use App\Models\VatExemptionReason;
 use Database\Seeders\InitialSaasSeeder;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -20,105 +22,100 @@ class VatExemptionReasonsTest extends TestCase
         $this->seed(InitialSaasSeeder::class);
     }
 
-    public function test_company_user_sees_system_reasons_and_own_reasons_only(): void
+    public function test_company_user_sees_system_reasons_list_only(): void
     {
-        $companyA = $this->createCompany('Empresa VATR A');
-        $companyB = $this->createCompany('Empresa VATR B');
-        $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
+        $company = $this->createCompany('Empresa VATR A');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
-        VatExemptionReason::query()->create([
-            'company_id' => $companyA->id,
-            'is_system' => false,
-            'code' => 'X01',
-            'name' => 'Motivo A',
-        ]);
-
-        VatExemptionReason::query()->create([
-            'company_id' => $companyB->id,
-            'is_system' => false,
-            'code' => 'Y01',
-            'name' => 'Motivo B',
-        ]);
-
-        $response = $this->actingAs($adminA)->get(route('admin.vat-exemption-reasons.index', ['q' => 'X01']));
+        $response = $this->actingAs($admin)->get(route('admin.vat-exemption-reasons.index', ['q' => 'M99']));
 
         $response->assertOk();
-        $response->assertSee('X01');
-        $response->assertDontSee('Y01');
+        $response->assertSee('M99');
     }
 
-    public function test_company_admin_can_create_custom_exemption_reason(): void
+    public function test_all_exemption_reasons_are_inactive_by_default_for_company_context(): void
     {
-        $company = $this->createCompany('Empresa VATR Create');
-        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $company = $this->createCompany('Empresa VATR Defaults');
+        $reasonM07 = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+        $reasonM30 = VatExemptionReason::query()->where('code', 'M30')->firstOrFail();
 
-        $response = $this->actingAs($admin)->post(route('admin.vat-exemption-reasons.store'), [
-            'code' => ' c01 ',
-            'name' => '  Motivo   Custom  ',
-            'legal_reference' => ' Diploma XPTO ',
-        ]);
+        $this->assertFalse($reasonM07->isEnabledForCompany($company->id));
+        $this->assertFalse($reasonM30->isEnabledForCompany($company->id));
+    }
+
+    public function test_company_admin_can_enable_exemption_reason_for_own_context_only(): void
+    {
+        $companyA = $this->createCompany('Empresa Enable A');
+        $companyB = $this->createCompany('Empresa Enable B');
+        $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+
+        $response = $this->actingAs($adminA)->patch(route('admin.vat-exemption-reasons.enable', $reason->id));
 
         $response->assertRedirect(route('admin.vat-exemption-reasons.index'));
-        $this->assertDatabaseHas('vat_exemption_reasons', [
+        $this->assertDatabaseHas('company_vat_exemption_reason_overrides', [
+            'company_id' => $companyA->id,
+            'vat_exemption_reason_id' => $reason->id,
+            'is_enabled' => true,
+        ]);
+
+        $this->assertTrue($reason->fresh()->isEnabledForCompany($companyA->id));
+        $this->assertFalse($reason->fresh()->isEnabledForCompany($companyB->id));
+    }
+
+    public function test_company_admin_can_disable_previously_enabled_reason_for_own_context_only(): void
+    {
+        $company = $this->createCompany('Empresa Disable Reason');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $reason = VatExemptionReason::query()->where('code', 'M30')->firstOrFail();
+
+        CompanyVatExemptionReasonOverride::query()->create([
+            'company_id' => $company->id,
+            'vat_exemption_reason_id' => $reason->id,
+            'is_enabled' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.disable', $reason->id));
+
+        $response->assertRedirect(route('admin.vat-exemption-reasons.index'));
+        $this->assertDatabaseHas('company_vat_exemption_reason_overrides', [
+            'company_id' => $company->id,
+            'vat_exemption_reason_id' => $reason->id,
+            'is_enabled' => false,
+        ]);
+    }
+
+    public function test_company_users_cannot_create_custom_exemption_reasons_anymore(): void
+    {
+        $this->expectException(DomainException::class);
+
+        $company = $this->createCompany('Empresa Custom Blocked Reason');
+
+        VatExemptionReason::query()->create([
             'company_id' => $company->id,
             'is_system' => false,
-            'code' => 'C01',
+            'code' => 'X01',
             'name' => 'Motivo Custom',
-            'legal_reference' => 'Diploma XPTO',
         ]);
     }
 
-    public function test_company_admin_cannot_create_duplicate_visible_reason_code(): void
+    public function test_user_without_permission_cannot_toggle_exemption_reason_availability(): void
     {
-        $company = $this->createCompany('Empresa VATR Dup');
-        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $company = $this->createCompany('Empresa VATR No Perm');
+        $user = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
 
-        $response = $this->actingAs($admin)
-            ->from(route('admin.vat-exemption-reasons.create'))
-            ->post(route('admin.vat-exemption-reasons.store'), [
-                'code' => 'm01',
-                'name' => 'Duplicado',
-            ]);
-
-        $response->assertRedirect(route('admin.vat-exemption-reasons.create'));
-        $response->assertSessionHasErrors('code');
+        $this->actingAs($user)->get(route('admin.vat-exemption-reasons.index'))->assertForbidden();
+        $this->actingAs($user)->patch(route('admin.vat-exemption-reasons.enable', $reason->id))->assertForbidden();
+        $this->actingAs($user)->patch(route('admin.vat-exemption-reasons.disable', $reason->id))->assertForbidden();
     }
 
-    public function test_company_admin_cannot_update_or_delete_system_reason(): void
+    public function test_create_edit_delete_routes_are_not_available_for_company_reasons_module(): void
     {
-        $company = $this->createCompany('Empresa VATR System');
+        $company = $this->createCompany('Empresa VATR Routes');
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
-        $systemReason = VatExemptionReason::query()->where('is_system', true)->firstOrFail();
 
-        $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.update', $systemReason->id), [
-            'code' => $systemReason->code,
-            'name' => 'Tentativa',
-        ])->assertForbidden();
-
-        $this->actingAs($admin)->delete(route('admin.vat-exemption-reasons.destroy', $systemReason->id))
-            ->assertForbidden();
-    }
-
-    public function test_company_admin_cannot_update_or_delete_reason_from_other_company(): void
-    {
-        $companyA = $this->createCompany('Empresa A');
-        $companyB = $this->createCompany('Empresa B');
-        $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
-
-        $reasonB = VatExemptionReason::query()->create([
-            'company_id' => $companyB->id,
-            'is_system' => false,
-            'code' => 'B01',
-            'name' => 'Motivo B',
-        ]);
-
-        $this->actingAs($adminA)->patch(route('admin.vat-exemption-reasons.update', $reasonB->id), [
-            'code' => 'B02',
-            'name' => 'Motivo B2',
-        ])->assertNotFound();
-
-        $this->actingAs($adminA)->delete(route('admin.vat-exemption-reasons.destroy', $reasonB->id))
-            ->assertNotFound();
+        $this->actingAs($admin)->get('/admin/vat-exemption-reasons/create')->assertNotFound();
     }
 
     public function test_m26_is_not_seeded_as_active_default_reason(): void
@@ -127,30 +124,6 @@ class VatExemptionReasonsTest extends TestCase
             'company_id' => null,
             'code' => 'M26',
         ]);
-    }
-
-    public function test_user_without_permission_cannot_manage_exemption_reasons_module(): void
-    {
-        $company = $this->createCompany('Empresa VATR No Perm');
-        $user = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
-        $reason = VatExemptionReason::query()->create([
-            'company_id' => $company->id,
-            'is_system' => false,
-            'code' => 'NP1',
-            'name' => 'Motivo NP',
-        ]);
-
-        $this->actingAs($user)->get(route('admin.vat-exemption-reasons.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('admin.vat-exemption-reasons.create'))->assertForbidden();
-        $this->actingAs($user)->post(route('admin.vat-exemption-reasons.store'), [
-            'code' => 'NP2',
-            'name' => 'Novo',
-        ])->assertForbidden();
-        $this->actingAs($user)->patch(route('admin.vat-exemption-reasons.update', $reason->id), [
-            'code' => 'NP3',
-            'name' => 'Novo 2',
-        ])->assertForbidden();
-        $this->actingAs($user)->delete(route('admin.vat-exemption-reasons.destroy', $reason->id))->assertForbidden();
     }
 
     private function createCompany(string $name): Company

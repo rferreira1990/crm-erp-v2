@@ -13,15 +13,21 @@ return new class extends Migration
     {
         Schema::create('company_vat_exemption_reason_overrides', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('vat_exemption_reason_id')
-                ->constrained('vat_exemption_reasons')
-                ->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id');
+            $table->unsignedBigInteger('vat_exemption_reason_id');
             $table->boolean('is_enabled')->default(false);
             $table->timestamps();
 
-            $table->unique(['company_id', 'vat_exemption_reason_id']);
-            $table->index(['company_id', 'is_enabled']);
+            $table->foreign('company_id', 'cvero_company_fk')
+                ->references('id')
+                ->on('companies')
+                ->cascadeOnDelete();
+            $table->foreign('vat_exemption_reason_id', 'cvero_reason_fk')
+                ->references('id')
+                ->on('vat_exemption_reasons')
+                ->cascadeOnDelete();
+            $table->unique(['company_id', 'vat_exemption_reason_id'], 'cvero_company_reason_unq');
+            $table->index(['company_id', 'is_enabled'], 'cvero_company_enabled_idx');
         });
     }
 
@@ -33,4 +39,3 @@ return new class extends Migration
         Schema::dropIfExists('company_vat_exemption_reason_overrides');
     }
 };
-

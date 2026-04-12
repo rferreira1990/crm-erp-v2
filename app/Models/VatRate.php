@@ -21,8 +21,9 @@ class VatRate extends Model
     protected static function booted(): void
     {
         static::saving(function (self $vatRate): void {
-            $vatRate->is_system = true;
-            $vatRate->company_id = null;
+            if ($vatRate->company_id !== null || ! $vatRate->is_system) {
+                throw new DomainException('VAT rates are system managed and cannot belong to a company context.');
+            }
 
             $duplicateSystemRate = self::query()
                 ->where('is_system', true)
