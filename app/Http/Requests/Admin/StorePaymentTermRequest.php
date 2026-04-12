@@ -12,6 +12,7 @@ class StorePaymentTermRequest extends FormRequest
     {
         $this->merge([
             'name' => PaymentTerm::normalizeName((string) $this->input('name')),
+            'calculation_type' => trim(Str::lower((string) $this->input('calculation_type'))),
         ]);
     }
 
@@ -31,6 +32,7 @@ class StorePaymentTermRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:120'],
+            'calculation_type' => ['required', 'string', Rule::in(PaymentTerm::calculationTypes())],
             'days' => ['required', 'integer', 'min:0'],
         ];
     }
@@ -59,4 +61,3 @@ class StorePaymentTermRequest extends FormRequest
         });
     }
 }
-
