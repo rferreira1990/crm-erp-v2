@@ -180,27 +180,41 @@ class CategoryController extends Controller
 
         $labelCache = [];
 
-        $buildLabel = function (int $categoryId) use (&$buildLabel, &$labelCache, $map): string {
+        $buildLabel = function (int $categoryId) use (&$labelCache, $map): string {
             if (isset($labelCache[$categoryId])) {
                 return $labelCache[$categoryId];
             }
 
-            /** @var Category|null $category */
-            $category = $map->get($categoryId);
+            $parts = [];
+            $seen = [];
+            $cursorId = $categoryId;
+            $depth = 0;
 
-            if ($category === null) {
-                return '';
+            while ($cursorId > 0 && $depth < 50) {
+                if (isset($seen[$cursorId])) {
+                    break;
+                }
+
+                $seen[$cursorId] = true;
+
+                /** @var Category|null $category */
+                $category = $map->get($cursorId);
+
+                if ($category === null) {
+                    break;
+                }
+
+                $parts[] = $category->name;
+                $cursorId = $category->parent_id !== null
+                    ? (int) $category->parent_id
+                    : 0;
+                $depth++;
             }
 
-            if ($category->parent_id === null) {
-                return $labelCache[$categoryId] = $category->name;
-            }
+            $label = implode(' > ', array_reverse($parts));
+            $labelCache[$categoryId] = $label;
 
-            $parentLabel = $buildLabel((int) $category->parent_id);
-
-            return $labelCache[$categoryId] = $parentLabel !== ''
-                ? $parentLabel.' > '.$category->name
-                : $category->name;
+            return $label;
         };
 
         $labels = [];
@@ -220,35 +234,50 @@ class CategoryController extends Controller
         $categories = Category::query()
             ->visibleToCompany($companyId)
             ->get(['id', 'parent_id', 'name']);
+        $categoryById = $categories->keyBy('id');
 
         $parentById = $categories
             ->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])
             ->all();
 
         $pathCache = [];
-        $buildPath = function (int $categoryId) use (&$buildPath, &$pathCache, $categories, $parentById): string {
+        $buildPath = function (int $categoryId) use (&$pathCache, $categoryById, $parentById): string {
             if (isset($pathCache[$categoryId])) {
                 return $pathCache[$categoryId];
             }
 
-            /** @var Category|null $category */
-            $category = $categories->firstWhere('id', $categoryId);
+            $parts = [];
+            $seen = [];
+            $cursorId = $categoryId;
+            $depth = 0;
 
-            if ($category === null) {
-                return '';
+            while ($cursorId > 0 && $depth < 50) {
+                if (isset($seen[$cursorId])) {
+                    break;
+                }
+
+                $seen[$cursorId] = true;
+
+                /** @var Category|null $category */
+                $category = $categoryById->get($cursorId);
+
+                if ($category === null) {
+                    break;
+                }
+
+                $parts[] = $category->name;
+
+                $parentId = $parentById[$cursorId] ?? null;
+                $cursorId = $parentId !== null
+                    ? (int) $parentId
+                    : 0;
+                $depth++;
             }
 
-            $parentId = $parentById[$categoryId] ?? null;
+            $path = implode(' > ', array_reverse($parts));
+            $pathCache[$categoryId] = $path;
 
-            if ($parentId === null) {
-                return $pathCache[$categoryId] = $category->name;
-            }
-
-            $parentPath = $buildPath((int) $parentId);
-
-            return $pathCache[$categoryId] = $parentPath !== ''
-                ? $parentPath.' > '.$category->name
-                : $category->name;
+            return $path;
         };
 
         $isDescendant = function (int $candidateId, int $ancestorId) use ($parentById): bool {
