@@ -58,7 +58,9 @@ class PaymentTermController extends Controller
     {
         $this->authorize('create', PaymentTerm::class);
 
-        return view('admin.payment-terms.create');
+        return view('admin.payment-terms.create', [
+            'calculationTypeOptions' => PaymentTerm::calculationTypeLabels(),
+        ]);
     }
 
     public function store(StorePaymentTermRequest $request): RedirectResponse
@@ -68,6 +70,7 @@ class PaymentTermController extends Controller
         $paymentTerm = PaymentTerm::query()->create([
             'company_id' => $request->user()->company_id,
             'name' => $data['name'],
+            'calculation_type' => $data['calculation_type'],
             'days' => (int) $data['days'],
             'is_system' => false,
         ]);
@@ -78,6 +81,7 @@ class PaymentTermController extends Controller
             'company_id' => $paymentTerm->company_id,
             'created_by' => $request->user()->id,
             'name' => $paymentTerm->name,
+            'calculation_type' => $paymentTerm->calculation_type,
             'days' => $paymentTerm->days,
         ]);
 
@@ -94,6 +98,7 @@ class PaymentTermController extends Controller
 
         return view('admin.payment-terms.edit', [
             'paymentTerm' => $term,
+            'calculationTypeOptions' => PaymentTerm::calculationTypeLabels(),
         ]);
     }
 
@@ -111,6 +116,7 @@ class PaymentTermController extends Controller
             'company_id' => $term->company_id,
             'updated_by' => $request->user()->id,
             'name' => $term->name,
+            'calculation_type' => $term->calculation_type,
             'days' => $term->days,
         ]);
 
@@ -229,4 +235,3 @@ class PaymentTermController extends Controller
         return false;
     }
 }
-

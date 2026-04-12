@@ -53,6 +53,7 @@
                     <thead class="bg-body-tertiary">
                         <tr>
                             <th class="ps-3">Nome</th>
+                            <th>Tipo de calculo</th>
                             <th>Dias</th>
                             <th>Origem</th>
                             <th class="text-end pe-3">Ações</th>
@@ -62,6 +63,7 @@
                         @forelse ($paymentTerms as $paymentTerm)
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $paymentTerm->name }}</td>
+                                <td>{{ $paymentTerm->calculationTypeLabel() }}</td>
                                 <td>{{ $paymentTerm->days }}</td>
                                 <td>
                                     @if ($paymentTerm->is_system)
@@ -106,7 +108,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-body-tertiary">
+                                <td colspan="5" class="text-center py-4 text-body-tertiary">
                                     Sem condições de pagamento disponíveis.
                                 </td>
                             </tr>
@@ -134,6 +136,7 @@
                         <thead class="bg-body-tertiary">
                             <tr>
                                 <th class="ps-3">Nome</th>
+                                <th>Tipo de calculo</th>
                                 <th>Dias</th>
                                 <th class="text-end pe-3">Ações</th>
                             </tr>
@@ -142,12 +145,14 @@
                             @foreach ($disabledSystemTerms as $disabledSystemTerm)
                                 <tr>
                                     <td class="ps-3 fw-semibold">{{ $disabledSystemTerm->name }}</td>
+                                    <td>{{ $disabledSystemTerm->calculationTypeLabel() }}</td>
                                     <td>{{ $disabledSystemTerm->days }}</td>
                                     <td class="text-end pe-3">
                                         <form
                                             method="POST"
                                             action="{{ route('admin.payment-terms.reactivate-system', $disabledSystemTerm->id) }}"
                                             class="d-inline"
+                                            data-confirm="Tem a certeza que pretende reativar esta condição do sistema para a sua empresa?"
                                         >
                                             @csrf
                                             @method('PATCH')
@@ -163,4 +168,3 @@
         </div>
     @endif
 @endsection
-

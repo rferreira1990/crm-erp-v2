@@ -3,7 +3,7 @@
 @endphp
 
 <div class="row g-3">
-    <div class="col-12 col-md-8">
+    <div class="col-12 col-md-6">
         <label for="name" class="form-label">Nome</label>
         <input
             type="text"
@@ -17,7 +17,27 @@
         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-3">
+        <label for="calculation_type" class="form-label">Tipo de calculo</label>
+        <select
+            id="calculation_type"
+            name="calculation_type"
+            class="form-select @error('calculation_type') is-invalid @enderror"
+            required
+        >
+            @foreach (($calculationTypeOptions ?? []) as $value => $label)
+                <option
+                    value="{{ $value }}"
+                    @selected(old('calculation_type', $paymentTerm->calculation_type ?? \App\Models\PaymentTerm::CALCULATION_FIXED_DAYS) === $value)
+                >
+                    {{ $label }}
+                </option>
+            @endforeach
+        </select>
+        @error('calculation_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
+    <div class="col-12 col-md-3">
         <label for="days" class="form-label">Dias</label>
         <input
             type="number"
@@ -39,4 +59,3 @@
         </button>
     </div>
 </div>
-
