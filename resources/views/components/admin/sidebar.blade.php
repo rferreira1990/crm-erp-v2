@@ -75,6 +75,14 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.brands.*') ? 'active' : '' }}" href="{{ route('admin.brands.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="bookmark"></span></span>
+                                <span class="nav-link-text">Marcas</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="file-text"></span></span>
@@ -95,6 +103,40 @@
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="archive"></span></span>
                                 <span class="nav-link-text">Stocks</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-3">
+                        <p class="navbar-vertical-label">Definicoes</p>
+                        <hr class="navbar-vertical-line" />
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link text-body-tertiary">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="table"></span></span>
+                                <span class="nav-link-text">Tabelas</span>
+                            </div>
+                        </span>
+                    </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.units.*') ? 'active' : '' }}" href="{{ route('admin.units.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Unidades</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Categorias de produtos</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.payment-methods.*') ? 'active' : '' }}" href="{{ route('admin.payment-methods.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Modos de pagamento</span>
                             </div>
                         </a>
                     </li>

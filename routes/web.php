@@ -5,6 +5,10 @@ use App\Http\Controllers\SuperAdmin\EmailSettingsController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\CompanyUserInvitationController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\SuperAdminInvitationController;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +74,62 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::delete('/user-invitations/{invitation}', [CompanyUserInvitationController::class, 'destroy'])
             ->whereNumber('invitation')
             ->name('user-invitations.destroy');
+
+        Route::get('/units', [UnitController::class, 'index'])->name('units.index');
+        Route::get('/units/create', [UnitController::class, 'create'])->name('units.create');
+        Route::post('/units', [UnitController::class, 'store'])->name('units.store');
+        Route::get('/units/{unit}/edit', [UnitController::class, 'edit'])
+            ->whereNumber('unit')
+            ->name('units.edit');
+        Route::patch('/units/{unit}', [UnitController::class, 'update'])
+            ->whereNumber('unit')
+            ->name('units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+            ->whereNumber('unit')
+            ->name('units.destroy');
+
+        Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+        Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
+        Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+        Route::get('/categories/{category}/edit', [CategoryController::class, 'edit'])
+            ->whereNumber('category')
+            ->name('categories.edit');
+        Route::patch('/categories/{category}', [CategoryController::class, 'update'])
+            ->whereNumber('category')
+            ->name('categories.update');
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+            ->whereNumber('category')
+            ->name('categories.destroy');
+
+        Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
+        Route::get('/brands/create', [BrandController::class, 'create'])->name('brands.create');
+        Route::post('/brands', [BrandController::class, 'store'])->name('brands.store');
+        Route::get('/brands/{brand}/edit', [BrandController::class, 'edit'])
+            ->whereNumber('brand')
+            ->name('brands.edit');
+        Route::patch('/brands/{brand}', [BrandController::class, 'update'])
+            ->whereNumber('brand')
+            ->name('brands.update');
+        Route::delete('/brands/{brand}', [BrandController::class, 'destroy'])
+            ->whereNumber('brand')
+            ->name('brands.destroy');
+        Route::delete('/brands/{brand}/files/{brandFile}', [BrandController::class, 'destroyFile'])
+            ->whereNumber('brand')
+            ->whereNumber('brandFile')
+            ->name('brands.files.destroy');
+
+        Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+        Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');
+        Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment-methods.store');
+        Route::get('/payment-methods/{paymentMethod}/edit', [PaymentMethodController::class, 'edit'])
+            ->whereNumber('paymentMethod')
+            ->name('payment-methods.edit');
+        Route::patch('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update'])
+            ->whereNumber('paymentMethod')
+            ->name('payment-methods.update');
+        Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])
+            ->whereNumber('paymentMethod')
+            ->name('payment-methods.destroy');
     });
 
 Route::middleware(['auth', 'superadmin.only'])

@@ -25,6 +25,22 @@ class InitialSaasSeeder extends Seeder
             'company.users.create',
             'company.users.update',
             'company.users.delete',
+            'company.units.view',
+            'company.units.create',
+            'company.units.update',
+            'company.units.delete',
+            'company.categories.view',
+            'company.categories.create',
+            'company.categories.update',
+            'company.categories.delete',
+            'company.brands.view',
+            'company.brands.create',
+            'company.brands.update',
+            'company.brands.delete',
+            'company.payment_methods.view',
+            'company.payment_methods.create',
+            'company.payment_methods.update',
+            'company.payment_methods.delete',
         ];
 
         foreach ($permissions as $permissionName) {
@@ -55,6 +71,22 @@ class InitialSaasSeeder extends Seeder
             'company.users.create',
             'company.users.update',
             'company.users.delete',
+            'company.units.view',
+            'company.units.create',
+            'company.units.update',
+            'company.units.delete',
+            'company.categories.view',
+            'company.categories.create',
+            'company.categories.update',
+            'company.categories.delete',
+            'company.brands.view',
+            'company.brands.create',
+            'company.brands.update',
+            'company.brands.delete',
+            'company.payment_methods.view',
+            'company.payment_methods.create',
+            'company.payment_methods.update',
+            'company.payment_methods.delete',
         ]);
         $companyUserRole->syncPermissions([]);
 
@@ -95,5 +127,12 @@ class InitialSaasSeeder extends Seeder
 
         $superAdmin->syncRoles([$superAdminRole]);
         $companyAdmin->syncRoles([$companyAdminRole]);
+
+        $this->call([
+            GeographySeeder::class,
+            UnitSeeder::class,
+            CategorySeeder::class,
+            PaymentMethodSeeder::class,
+        ]);
     }
 }
