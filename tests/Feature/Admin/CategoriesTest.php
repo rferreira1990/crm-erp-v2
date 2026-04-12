@@ -46,6 +46,30 @@ class CategoriesTest extends TestCase
         $response->assertDontSee('Categoria B1');
     }
 
+    public function test_categories_index_displays_hierarchy_path_label(): void
+    {
+        $company = $this->createCompany('Empresa Category Hierarchy');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $parent = Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Material eletrico',
+        ]);
+
+        Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Disjuntores',
+            'parent_id' => $parent->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.categories.index'));
+
+        $response->assertOk();
+        $response->assertSee('Material eletrico > Disjuntores');
+    }
+
     public function test_company_admin_can_create_custom_category(): void
     {
         $company = $this->createCompany('Empresa Create Category');
@@ -62,6 +86,26 @@ class CategoriesTest extends TestCase
             'company_id' => $company->id,
             'is_system' => false,
             'name' => 'Categoria Nova',
+            'parent_id' => null,
+        ]);
+    }
+
+    public function test_company_admin_can_create_category_with_parent_in_same_visible_context(): void
+    {
+        $company = $this->createCompany('Empresa Parent Category');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $systemCategory = Category::query()->where('is_system', true)->where('name', 'Produto')->firstOrFail();
+
+        $response = $this->actingAs($admin)->post(route('admin.categories.store'), [
+            'name' => 'Subcategoria Produto',
+            'parent_id' => $systemCategory->id,
+        ]);
+
+        $response->assertRedirect(route('admin.categories.index'));
+        $this->assertDatabaseHas('categories', [
+            'company_id' => $company->id,
+            'name' => 'Subcategoria Produto',
+            'parent_id' => $systemCategory->id,
         ]);
     }
 
@@ -78,6 +122,29 @@ class CategoriesTest extends TestCase
 
         $response->assertRedirect(route('admin.categories.create'));
         $response->assertSessionHasErrors('name');
+    }
+
+    public function test_company_admin_cannot_create_category_with_parent_from_other_company(): void
+    {
+        $companyA = $this->createCompany('Empresa Parent A');
+        $companyB = $this->createCompany('Empresa Parent B');
+        $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
+
+        $categoryB = Category::query()->create([
+            'company_id' => $companyB->id,
+            'is_system' => false,
+            'name' => 'Categoria B Parent',
+        ]);
+
+        $response = $this->actingAs($adminA)
+            ->from(route('admin.categories.create'))
+            ->post(route('admin.categories.store'), [
+                'name' => 'Categoria A Com Parent Invalido',
+                'parent_id' => $categoryB->id,
+            ]);
+
+        $response->assertRedirect(route('admin.categories.create'));
+        $response->assertSessionHasErrors('parent_id');
     }
 
     public function test_company_admin_can_update_own_custom_category(): void
@@ -115,6 +182,45 @@ class CategoriesTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_company_admin_cannot_set_itself_as_parent_or_create_cycle(): void
+    {
+        $company = $this->createCompany('Empresa Category Cycle');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $parent = Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Categoria Pai',
+        ]);
+
+        $child = Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Categoria Filha',
+            'parent_id' => $parent->id,
+        ]);
+
+        $selfParentResponse = $this->actingAs($admin)
+            ->from(route('admin.categories.edit', $parent->id))
+            ->patch(route('admin.categories.update', $parent->id), [
+                'name' => 'Categoria Pai',
+                'parent_id' => $parent->id,
+            ]);
+
+        $selfParentResponse->assertRedirect(route('admin.categories.edit', $parent->id));
+        $selfParentResponse->assertSessionHasErrors('parent_id');
+
+        $cycleResponse = $this->actingAs($admin)
+            ->from(route('admin.categories.edit', $parent->id))
+            ->patch(route('admin.categories.update', $parent->id), [
+                'name' => 'Categoria Pai',
+                'parent_id' => $child->id,
+            ]);
+
+        $cycleResponse->assertRedirect(route('admin.categories.edit', $parent->id));
+        $cycleResponse->assertSessionHasErrors('parent_id');
+    }
+
     public function test_company_admin_cannot_update_category_from_another_company(): void
     {
         $companyA = $this->createCompany('Empresa A');
@@ -150,6 +256,32 @@ class CategoriesTest extends TestCase
         $response->assertRedirect(route('admin.categories.index'));
         $this->assertDatabaseMissing('categories', [
             'id' => $category->id,
+        ]);
+    }
+
+    public function test_company_admin_cannot_delete_category_with_children(): void
+    {
+        $company = $this->createCompany('Empresa Delete Category Children');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $parent = Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Categoria Pai Delete',
+        ]);
+
+        Category::query()->create([
+            'company_id' => $company->id,
+            'is_system' => false,
+            'name' => 'Categoria Filha Delete',
+            'parent_id' => $parent->id,
+        ]);
+
+        $response = $this->actingAs($admin)->delete(route('admin.categories.destroy', $parent->id));
+
+        $response->assertSessionHasErrors('category');
+        $this->assertDatabaseHas('categories', [
+            'id' => $parent->id,
         ]);
     }
 

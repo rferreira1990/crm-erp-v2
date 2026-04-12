@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreCategoryRequest extends FormRequest
@@ -12,6 +13,9 @@ class StoreCategoryRequest extends FormRequest
     {
         $this->merge([
             'name' => Category::normalizeName((string) $this->input('name')),
+            'parent_id' => $this->input('parent_id') !== null && $this->input('parent_id') !== ''
+                ? (int) $this->input('parent_id')
+                : null,
         ]);
     }
 
@@ -29,8 +33,20 @@ class StoreCategoryRequest extends FormRequest
      */
     public function rules(): array
     {
+        $companyId = (int) $this->user()->company_id;
+
         return [
             'name' => ['required', 'string', 'max:120'],
+            'parent_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')->where(function ($query) use ($companyId): void {
+                    $query->where(function ($systemQuery): void {
+                        $systemQuery->where('is_system', true)
+                            ->whereNull('company_id');
+                    })->orWhere('company_id', $companyId);
+                }),
+            ],
         ];
     }
 
