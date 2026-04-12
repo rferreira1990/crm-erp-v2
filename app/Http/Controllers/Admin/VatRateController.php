@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreVatRateRequest;
-use App\Http\Requests\Admin\UpdateVatRateRequest;
-use App\Models\VatExemptionReason;
+use App\Models\CompanyVatRateOverride;
 use App\Models\VatRate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -22,12 +20,14 @@ class VatRateController extends Controller
         $search = trim((string) $request->query('q', ''));
 
         $vatRates = VatRate::query()
-            ->with('vatExemptionReason:id,code,name')
+            ->with([
+                'vatExemptionReason:id,code,name',
+                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+            ])
             ->visibleToCompany($companyId)
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', '%'.$search.'%');
             })
-            ->orderByDesc('is_system')
             ->orderBy('region')
             ->orderBy('rate')
             ->orderBy('name')
@@ -36,144 +36,61 @@ class VatRateController extends Controller
 
         return view('admin.vat-rates.index', [
             'vatRates' => $vatRates,
+            'canManageAvailability' => $request->user()->can('manageAvailability', VatRate::class),
             'filters' => [
                 'q' => $search,
             ],
         ]);
     }
 
-    public function create(Request $request): View
+    public function enable(Request $request, int $vatRate): RedirectResponse
     {
-        $this->authorize('create', VatRate::class);
-
-        return view('admin.vat-rates.create', [
-            'regionOptions' => VatRate::regionLabels(),
-            'exemptionReasons' => $this->visibleExemptionReasons($request),
-        ]);
+        return $this->toggleAvailability($request, $vatRate, true);
     }
 
-    public function store(StoreVatRateRequest $request): RedirectResponse
+    public function disable(Request $request, int $vatRate): RedirectResponse
     {
-        $data = $request->validated();
+        return $this->toggleAvailability($request, $vatRate, false);
+    }
 
-        $vatRate = VatRate::query()->create([
-            'company_id' => $request->user()->company_id,
-            'is_system' => false,
-            'name' => $data['name'],
-            'region' => $data['region'] ?? null,
-            'rate' => $data['rate'],
-            'is_exempt' => (bool) $data['is_exempt'],
-            'vat_exemption_reason_id' => (bool) $data['is_exempt'] ? ($data['vat_exemption_reason_id'] ?? null) : null,
-        ]);
+    private function toggleAvailability(Request $request, int $vatRateId, bool $isEnabled): RedirectResponse
+    {
+        $this->authorize('manageAvailability', VatRate::class);
 
-        Log::info('Company VAT rate created', [
+        $companyId = (int) $request->user()->company_id;
+        $vatRate = $this->findSystemVatRateOrFail($companyId, $vatRateId);
+
+        CompanyVatRateOverride::query()->updateOrCreate(
+            [
+                'company_id' => $companyId,
+                'vat_rate_id' => $vatRate->id,
+            ],
+            [
+                'is_enabled' => $isEnabled,
+            ]
+        );
+
+        Log::info('Company VAT rate availability changed', [
             'context' => 'company_vat_rates',
             'vat_rate_id' => $vatRate->id,
-            'company_id' => $vatRate->company_id,
-            'created_by' => $request->user()->id,
-            'name' => $vatRate->name,
-            'rate' => $vatRate->rate,
-            'is_exempt' => $vatRate->is_exempt,
-        ]);
-
-        return redirect()
-            ->route('admin.vat-rates.index')
-            ->with('status', 'Taxa de IVA criada com sucesso.');
-    }
-
-    public function edit(Request $request, int $vatRate): View
-    {
-        $companyId = (int) $request->user()->company_id;
-        $rate = $this->findVisibleVatRateOrFail($companyId, $vatRate);
-        $this->authorize('update', $rate);
-
-        return view('admin.vat-rates.edit', [
-            'vatRate' => $rate,
-            'regionOptions' => VatRate::regionLabels(),
-            'exemptionReasons' => $this->visibleExemptionReasons($request),
-        ]);
-    }
-
-    public function update(UpdateVatRateRequest $request, int $vatRate): RedirectResponse
-    {
-        $companyId = (int) $request->user()->company_id;
-        $rate = $this->findVisibleVatRateOrFail($companyId, $vatRate);
-        $this->authorize('update', $rate);
-
-        $data = $request->validated();
-        $rate->forceFill([
-            'name' => $data['name'],
-            'region' => $data['region'] ?? null,
-            'rate' => $data['rate'],
-            'is_exempt' => (bool) $data['is_exempt'],
-            'vat_exemption_reason_id' => (bool) $data['is_exempt'] ? ($data['vat_exemption_reason_id'] ?? null) : null,
-        ])->save();
-
-        Log::info('Company VAT rate updated', [
-            'context' => 'company_vat_rates',
-            'vat_rate_id' => $rate->id,
-            'company_id' => $rate->company_id,
+            'company_id' => $companyId,
             'updated_by' => $request->user()->id,
-            'name' => $rate->name,
-            'rate' => $rate->rate,
-            'is_exempt' => $rate->is_exempt,
+            'is_enabled' => $isEnabled,
         ]);
 
         return redirect()
             ->route('admin.vat-rates.index')
-            ->with('status', 'Taxa de IVA atualizada com sucesso.');
+            ->with('status', $isEnabled
+                ? 'Taxa de IVA ativada com sucesso.'
+                : 'Taxa de IVA desativada com sucesso.');
     }
 
-    public function destroy(Request $request, int $vatRate): RedirectResponse
-    {
-        $companyId = (int) $request->user()->company_id;
-        $rate = $this->findVisibleVatRateOrFail($companyId, $vatRate);
-        $this->authorize('delete', $rate);
-
-        if ($this->isVatRateInUse($rate)) {
-            return back()->withErrors([
-                'vat_rate' => 'Nao e possivel eliminar a taxa de IVA porque esta em uso.',
-            ]);
-        }
-
-        $rate->delete();
-
-        Log::info('Company VAT rate deleted', [
-            'context' => 'company_vat_rates',
-            'vat_rate_id' => $rate->id,
-            'company_id' => $rate->company_id,
-            'deleted_by' => $request->user()->id,
-            'name' => $rate->name,
-        ]);
-
-        return redirect()
-            ->route('admin.vat-rates.index')
-            ->with('status', 'Taxa de IVA eliminada com sucesso.');
-    }
-
-    private function visibleExemptionReasons(Request $request)
-    {
-        $companyId = (int) $request->user()->company_id;
-
-        return VatExemptionReason::query()
-            ->visibleToCompany($companyId)
-            ->orderByDesc('is_system')
-            ->orderBy('code')
-            ->get();
-    }
-
-    private function findVisibleVatRateOrFail(int $companyId, int $vatRateId): VatRate
+    private function findSystemVatRateOrFail(int $companyId, int $vatRateId): VatRate
     {
         return VatRate::query()
             ->visibleToCompany($companyId)
             ->whereKey($vatRateId)
             ->firstOrFail();
-    }
-
-    private function isVatRateInUse(VatRate $vatRate): bool
-    {
-        // Extension point: block delete when documents start referencing VAT rates.
-        return false;
     }
 }
 

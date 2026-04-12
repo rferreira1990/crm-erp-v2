@@ -154,30 +154,20 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->name('payment-terms.reactivate-system');
 
         Route::get('/vat-rates', [VatRateController::class, 'index'])->name('vat-rates.index');
-        Route::get('/vat-rates/create', [VatRateController::class, 'create'])->name('vat-rates.create');
-        Route::post('/vat-rates', [VatRateController::class, 'store'])->name('vat-rates.store');
-        Route::get('/vat-rates/{vatRate}/edit', [VatRateController::class, 'edit'])
+        Route::patch('/vat-rates/{vatRate}/enable', [VatRateController::class, 'enable'])
             ->whereNumber('vatRate')
-            ->name('vat-rates.edit');
-        Route::patch('/vat-rates/{vatRate}', [VatRateController::class, 'update'])
+            ->name('vat-rates.enable');
+        Route::patch('/vat-rates/{vatRate}/disable', [VatRateController::class, 'disable'])
             ->whereNumber('vatRate')
-            ->name('vat-rates.update');
-        Route::delete('/vat-rates/{vatRate}', [VatRateController::class, 'destroy'])
-            ->whereNumber('vatRate')
-            ->name('vat-rates.destroy');
+            ->name('vat-rates.disable');
 
         Route::get('/vat-exemption-reasons', [VatExemptionReasonController::class, 'index'])->name('vat-exemption-reasons.index');
-        Route::get('/vat-exemption-reasons/create', [VatExemptionReasonController::class, 'create'])->name('vat-exemption-reasons.create');
-        Route::post('/vat-exemption-reasons', [VatExemptionReasonController::class, 'store'])->name('vat-exemption-reasons.store');
-        Route::get('/vat-exemption-reasons/{vatExemptionReason}/edit', [VatExemptionReasonController::class, 'edit'])
+        Route::patch('/vat-exemption-reasons/{vatExemptionReason}/enable', [VatExemptionReasonController::class, 'enable'])
             ->whereNumber('vatExemptionReason')
-            ->name('vat-exemption-reasons.edit');
-        Route::patch('/vat-exemption-reasons/{vatExemptionReason}', [VatExemptionReasonController::class, 'update'])
+            ->name('vat-exemption-reasons.enable');
+        Route::patch('/vat-exemption-reasons/{vatExemptionReason}/disable', [VatExemptionReasonController::class, 'disable'])
             ->whereNumber('vatExemptionReason')
-            ->name('vat-exemption-reasons.update');
-        Route::delete('/vat-exemption-reasons/{vatExemptionReason}', [VatExemptionReasonController::class, 'destroy'])
-            ->whereNumber('vatExemptionReason')
-            ->name('vat-exemption-reasons.destroy');
+            ->name('vat-exemption-reasons.disable');
     });
 
 Route::middleware(['auth', 'superadmin.only'])

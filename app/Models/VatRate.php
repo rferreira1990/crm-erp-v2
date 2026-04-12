@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class VatRate extends Model
@@ -20,26 +21,19 @@ class VatRate extends Model
     protected static function booted(): void
     {
         static::saving(function (self $vatRate): void {
-            if ($vatRate->is_system) {
-                $vatRate->company_id = null;
-            }
+            $vatRate->is_system = true;
+            $vatRate->company_id = null;
 
-            if ($vatRate->company_id === null && ! $vatRate->is_system) {
-                throw new DomainException('Global VAT rates must be system records.');
-            }
+            $duplicateSystemRate = self::query()
+                ->where('is_system', true)
+                ->whereNull('company_id')
+                ->where('region', $vatRate->region)
+                ->whereRaw('LOWER(name) = ?', [self::normalizeNameKey((string) $vatRate->name)])
+                ->when($vatRate->exists, fn (Builder $query) => $query->whereKeyNot($vatRate->id))
+                ->exists();
 
-            if ($vatRate->is_system) {
-                $duplicateSystemRate = self::query()
-                    ->where('is_system', true)
-                    ->whereNull('company_id')
-                    ->where('region', $vatRate->region)
-                    ->whereRaw('LOWER(name) = ?', [self::normalizeNameKey((string) $vatRate->name)])
-                    ->when($vatRate->exists, fn (Builder $query) => $query->whereKeyNot($vatRate->id))
-                    ->exists();
-
-                if ($duplicateSystemRate) {
-                    throw new DomainException('Duplicate global VAT rate name is not allowed in the same region.');
-                }
+            if ($duplicateSystemRate) {
+                throw new DomainException('Duplicate global VAT rate name is not allowed in the same region.');
             }
 
             if (! $vatRate->is_exempt && $vatRate->vat_exemption_reason_id !== null) {
@@ -91,14 +85,15 @@ class VatRate extends Model
         return $this->belongsTo(VatExemptionReason::class);
     }
 
+    public function companyOverrides(): HasMany
+    {
+        return $this->hasMany(CompanyVatRateOverride::class);
+    }
+
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
-        return $query->where(function (Builder $builder) use ($companyId): void {
-            $builder->where(function (Builder $systemQuery): void {
-                $systemQuery->where('is_system', true)
-                    ->whereNull('company_id');
-            })->orWhere('company_id', $companyId);
-        });
+        return $query->where('is_system', true)
+            ->whereNull('company_id');
     }
 
     /**
@@ -138,6 +133,29 @@ class VatRate extends Model
     public function isSystem(): bool
     {
         return $this->is_system;
+    }
+
+    public function defaultEnabledForCompany(): bool
+    {
+        if ($this->region !== self::REGION_MAINLAND || $this->is_exempt) {
+            return false;
+        }
+
+        $rate = round((float) $this->rate, 2);
+
+        return in_array($rate, [23.00, 13.00, 6.00], true);
+    }
+
+    public function isEnabledForCompany(int $companyId): bool
+    {
+        $override = $this->companyOverrides
+            ->firstWhere('company_id', $companyId);
+
+        if ($override !== null) {
+            return (bool) $override->is_enabled;
+        }
+
+        return $this->defaultEnabledForCompany();
     }
 
     public function regionLabel(): string

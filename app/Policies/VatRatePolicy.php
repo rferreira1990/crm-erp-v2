@@ -32,23 +32,23 @@ class VatRatePolicy extends BaseCompanyPolicy
 
     public function create(User $user): bool
     {
-        return $user->is_active
-            && $user->isCompanyUser()
-            && $user->can('company.vat_rates.create');
+        return false;
     }
 
     public function update(User $user, VatRate $vatRate): bool
     {
-        return ! $vatRate->isSystem()
-            && $this->canAccessCompanyResource($user, $vatRate)
-            && $user->can('company.vat_rates.update');
+        return false;
     }
 
     public function delete(User $user, VatRate $vatRate): bool
     {
-        return ! $vatRate->isSystem()
-            && $this->canAccessCompanyResource($user, $vatRate)
-            && $user->can('company.vat_rates.delete');
+        return false;
+    }
+
+    public function manageAvailability(User $user): bool
+    {
+        return $user->is_active
+            && $user->isCompanyUser()
+            && $user->can('company.vat_rates.manage_availability');
     }
 }
-

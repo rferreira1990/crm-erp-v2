@@ -17,23 +17,18 @@ class VatExemptionReason extends Model
     protected static function booted(): void
     {
         static::saving(function (self $reason): void {
-            if ($reason->is_system) {
-                $reason->company_id = null;
+            $reason->is_system = true;
+            $reason->company_id = null;
 
-                $duplicateSystemCode = self::query()
-                    ->where('is_system', true)
-                    ->whereNull('company_id')
-                    ->where('code', self::normalizeCode((string) $reason->code))
-                    ->when($reason->exists, fn (Builder $query) => $query->whereKeyNot($reason->id))
-                    ->exists();
+            $duplicateSystemCode = self::query()
+                ->where('is_system', true)
+                ->whereNull('company_id')
+                ->where('code', self::normalizeCode((string) $reason->code))
+                ->when($reason->exists, fn (Builder $query) => $query->whereKeyNot($reason->id))
+                ->exists();
 
-                if ($duplicateSystemCode) {
-                    throw new DomainException('Duplicate global VAT exemption reason code is not allowed.');
-                }
-            }
-
-            if ($reason->company_id === null && ! $reason->is_system) {
-                throw new DomainException('Global VAT exemption reasons must be system records.');
+            if ($duplicateSystemCode) {
+                throw new DomainException('Duplicate global VAT exemption reason code is not allowed.');
             }
         });
     }
@@ -69,14 +64,15 @@ class VatExemptionReason extends Model
         return $this->hasMany(VatRate::class);
     }
 
+    public function companyOverrides(): HasMany
+    {
+        return $this->hasMany(CompanyVatExemptionReasonOverride::class);
+    }
+
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
-        return $query->where(function (Builder $builder) use ($companyId): void {
-            $builder->where(function (Builder $systemQuery): void {
-                $systemQuery->where('is_system', true)
-                    ->whereNull('company_id');
-            })->orWhere('company_id', $companyId);
-        });
+        return $query->where('is_system', true)
+            ->whereNull('company_id');
     }
 
     public static function normalizeCode(string $code): string
@@ -92,6 +88,23 @@ class VatExemptionReason extends Model
     public function isSystem(): bool
     {
         return $this->is_system;
+    }
+
+    public function defaultEnabledForCompany(): bool
+    {
+        return false;
+    }
+
+    public function isEnabledForCompany(int $companyId): bool
+    {
+        $override = $this->companyOverrides
+            ->firstWhere('company_id', $companyId);
+
+        if ($override !== null) {
+            return (bool) $override->is_enabled;
+        }
+
+        return $this->defaultEnabledForCompany();
     }
 
     public function setCodeAttribute(?string $value): void
@@ -115,4 +128,3 @@ class VatExemptionReason extends Model
             : null;
     }
 }
-

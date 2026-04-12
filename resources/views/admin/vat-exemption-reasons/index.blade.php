@@ -2,11 +2,7 @@
 
 @section('title', 'Motivos de isencao de IVA')
 @section('page_title', 'Motivos de isencao de IVA')
-@section('page_subtitle', 'Motivos do sistema e motivos personalizados da sua empresa')
-
-@section('page_actions')
-    <a href="{{ route('admin.vat-exemption-reasons.create') }}" class="btn btn-primary btn-sm">Novo motivo</a>
-@endsection
+@section('page_subtitle', 'Motivos do sistema com estado de disponibilidade por empresa')
 
 @section('breadcrumbs')
     <ol class="breadcrumb mb-0">
@@ -55,41 +51,53 @@
                             <th class="ps-3">Codigo</th>
                             <th>Nome</th>
                             <th>Enquadramento legal</th>
-                            <th>Origem</th>
+                            <th>Estado na empresa</th>
                             <th class="text-end pe-3">Acoes</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($reasons as $reason)
+                            @php
+                                $isEnabled = $reason->isEnabledForCompany((int) auth()->user()->company_id);
+                            @endphp
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $reason->code }}</td>
                                 <td>{{ $reason->name }}</td>
                                 <td>{{ $reason->legal_reference ?? '-' }}</td>
                                 <td>
-                                    @if ($reason->is_system)
-                                        <span class="badge badge-phoenix badge-phoenix-info">Sistema</span>
+                                    @if ($isEnabled)
+                                        <span class="badge badge-phoenix badge-phoenix-success">Ativo</span>
                                     @else
-                                        <span class="badge badge-phoenix badge-phoenix-primary">Personalizado</span>
+                                        <span class="badge badge-phoenix badge-phoenix-secondary">Inativo</span>
                                     @endif
                                 </td>
                                 <td class="text-end pe-3">
-                                    @if ($reason->is_system)
-                                        <span class="text-body-tertiary">Protegido</span>
-                                    @else
-                                        <div class="d-inline-flex gap-2">
-                                            <a href="{{ route('admin.vat-exemption-reasons.edit', $reason->id) }}" class="btn btn-phoenix-secondary btn-sm">
-                                                Editar
-                                            </a>
+                                    @if ($canManageAvailability)
+                                        @if ($isEnabled)
                                             <form
                                                 method="POST"
-                                                action="{{ route('admin.vat-exemption-reasons.destroy', $reason->id) }}"
-                                                data-confirm="Tem a certeza que pretende apagar este motivo de isencao?"
+                                                action="{{ route('admin.vat-exemption-reasons.disable', $reason->id) }}"
+                                                class="d-inline"
+                                                data-confirm="Tem a certeza que pretende desativar este motivo para a sua empresa?"
                                             >
                                                 @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-phoenix-danger btn-sm">Apagar</button>
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-phoenix-warning btn-sm">Desativar</button>
                                             </form>
-                                        </div>
+                                        @else
+                                            <form
+                                                method="POST"
+                                                action="{{ route('admin.vat-exemption-reasons.enable', $reason->id) }}"
+                                                class="d-inline"
+                                                data-confirm="Tem a certeza que pretende ativar este motivo para a sua empresa?"
+                                            >
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-phoenix-success btn-sm">Ativar</button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        <span class="text-body-tertiary">Sem permissao</span>
                                     @endif
                                 </td>
                             </tr>
@@ -112,4 +120,3 @@
         @endif
     </div>
 @endsection
-

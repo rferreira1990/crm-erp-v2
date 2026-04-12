@@ -32,23 +32,23 @@ class VatExemptionReasonPolicy extends BaseCompanyPolicy
 
     public function create(User $user): bool
     {
-        return $user->is_active
-            && $user->isCompanyUser()
-            && $user->can('company.vat_exemption_reasons.create');
+        return false;
     }
 
     public function update(User $user, VatExemptionReason $reason): bool
     {
-        return ! $reason->isSystem()
-            && $this->canAccessCompanyResource($user, $reason)
-            && $user->can('company.vat_exemption_reasons.update');
+        return false;
     }
 
     public function delete(User $user, VatExemptionReason $reason): bool
     {
-        return ! $reason->isSystem()
-            && $this->canAccessCompanyResource($user, $reason)
-            && $user->can('company.vat_exemption_reasons.delete');
+        return false;
+    }
+
+    public function manageAvailability(User $user): bool
+    {
+        return $user->is_active
+            && $user->isCompanyUser()
+            && $user->can('company.vat_exemption_reasons.manage_availability');
     }
 }
-

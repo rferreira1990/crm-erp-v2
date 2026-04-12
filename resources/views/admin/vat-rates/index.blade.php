@@ -2,11 +2,7 @@
 
 @section('title', 'Taxas de IVA')
 @section('page_title', 'Taxas de IVA')
-@section('page_subtitle', 'Taxas do sistema e taxas personalizadas da sua empresa')
-
-@section('page_actions')
-    <a href="{{ route('admin.vat-rates.create') }}" class="btn btn-primary btn-sm">Nova taxa</a>
-@endsection
+@section('page_subtitle', 'Taxas do sistema com estado de disponibilidade por empresa')
 
 @section('breadcrumbs')
     <ol class="breadcrumb mb-0">
@@ -56,13 +52,15 @@
                             <th>Regiao fiscal</th>
                             <th>Taxa</th>
                             <th>Tipo</th>
-                            <th>Motivo de isencao</th>
-                            <th>Origem</th>
+                            <th>Estado na empresa</th>
                             <th class="text-end pe-3">Acoes</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($vatRates as $vatRate)
+                            @php
+                                $isEnabled = $vatRate->isEnabledForCompany((int) auth()->user()->company_id);
+                            @endphp
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $vatRate->name }}</td>
                                 <td>{{ $vatRate->regionLabel() }}</td>
@@ -75,43 +73,45 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($vatRate->vatExemptionReason)
-                                        {{ $vatRate->vatExemptionReason->code }} - {{ $vatRate->vatExemptionReason->name }}
+                                    @if ($isEnabled)
+                                        <span class="badge badge-phoenix badge-phoenix-success">Ativa</span>
                                     @else
-                                        -
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($vatRate->is_system)
-                                        <span class="badge badge-phoenix badge-phoenix-info">Sistema</span>
-                                    @else
-                                        <span class="badge badge-phoenix badge-phoenix-primary">Personalizada</span>
+                                        <span class="badge badge-phoenix badge-phoenix-secondary">Inativa</span>
                                     @endif
                                 </td>
                                 <td class="text-end pe-3">
-                                    @if ($vatRate->is_system)
-                                        <span class="text-body-tertiary">Protegida</span>
-                                    @else
-                                        <div class="d-inline-flex gap-2">
-                                            <a href="{{ route('admin.vat-rates.edit', $vatRate->id) }}" class="btn btn-phoenix-secondary btn-sm">
-                                                Editar
-                                            </a>
+                                    @if ($canManageAvailability)
+                                        @if ($isEnabled)
                                             <form
                                                 method="POST"
-                                                action="{{ route('admin.vat-rates.destroy', $vatRate->id) }}"
-                                                data-confirm="Tem a certeza que pretende apagar esta taxa de IVA?"
+                                                action="{{ route('admin.vat-rates.disable', $vatRate->id) }}"
+                                                class="d-inline"
+                                                data-confirm="Tem a certeza que pretende desativar esta taxa para a sua empresa?"
                                             >
                                                 @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-phoenix-danger btn-sm">Apagar</button>
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-phoenix-warning btn-sm">Desativar</button>
                                             </form>
-                                        </div>
+                                        @else
+                                            <form
+                                                method="POST"
+                                                action="{{ route('admin.vat-rates.enable', $vatRate->id) }}"
+                                                class="d-inline"
+                                                data-confirm="Tem a certeza que pretende ativar esta taxa para a sua empresa?"
+                                            >
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-phoenix-success btn-sm">Ativar</button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        <span class="text-body-tertiary">Sem permissao</span>
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-body-tertiary">
+                                <td colspan="6" class="text-center py-4 text-body-tertiary">
                                     Sem taxas de IVA disponiveis.
                                 </td>
                             </tr>
@@ -128,4 +128,3 @@
         @endif
     </div>
 @endsection
-
