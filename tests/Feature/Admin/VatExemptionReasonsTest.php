@@ -142,6 +142,30 @@ class VatExemptionReasonsTest extends TestCase
         $this->assertFalse($exemptRate->fresh()->isEnabledForCompany($company->id));
     }
 
+    public function test_cannot_disable_last_active_reason_when_exempt_rate_is_enabled(): void
+    {
+        $company = $this->createCompany('Empresa VATR Last Reason');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+        $exemptRate = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'Isento')
+            ->firstOrFail();
+
+        $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.enable', $reason->id))
+            ->assertRedirect(route('admin.vat-exemption-reasons.index'));
+
+        $this->actingAs($admin)->patch(route('admin.vat-rates.enable', $exemptRate->id))
+            ->assertRedirect(route('admin.vat-rates.index'));
+
+        $response = $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.disable', $reason->id));
+
+        $response->assertRedirect(route('admin.vat-exemption-reasons.index'));
+        $response->assertSessionHasErrors('vat_exemption_reason');
+        $this->assertTrue($reason->fresh()->isEnabledForCompany($company->id));
+    }
+
     public function test_reasons_listing_is_ordered_by_code(): void
     {
         $company = $this->createCompany('Empresa VATR Ordering');
