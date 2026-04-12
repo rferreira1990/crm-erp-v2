@@ -46,6 +46,14 @@ class InitialSaasSeeder extends Seeder
             'company.payment_terms.update',
             'company.payment_terms.delete',
             'company.payment_terms.manage_defaults',
+            'company.vat_rates.view',
+            'company.vat_rates.create',
+            'company.vat_rates.update',
+            'company.vat_rates.delete',
+            'company.vat_exemption_reasons.view',
+            'company.vat_exemption_reasons.create',
+            'company.vat_exemption_reasons.update',
+            'company.vat_exemption_reasons.delete',
         ];
 
         foreach ($permissions as $permissionName) {
@@ -97,6 +105,14 @@ class InitialSaasSeeder extends Seeder
             'company.payment_terms.update',
             'company.payment_terms.delete',
             'company.payment_terms.manage_defaults',
+            'company.vat_rates.view',
+            'company.vat_rates.create',
+            'company.vat_rates.update',
+            'company.vat_rates.delete',
+            'company.vat_exemption_reasons.view',
+            'company.vat_exemption_reasons.create',
+            'company.vat_exemption_reasons.update',
+            'company.vat_exemption_reasons.delete',
         ]);
         $companyUserRole->syncPermissions([]);
 
@@ -144,6 +160,8 @@ class InitialSaasSeeder extends Seeder
             CategorySeeder::class,
             PaymentMethodSeeder::class,
             PaymentTermSeeder::class,
+            VatExemptionReasonSeeder::class,
+            VatRateSeeder::class,
         ]);
     }
 }

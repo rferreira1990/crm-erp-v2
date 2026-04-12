@@ -147,6 +147,20 @@
                             </div>
                         </a>
                     </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.vat-rates.*') ? 'active' : '' }}" href="{{ route('admin.vat-rates.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Taxas de IVA</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.vat-exemption-reasons.*') ? 'active' : '' }}" href="{{ route('admin.vat-exemption-reasons.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Motivos de isencao IVA</span>
+                            </div>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.users.*', 'admin.user-invitations.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                             <div class="d-flex align-items-center">

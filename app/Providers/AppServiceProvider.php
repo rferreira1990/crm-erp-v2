@@ -10,6 +10,8 @@ use App\Models\PaymentMethod;
 use App\Models\PaymentTerm;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\VatExemptionReason;
+use App\Models\VatRate;
 use App\Policies\CategoryPolicy;
 use App\Policies\BrandPolicy;
 use App\Policies\CompanyUserPolicy;
@@ -18,6 +20,8 @@ use App\Policies\InvitationPolicy;
 use App\Policies\PaymentMethodPolicy;
 use App\Policies\PaymentTermPolicy;
 use App\Policies\UnitPolicy;
+use App\Policies\VatExemptionReasonPolicy;
+use App\Policies\VatRatePolicy;
 use App\Support\CurrentCompany;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -51,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PaymentTerm::class, PaymentTermPolicy::class);
         Gate::policy(Unit::class, UnitPolicy::class);
         Gate::policy(User::class, CompanyUserPolicy::class);
+        Gate::policy(VatExemptionReason::class, VatExemptionReasonPolicy::class);
+        Gate::policy(VatRate::class, VatRatePolicy::class);
 
         RateLimiter::for('superadmin-invitations', function (Request $request) {
             $key = $request->user()?->id
