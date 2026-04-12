@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
+use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
@@ -103,6 +104,19 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
             ->whereNumber('category')
             ->name('categories.destroy');
+
+        Route::get('/product-families', [ProductFamilyController::class, 'index'])->name('product-families.index');
+        Route::get('/product-families/create', [ProductFamilyController::class, 'create'])->name('product-families.create');
+        Route::post('/product-families', [ProductFamilyController::class, 'store'])->name('product-families.store');
+        Route::get('/product-families/{productFamily}/edit', [ProductFamilyController::class, 'edit'])
+            ->whereNumber('productFamily')
+            ->name('product-families.edit');
+        Route::patch('/product-families/{productFamily}', [ProductFamilyController::class, 'update'])
+            ->whereNumber('productFamily')
+            ->name('product-families.update');
+        Route::delete('/product-families/{productFamily}', [ProductFamilyController::class, 'destroy'])
+            ->whereNumber('productFamily')
+            ->name('product-families.destroy');
 
         Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
         Route::get('/brands/create', [BrandController::class, 'create'])->name('brands.create');

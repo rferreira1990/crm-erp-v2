@@ -127,6 +127,13 @@
                         </a>
                     </li>
                     <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.product-families.*') ? 'active' : '' }}" href="{{ route('admin.product-families.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Familias de produtos</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-4">
                         <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-text">Categorias de produtos</span>
