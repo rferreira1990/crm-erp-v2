@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Company;
 use App\Models\CompanyVatRateOverride;
 use App\Models\User;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use Database\Seeders\InitialSaasSeeder;
 use DomainException;
@@ -85,6 +86,7 @@ class VatRatesTest extends TestCase
         $response = $this->actingAs($adminA)->patch(route('admin.vat-rates.disable', $rate->id));
 
         $response->assertRedirect(route('admin.vat-rates.index'));
+        $response->assertSessionHas('status', 'Disponibilidade da taxa de IVA atualizada para inativa.');
         $this->assertDatabaseHas('company_vat_rate_overrides', [
             'company_id' => $companyA->id,
             'vat_rate_id' => $rate->id,
@@ -109,6 +111,7 @@ class VatRatesTest extends TestCase
         $response = $this->actingAs($adminA)->patch(route('admin.vat-rates.enable', $rate->id));
 
         $response->assertRedirect(route('admin.vat-rates.index'));
+        $response->assertSessionHas('status', 'Disponibilidade da taxa de IVA atualizada para ativa.');
         $this->assertDatabaseHas('company_vat_rate_overrides', [
             'company_id' => $companyA->id,
             'vat_rate_id' => $rate->id,
@@ -153,6 +156,44 @@ class VatRatesTest extends TestCase
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($admin)->get('/admin/vat-rates/create')->assertNotFound();
+    }
+
+    public function test_enabling_exempt_rate_does_not_enable_exemption_reasons_automatically(): void
+    {
+        $company = $this->createCompany('Empresa VAT Independent A');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $exemptRate = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'Isento')
+            ->firstOrFail();
+
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+
+        $this->assertFalse($exemptRate->isEnabledForCompany($company->id));
+        $this->assertFalse($reason->isEnabledForCompany($company->id));
+
+        $this->actingAs($admin)->patch(route('admin.vat-rates.enable', $exemptRate->id))
+            ->assertRedirect(route('admin.vat-rates.index'));
+
+        $this->assertTrue($exemptRate->fresh()->isEnabledForCompany($company->id));
+        $this->assertFalse($reason->fresh()->isEnabledForCompany($company->id));
+    }
+
+    public function test_rates_listing_is_ordered_by_region_and_logical_rate_order(): void
+    {
+        $company = $this->createCompany('Empresa VAT Ordering');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $response = $this->actingAs($admin)->get(route('admin.vat-rates.index'));
+
+        $response->assertOk();
+        $response->assertSeeInOrder([
+            'IVA 6%',
+            'Isento',
+            'IVA 22%',
+            'IVA 16%',
+        ]);
     }
 
     public function test_system_vat_defaults_are_seeded_by_region(): void
@@ -232,4 +273,3 @@ class VatRatesTest extends TestCase
         return $user;
     }
 }
-
