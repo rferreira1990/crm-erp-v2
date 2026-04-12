@@ -53,6 +53,7 @@
                     <thead class="bg-body-tertiary">
                         <tr>
                             <th class="ps-3">Nome</th>
+                            <th>Hierarquia</th>
                             <th>Origem</th>
                             <th class="text-end pe-3">Acoes</th>
                         </tr>
@@ -61,6 +62,7 @@
                         @forelse ($categories as $category)
                             <tr>
                                 <td class="ps-3 fw-semibold">{{ $category->name }}</td>
+                                <td>{{ $hierarchyLabels[$category->id] ?? $category->name }}</td>
                                 <td>
                                     @if ($category->is_system)
                                         <span class="badge badge-phoenix badge-phoenix-info">Sistema</span>
@@ -91,7 +93,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="text-center py-4 text-body-tertiary">Sem categorias registadas.</td>
+                                <td colspan="4" class="text-center py-4 text-body-tertiary">Sem categorias registadas.</td>
                             </tr>
                         @endforelse
                     </tbody>
