@@ -163,4 +163,11 @@ class PaymentTerm extends Model
             ? self::normalizeName($value)
             : null;
     }
+
+    public function setCalculationTypeAttribute(?string $value): void
+    {
+        $this->attributes['calculation_type'] = $value !== null
+            ? Str::lower(trim($value))
+            : null;
+    }
 }
