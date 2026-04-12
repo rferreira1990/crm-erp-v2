@@ -274,9 +274,10 @@ class PaymentTermsTest extends TestCase
     {
         $referenceDate = CarbonImmutable::parse('2026-04-12');
         $fixed = PaymentTerm::query()->where('name', '30 Dias')->firstOrFail();
+        $company = Company::query()->firstOrFail();
 
         $endOfMonthPlus = PaymentTerm::query()->create([
-            'company_id' => 1,
+            'company_id' => $company->id,
             'is_system' => false,
             'name' => 'Fim mes + 20',
             'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
