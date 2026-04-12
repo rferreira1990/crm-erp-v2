@@ -164,8 +164,12 @@ class PaymentTermsTest extends TestCase
             'is_enabled' => false,
         ]);
 
-        $this->actingAs($adminA)->get(route('admin.payment-terms.index'))->assertDontSee('30 Dias');
-        $this->actingAs($adminB)->get(route('admin.payment-terms.index'))->assertSee('30 Dias');
+        $this->actingAs($adminA)->get(route('admin.payment-terms.index'))
+            ->assertDontSee(route('admin.payment-terms.deactivate-system', $systemTerm->id), false)
+            ->assertSee(route('admin.payment-terms.reactivate-system', $systemTerm->id), false);
+
+        $this->actingAs($adminB)->get(route('admin.payment-terms.index'))
+            ->assertSee(route('admin.payment-terms.deactivate-system', $systemTerm->id), false);
     }
 
     public function test_company_admin_can_reactivate_previously_disabled_system_term(): void
@@ -257,4 +261,3 @@ class PaymentTermsTest extends TestCase
         return $user;
     }
 }
-
