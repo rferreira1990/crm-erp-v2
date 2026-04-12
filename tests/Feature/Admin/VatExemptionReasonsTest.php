@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Company;
 use App\Models\CompanyVatExemptionReasonOverride;
 use App\Models\User;
+use App\Models\VatRate;
 use App\Models\VatExemptionReason;
 use Database\Seeders\InitialSaasSeeder;
 use DomainException;
@@ -53,6 +54,7 @@ class VatExemptionReasonsTest extends TestCase
         $response = $this->actingAs($adminA)->patch(route('admin.vat-exemption-reasons.enable', $reason->id));
 
         $response->assertRedirect(route('admin.vat-exemption-reasons.index'));
+        $response->assertSessionHas('status', 'Disponibilidade do motivo de isencao atualizada para ativa.');
         $this->assertDatabaseHas('company_vat_exemption_reason_overrides', [
             'company_id' => $companyA->id,
             'vat_exemption_reason_id' => $reason->id,
@@ -78,6 +80,7 @@ class VatExemptionReasonsTest extends TestCase
         $response = $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.disable', $reason->id));
 
         $response->assertRedirect(route('admin.vat-exemption-reasons.index'));
+        $response->assertSessionHas('status', 'Disponibilidade do motivo de isencao atualizada para inativa.');
         $this->assertDatabaseHas('company_vat_exemption_reason_overrides', [
             'company_id' => $company->id,
             'vat_exemption_reason_id' => $reason->id,
@@ -116,6 +119,38 @@ class VatExemptionReasonsTest extends TestCase
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($admin)->get('/admin/vat-exemption-reasons/create')->assertNotFound();
+    }
+
+    public function test_enabling_reason_does_not_enable_exempt_vat_rate_automatically(): void
+    {
+        $company = $this->createCompany('Empresa VATR Independent A');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+        $exemptRate = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'Isento')
+            ->firstOrFail();
+
+        $this->assertFalse($reason->isEnabledForCompany($company->id));
+        $this->assertFalse($exemptRate->isEnabledForCompany($company->id));
+
+        $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.enable', $reason->id))
+            ->assertRedirect(route('admin.vat-exemption-reasons.index'));
+
+        $this->assertTrue($reason->fresh()->isEnabledForCompany($company->id));
+        $this->assertFalse($exemptRate->fresh()->isEnabledForCompany($company->id));
+    }
+
+    public function test_reasons_listing_is_ordered_by_code(): void
+    {
+        $company = $this->createCompany('Empresa VATR Ordering');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $response = $this->actingAs($admin)->get(route('admin.vat-exemption-reasons.index'));
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['M01', 'M02', 'M04', 'M05']);
     }
 
     public function test_m26_is_not_seeded_as_active_default_reason(): void
