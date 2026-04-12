@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use Carbon\CarbonImmutable;
 use App\Models\Company;
 use App\Models\CompanyPaymentTermOverride;
 use App\Models\PaymentTerm;
@@ -31,6 +32,7 @@ class PaymentTermsTest extends TestCase
             'company_id' => $companyA->id,
             'is_system' => false,
             'name' => 'Pagamento Especial A',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 15,
         ]);
 
@@ -38,6 +40,7 @@ class PaymentTermsTest extends TestCase
             'company_id' => $companyB->id,
             'is_system' => false,
             'name' => 'Pagamento Especial B',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 45,
         ]);
 
@@ -56,6 +59,7 @@ class PaymentTermsTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.payment-terms.store'), [
             'name' => '  Prazo   Interno  ',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 75,
         ]);
 
@@ -65,6 +69,7 @@ class PaymentTermsTest extends TestCase
             'company_id' => $company->id,
             'is_system' => false,
             'name' => 'Prazo Interno',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 75,
         ]);
     }
@@ -78,6 +83,7 @@ class PaymentTermsTest extends TestCase
             ->from(route('admin.payment-terms.create'))
             ->post(route('admin.payment-terms.store'), [
                 'name' => '30 dias',
+                'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
                 'days' => 30,
             ]);
 
@@ -94,11 +100,13 @@ class PaymentTermsTest extends TestCase
             'company_id' => $company->id,
             'is_system' => false,
             'name' => 'Prazo Antigo',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 20,
         ]);
 
         $response = $this->actingAs($admin)->patch(route('admin.payment-terms.update', $paymentTerm->id), [
             'name' => 'Prazo Atualizado',
+            'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
             'days' => 25,
         ]);
 
@@ -106,6 +114,7 @@ class PaymentTermsTest extends TestCase
         $this->assertDatabaseHas('payment_terms', [
             'id' => $paymentTerm->id,
             'name' => 'Prazo Atualizado',
+            'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
             'days' => 25,
         ]);
     }
@@ -118,6 +127,7 @@ class PaymentTermsTest extends TestCase
 
         $this->actingAs($admin)->patch(route('admin.payment-terms.update', $systemTerm->id), [
             'name' => 'Tentativa Sistema',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 10,
         ])->assertForbidden();
 
@@ -135,11 +145,13 @@ class PaymentTermsTest extends TestCase
             'company_id' => $companyB->id,
             'is_system' => false,
             'name' => 'Prazo B',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 12,
         ]);
 
         $this->actingAs($adminA)->patch(route('admin.payment-terms.update', $termB->id), [
             'name' => 'Prazo B2',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 14,
         ])->assertNotFound();
 
@@ -203,6 +215,7 @@ class PaymentTermsTest extends TestCase
             'company_id' => $company->id,
             'is_system' => false,
             'name' => 'Prazo NP',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 5,
         ]);
         $systemTerm = PaymentTerm::query()->where('is_system', true)->firstOrFail();
@@ -211,10 +224,12 @@ class PaymentTermsTest extends TestCase
         $this->actingAs($user)->get(route('admin.payment-terms.create'))->assertForbidden();
         $this->actingAs($user)->post(route('admin.payment-terms.store'), [
             'name' => 'Novo',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 10,
         ])->assertForbidden();
         $this->actingAs($user)->patch(route('admin.payment-terms.update', $customTerm->id), [
             'name' => 'Novo Nome',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 11,
         ])->assertForbidden();
         $this->actingAs($user)->delete(route('admin.payment-terms.destroy', $customTerm->id))->assertForbidden();
@@ -230,8 +245,53 @@ class PaymentTermsTest extends TestCase
             'company_id' => null,
             'is_system' => true,
             'name' => 'Pronto pagamento',
+            'calculation_type' => PaymentTerm::CALCULATION_FIXED_DAYS,
             'days' => 0,
         ]);
+    }
+
+    public function test_company_admin_can_create_payment_term_with_end_of_month_plus_days(): void
+    {
+        $company = $this->createCompany('Empresa PT EOM');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $response = $this->actingAs($admin)->post(route('admin.payment-terms.store'), [
+            'name' => 'Fim mes + 20',
+            'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
+            'days' => 20,
+        ]);
+
+        $response->assertRedirect(route('admin.payment-terms.index'));
+        $this->assertDatabaseHas('payment_terms', [
+            'company_id' => $company->id,
+            'name' => 'Fim mes + 20',
+            'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
+            'days' => 20,
+        ]);
+    }
+
+    public function test_payment_term_calculate_due_date_handles_both_supported_calculation_types(): void
+    {
+        $referenceDate = CarbonImmutable::parse('2026-04-12');
+        $fixed = PaymentTerm::query()->where('name', '30 Dias')->firstOrFail();
+
+        $endOfMonthPlus = PaymentTerm::query()->create([
+            'company_id' => 1,
+            'is_system' => false,
+            'name' => 'Fim mes + 20',
+            'calculation_type' => PaymentTerm::CALCULATION_END_OF_MONTH_PLUS_DAYS,
+            'days' => 20,
+        ]);
+
+        $this->assertSame(
+            '2026-05-12',
+            $fixed->calculateDueDate($referenceDate)->toDateString()
+        );
+
+        $this->assertSame(
+            '2026-05-20',
+            $endOfMonthPlus->calculateDueDate($referenceDate)->toDateString()
+        );
     }
 
     private function createCompany(string $name): Company
