@@ -173,11 +173,35 @@ class VatRatesTest extends TestCase
         $this->assertFalse($exemptRate->isEnabledForCompany($company->id));
         $this->assertFalse($reason->isEnabledForCompany($company->id));
 
-        $this->actingAs($admin)->patch(route('admin.vat-rates.enable', $exemptRate->id))
-            ->assertRedirect(route('admin.vat-rates.index'));
+        $response = $this->actingAs($admin)->patch(route('admin.vat-rates.enable', $exemptRate->id));
 
-        $this->assertTrue($exemptRate->fresh()->isEnabledForCompany($company->id));
+        $response
+            ->assertRedirect(route('admin.vat-rates.index'));
+        $response->assertSessionHasErrors('vat_rate');
+
+        $this->assertFalse($exemptRate->fresh()->isEnabledForCompany($company->id));
         $this->assertFalse($reason->fresh()->isEnabledForCompany($company->id));
+    }
+
+    public function test_company_admin_can_enable_exempt_rate_when_has_at_least_one_active_reason(): void
+    {
+        $company = $this->createCompany('Empresa VAT Enable Exempt');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+        $exemptRate = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'Isento')
+            ->firstOrFail();
+
+        $this->actingAs($admin)->patch(route('admin.vat-exemption-reasons.enable', $reason->id))
+            ->assertRedirect(route('admin.vat-exemption-reasons.index'));
+
+        $response = $this->actingAs($admin)->patch(route('admin.vat-rates.enable', $exemptRate->id));
+
+        $response->assertRedirect(route('admin.vat-rates.index'));
+        $response->assertSessionHas('status', 'Disponibilidade da taxa de IVA atualizada para ativa.');
+        $this->assertTrue($exemptRate->fresh()->isEnabledForCompany($company->id));
+        $this->assertTrue($reason->fresh()->isEnabledForCompany($company->id));
     }
 
     public function test_rates_listing_is_ordered_by_region_and_logical_rate_order(): void
