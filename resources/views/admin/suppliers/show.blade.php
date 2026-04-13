@@ -36,7 +36,7 @@
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-3 border bg-body-highlight p-2" style="width: 112px; height: 112px;">
+                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 112px; height: 112px;">
                             @if ($supplier->logo_path)
                                 <img
                                     src="{{ route('admin.suppliers.logo.show', $supplier->id) }}"
@@ -53,7 +53,7 @@
                             @endif
                         </div>
                         <div>
-                            <h3 class="mb-1">{{ $supplier->name }}</h3>
+                            <h4 class="mb-1">{{ $supplier->name }}</h4>
                             <p class="mb-1 text-body-secondary">Empresa</p>
                             @if ($supplier->is_active)
                                 <span class="badge badge-phoenix badge-phoenix-success">Ativo</span>
