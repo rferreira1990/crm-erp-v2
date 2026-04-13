@@ -2,6 +2,7 @@
     $customer = $customer ?? null;
     $isEdit = isset($customer);
     $selectedCountryId = old('country_id', $customer->country_id ?? ($defaults['country_id'] ?? ''));
+    $selectedPriceTierId = old('price_tier_id', $customer->price_tier_id ?? ($defaults['price_tier_id'] ?? ''));
     $selectedPaymentTermId = old('payment_term_id', $customer->payment_term_id ?? ($defaults['payment_term_id'] ?? ''));
     $selectedVatRateId = old('default_vat_rate_id', $customer->default_vat_rate_id ?? '');
     $selectedCustomerType = old('customer_type', $customer->customer_type ?? '');
@@ -123,8 +124,15 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-12 col-md-3">
-                <label for="price_tier_id" class="form-label">Escalao de preco (ID)</label>
-                <input type="number" id="price_tier_id" name="price_tier_id" value="{{ old('price_tier_id', $customer->price_tier_id ?? '') }}" class="form-control @error('price_tier_id') is-invalid @enderror" min="1">
+                <label for="price_tier_id" class="form-label">Escalao de preco</label>
+                <select id="price_tier_id" name="price_tier_id" class="form-select @error('price_tier_id') is-invalid @enderror">
+                    <option value="">Escalao default</option>
+                    @foreach (($priceTierOptions ?? []) as $priceTierOption)
+                        <option value="{{ $priceTierOption->id }}" @selected((string) $selectedPriceTierId === (string) $priceTierOption->id)>
+                            {{ $priceTierOption->name }} ({{ number_format((float) $priceTierOption->percentage_adjustment, 2) }}%)
+                        </option>
+                    @endforeach
+                </select>
                 @error('price_tier_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-3">

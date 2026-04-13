@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\Customer;
 use App\Models\PaymentTerm;
+use App\Models\PriceTier;
 use App\Models\VatRate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -82,7 +83,7 @@ class UpdateCustomerRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:5000'],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:3072'],
             'remove_logo' => ['nullable', 'boolean'],
-            'price_tier_id' => ['nullable', 'integer', 'min:1'],
+            'price_tier_id' => ['nullable', 'integer', Rule::exists('price_tiers', 'id')],
             'payment_term_id' => ['nullable', 'integer', Rule::exists('payment_terms', 'id')],
             'default_vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             'default_commercial_discount' => ['nullable', 'numeric', 'between:0,100'],
@@ -101,7 +102,20 @@ class UpdateCustomerRequest extends FormRequest
             }
 
             $companyId = (int) $this->user()->company_id;
+            $priceTierId = $this->input('price_tier_id');
             $paymentTermId = $this->input('payment_term_id');
+
+            if ($priceTierId !== null) {
+                $tierExists = PriceTier::query()
+                    ->visibleToCompany($companyId)
+                    ->where('is_active', true)
+                    ->whereKey((int) $priceTierId)
+                    ->exists();
+
+                if (! $tierExists) {
+                    $validator->errors()->add('price_tier_id', 'O escalao de preco selecionado nao esta disponivel para a empresa.');
+                }
+            }
 
             if ($paymentTermId !== null) {
                 $termExists = PaymentTerm::query()

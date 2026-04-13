@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\PaymentTerm;
+use App\Models\PriceTier;
 use App\Models\VatRate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +33,7 @@ class CustomerController extends Controller
             ->forCompany($companyId)
             ->with([
                 'country:id,name,iso_code',
+                'priceTier:id,name,percentage_adjustment',
                 'paymentTerm:id,name',
                 'defaultVatRate:id,name,rate',
             ])
@@ -66,6 +68,7 @@ class CustomerController extends Controller
         return view('admin.customers.create', [
             'defaults' => [
                 'country_id' => Customer::defaultCountryId(),
+                'price_tier_id' => Customer::defaultPriceTierIdForCompany($companyId),
                 'payment_term_id' => Customer::defaultPaymentTermIdForCompany($companyId),
                 'is_active' => true,
             ],
@@ -76,7 +79,7 @@ class CustomerController extends Controller
     public function store(StoreCustomerRequest $request): RedirectResponse
     {
         $companyId = (int) $request->user()->company_id;
-        $data = $this->normalizePayload($request->validated());
+        $data = $this->normalizePayload($request->validated(), $companyId);
         $newLogo = $request->file('logo');
 
         $customer = Customer::query()->create([
@@ -106,7 +109,12 @@ class CustomerController extends Controller
 
         return view('admin.customers.edit', [
             'customer' => $customerModel,
-            ...$this->buildFormOptions($companyId, $customerModel->payment_term_id, $customerModel->default_vat_rate_id),
+            ...$this->buildFormOptions(
+                $companyId,
+                $customerModel->price_tier_id,
+                $customerModel->payment_term_id,
+                $customerModel->default_vat_rate_id
+            ),
         ]);
     }
 
@@ -119,7 +127,7 @@ class CustomerController extends Controller
         $validated = $request->validated();
         $removeLogo = (bool) ($validated['remove_logo'] ?? false);
         $newLogo = $request->file('logo');
-        $data = $this->normalizePayload($validated);
+        $data = $this->normalizePayload($validated, $companyId);
 
         $customerModel->forceFill($data)->save();
         $this->syncCustomerLogo($customerModel, $newLogo, $removeLogo, $companyId);
@@ -179,6 +187,7 @@ class CustomerController extends Controller
     /**
      * @return array{
      *   countries: Collection<int, Country>,
+     *   priceTierOptions: Collection<int, PriceTier>,
      *   paymentTermOptions: Collection<int, PaymentTerm>,
      *   vatRateOptions: Collection<int, VatRate>,
      *   customerTypeOptions: array<string, string>
@@ -186,6 +195,7 @@ class CustomerController extends Controller
      */
     private function buildFormOptions(
         int $companyId,
+        ?int $includePriceTierId = null,
         ?int $includePaymentTermId = null,
         ?int $includeVatRateId = null
     ): array {
@@ -194,10 +204,31 @@ class CustomerController extends Controller
                 ->orderByRaw("CASE WHEN iso_code = 'PT' THEN 0 ELSE 1 END")
                 ->orderBy('name')
                 ->get(['id', 'name', 'iso_code']),
+            'priceTierOptions' => $this->visiblePriceTiers($companyId, $includePriceTierId),
             'paymentTermOptions' => $this->visiblePaymentTerms($companyId, $includePaymentTermId),
             'vatRateOptions' => $this->enabledVatRates($companyId, $includeVatRateId),
             'customerTypeOptions' => Customer::customerTypeLabels(),
         ];
+    }
+
+    /**
+     * @return Collection<int, PriceTier>
+     */
+    private function visiblePriceTiers(int $companyId, ?int $includePriceTierId = null): Collection
+    {
+        return PriceTier::query()
+            ->visibleToCompany($companyId)
+            ->where(function ($query) use ($includePriceTierId): void {
+                $query->where('is_active', true);
+
+                if ($includePriceTierId !== null) {
+                    $query->orWhere('id', $includePriceTierId);
+                }
+            })
+            ->orderByDesc('is_system')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name', 'percentage_adjustment', 'is_system', 'is_default', 'is_active']);
     }
 
     /**
@@ -246,8 +277,12 @@ class CustomerController extends Controller
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
-    private function normalizePayload(array $data): array
+    private function normalizePayload(array $data, int $companyId): array
     {
+        if (($data['price_tier_id'] ?? null) === null) {
+            $data['price_tier_id'] = Customer::defaultPriceTierIdForCompany($companyId);
+        }
+
         if (! (bool) ($data['has_credit_limit'] ?? false)) {
             $data['credit_limit'] = null;
         }
