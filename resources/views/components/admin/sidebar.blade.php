@@ -155,6 +155,13 @@
                         </a>
                     </li>
                     <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.price-tiers.*') ? 'active' : '' }}" href="{{ route('admin.price-tiers.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Escaloes de preco</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item ms-4">
                         <a class="nav-link {{ request()->routeIs('admin.vat-rates.*') ? 'active' : '' }}" href="{{ route('admin.vat-rates.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-text">Taxas de IVA</span>
