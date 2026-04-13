@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCategoryRequest;
 use App\Http\Requests\Admin\UpdateCategoryRequest;
+use App\Models\Article;
 use App\Models\Category;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -137,7 +138,9 @@ class CategoryController extends Controller
 
     private function isCategoryInUse(Category $category): bool
     {
-        // Future extension point: return true when related records (e.g. products/items) exist.
-        return false;
+        return Article::query()
+            ->where('company_id', $category->company_id)
+            ->where('category_id', $category->id)
+            ->exists();
     }
 }

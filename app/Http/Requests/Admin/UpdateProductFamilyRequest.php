@@ -16,6 +16,9 @@ class UpdateProductFamilyRequest extends FormRequest
             'parent_id' => $this->input('parent_id') !== null && $this->input('parent_id') !== ''
                 ? (int) $this->input('parent_id')
                 : null,
+            'family_code' => $this->input('family_code') !== null && trim((string) $this->input('family_code')) !== ''
+                ? trim((string) $this->input('family_code'))
+                : null,
         ]);
     }
 
@@ -45,6 +48,7 @@ class UpdateProductFamilyRequest extends FormRequest
                         ->where('is_system', false);
                 }),
             ],
+            'family_code' => ['nullable', 'regex:/^\d{2}$/'],
         ];
     }
 
@@ -81,6 +85,24 @@ class UpdateProductFamilyRequest extends FormRequest
                     'name',
                     'Ja existe uma familia visivel no seu contexto com este nome para a categoria pai selecionada.'
                 );
+            }
+
+            $familyCode = $this->input('family_code');
+
+            if ($familyCode !== null) {
+                $codeAlreadyUsed = ProductFamily::query()
+                    ->where('company_id', $companyId)
+                    ->where('is_system', false)
+                    ->where('family_code', $familyCode)
+                    ->whereKeyNot($familyId)
+                    ->exists();
+
+                if ($codeAlreadyUsed) {
+                    $validator->errors()->add(
+                        'family_code',
+                        'Ja existe uma familia da empresa com este codigo.'
+                    );
+                }
             }
 
             if ($parentId === null) {

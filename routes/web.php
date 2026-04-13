@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\CompanyUserInvitationController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\ProductFamilyController;
@@ -134,6 +135,27 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('brand')
             ->whereNumber('brandFile')
             ->name('brands.files.destroy');
+
+        Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
+        Route::get('/articles/create', [ArticleController::class, 'create'])->name('articles.create');
+        Route::post('/articles', [ArticleController::class, 'store'])->name('articles.store');
+        Route::get('/articles/{article}/edit', [ArticleController::class, 'edit'])
+            ->whereNumber('article')
+            ->name('articles.edit');
+        Route::patch('/articles/{article}', [ArticleController::class, 'update'])
+            ->whereNumber('article')
+            ->name('articles.update');
+        Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])
+            ->whereNumber('article')
+            ->name('articles.destroy');
+        Route::delete('/articles/{article}/images/{articleImage}', [ArticleController::class, 'destroyImage'])
+            ->whereNumber('article')
+            ->whereNumber('articleImage')
+            ->name('articles.images.destroy');
+        Route::delete('/articles/{article}/files/{articleFile}', [ArticleController::class, 'destroyFile'])
+            ->whereNumber('article')
+            ->whereNumber('articleFile')
+            ->name('articles.files.destroy');
 
         Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
         Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');

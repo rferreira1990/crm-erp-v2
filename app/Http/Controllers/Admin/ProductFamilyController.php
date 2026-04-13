@@ -63,6 +63,7 @@ class ProductFamilyController extends Controller
             'is_system' => false,
             'name' => $data['name'],
             'parent_id' => $data['parent_id'] ?? null,
+            'family_code' => $data['family_code'] ?? null,
         ]);
 
         Log::info('Company product family created', [
@@ -103,6 +104,7 @@ class ProductFamilyController extends Controller
         $family->forceFill([
             'name' => $data['name'],
             'parent_id' => $data['parent_id'] ?? null,
+            'family_code' => $data['family_code'] ?? null,
         ])->save();
 
         Log::info('Company product family updated', [
@@ -161,8 +163,7 @@ class ProductFamilyController extends Controller
 
     private function isFamilyInUse(ProductFamily $family): bool
     {
-        // Future extension point: return true when related products/items exist.
-        return false;
+        return $family->articles()->exists();
     }
 
     /**

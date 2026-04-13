@@ -52,6 +52,7 @@
                 <table class="table table-sm fs-9 mb-0">
                     <thead class="bg-body-tertiary">
                         <tr>
+                            <th class="ps-3">Codigo</th>
                             <th class="ps-3">Nome</th>
                             <th>Hierarquia</th>
                             <th class="text-end pe-3">Acoes</th>
@@ -60,6 +61,13 @@
                     <tbody>
                         @forelse ($families as $family)
                             <tr>
+                                <td class="ps-3">
+                                    @if ($family->family_code)
+                                        <span class="badge badge-phoenix badge-phoenix-secondary">{{ $family->family_code }}</span>
+                                    @else
+                                        <span class="text-body-tertiary">-</span>
+                                    @endif
+                                </td>
                                 <td class="ps-3 fw-semibold">{{ $family->name }}</td>
                                 <td>{{ $hierarchyLabels[$family->id] ?? $family->name }}</td>
                                 <td class="text-end pe-3">
@@ -81,7 +89,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="text-center py-4 text-body-tertiary">Sem familias registadas.</td>
+                                <td colspan="4" class="text-center py-4 text-body-tertiary">Sem familias registadas.</td>
                             </tr>
                         @endforelse
                     </tbody>

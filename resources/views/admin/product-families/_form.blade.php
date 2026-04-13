@@ -18,6 +18,21 @@
         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
+    <div class="col-12 col-md-4">
+        <label for="family_code" class="form-label">Codigo da familia (2 digitos)</label>
+        <input
+            type="text"
+            id="family_code"
+            name="family_code"
+            value="{{ old('family_code', $family->family_code ?? '') }}"
+            class="form-control @error('family_code') is-invalid @enderror"
+            maxlength="2"
+            pattern="\d{2}"
+            placeholder="Ex: 01"
+        >
+        @error('family_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
     <div class="col-12">
         <label for="parent_id" class="form-label">Familia pai</label>
         <select
@@ -45,4 +60,3 @@
         </button>
     </div>
 </div>
-

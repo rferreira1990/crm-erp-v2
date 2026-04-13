@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUnitRequest;
 use App\Http\Requests\Admin\UpdateUnitRequest;
+use App\Models\Article;
 use App\Models\Unit;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -142,7 +143,9 @@ class UnitController extends Controller
 
     private function isUnitInUse(Unit $unit): bool
     {
-        // Future extension point: return true when related records (e.g. products/invoices/stocks) exist.
-        return false;
+        return Article::query()
+            ->where('company_id', $unit->company_id)
+            ->where('unit_id', $unit->id)
+            ->exists();
     }
 }
