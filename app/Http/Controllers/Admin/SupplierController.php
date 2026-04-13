@@ -55,7 +55,6 @@ class SupplierController extends Controller
             'filters' => [
                 'q' => $search,
             ],
-            'supplierTypeLabels' => Supplier::supplierTypeLabels(),
         ]);
     }
 
@@ -188,7 +187,6 @@ class SupplierController extends Controller
 
         return view('admin.suppliers.show', [
             'supplier' => $supplierModel,
-            'supplierTypeLabels' => Supplier::supplierTypeLabels(),
         ]);
     }
 
@@ -213,8 +211,7 @@ class SupplierController extends Controller
      *   countries: Collection<int, Country>,
      *   paymentTermOptions: Collection<int, PaymentTerm>,
      *   vatRateOptions: Collection<int, VatRate>,
-     *   paymentMethodOptions: Collection<int, PaymentMethod>,
-     *   supplierTypeOptions: array<string, string>
+     *   paymentMethodOptions: Collection<int, PaymentMethod>
      * }
      */
     private function buildFormOptions(
@@ -231,7 +228,6 @@ class SupplierController extends Controller
             'paymentTermOptions' => $this->visiblePaymentTerms($companyId, $includePaymentTermId),
             'vatRateOptions' => $this->enabledVatRates($companyId, $includeVatRateId),
             'paymentMethodOptions' => $this->visiblePaymentMethods($companyId, $includePaymentMethodId),
-            'supplierTypeOptions' => Supplier::supplierTypeLabels(),
         ];
     }
 

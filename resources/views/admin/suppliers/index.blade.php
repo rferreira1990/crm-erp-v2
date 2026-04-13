@@ -52,7 +52,6 @@
                 <table class="table table-sm fs-9 mb-0">
                     <thead class="bg-body-tertiary">
                         <tr>
-                            <th class="ps-3">Tipo</th>
                             <th>Designacao</th>
                             <th>NIF</th>
                             <th>Telefone</th>
@@ -67,8 +66,7 @@
                     <tbody>
                         @forelse ($suppliers as $supplier)
                             <tr>
-                                <td class="ps-3">{{ $supplierTypeLabels[$supplier->supplier_type] ?? $supplier->supplier_type }}</td>
-                                <td class="fw-semibold">{{ $supplier->name }}</td>
+                                <td class="fw-semibold ps-3">{{ $supplier->name }}</td>
                                 <td>{{ $supplier->nif ?? '-' }}</td>
                                 <td>{{ $supplier->phone ?? $supplier->mobile ?? '-' }}</td>
                                 <td>{{ $supplier->email ?? '-' }}</td>
@@ -110,7 +108,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-body-tertiary">Sem fornecedores registados.</td>
+                                <td colspan="9" class="text-center py-4 text-body-tertiary">Sem fornecedores registados.</td>
                             </tr>
                         @endforelse
                     </tbody>

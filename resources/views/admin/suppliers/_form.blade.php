@@ -5,7 +5,6 @@
     $selectedPaymentTermId = old('payment_term_id', $supplier->payment_term_id ?? '');
     $selectedVatRateId = old('default_vat_rate_id', $supplier->default_vat_rate_id ?? '');
     $selectedPaymentMethodId = old('default_payment_method_id', $supplier->default_payment_method_id ?? '');
-    $selectedSupplierType = old('supplier_type', $supplier->supplier_type ?? '');
 @endphp
 
 <div class="card mb-4">
@@ -14,17 +13,7 @@
     </div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-12 col-md-4">
-                <label for="supplier_type" class="form-label">Tipo de fornecedor</label>
-                <select id="supplier_type" name="supplier_type" class="form-select @error('supplier_type') is-invalid @enderror" required>
-                    <option value="">Selecionar tipo</option>
-                    @foreach (($supplierTypeOptions ?? []) as $key => $label)
-                        <option value="{{ $key }}" @selected((string) $selectedSupplierType === (string) $key)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                @error('supplier_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
-            <div class="col-12 col-md-8">
+            <div class="col-12">
                 <label for="name" class="form-label">Designacao</label>
                 <input
                     type="text"
@@ -157,6 +146,16 @@
                     @endforeach
                 </select>
                 @error('default_payment_method_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="bank_name" class="form-label">Banco</label>
+                <input type="text" id="bank_name" name="bank_name" value="{{ old('bank_name', $supplier->bank_name ?? '') }}" class="form-control @error('bank_name') is-invalid @enderror" maxlength="190">
+                @error('bank_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="bic_swift" class="form-label">BIC / SWIFT</label>
+                <input type="text" id="bic_swift" name="bic_swift" value="{{ old('bic_swift', $supplier->bic_swift ?? '') }}" class="form-control @error('bic_swift') is-invalid @enderror" maxlength="20">
+                @error('bic_swift')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-4">
                 <label for="iban" class="form-label">IBAN</label>
