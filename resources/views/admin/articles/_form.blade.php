@@ -275,11 +275,14 @@
                                                 <span class="ms-1">{{ number_format($articleImage->file_size / 1024, 1) }} KB</span>
                                             @endif
                                         </div>
-                                        <form method="POST" action="{{ route('admin.articles.images.destroy', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}" data-confirm="Tem a certeza que pretende remover esta imagem?" class="mt-auto">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="btn btn-phoenix-danger btn-sm mt-auto"
+                                            data-delete-url="{{ route('admin.articles.images.destroy', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}"
+                                            data-confirm="Tem a certeza que pretende remover esta imagem?"
+                                        >
+                                            Remover
+                                        </button>
                                     </div>
                                 </div>
                             @endforeach
@@ -302,11 +305,14 @@
                                             @endif
                                         </div>
                                     </div>
-                                    <form method="POST" action="{{ route('admin.articles.files.destroy', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}" data-confirm="Tem a certeza que pretende remover este ficheiro?">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
-                                    </form>
+                                    <button
+                                        type="button"
+                                        class="btn btn-phoenix-danger btn-sm"
+                                        data-delete-url="{{ route('admin.articles.files.destroy', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}"
+                                        data-confirm="Tem a certeza que pretende remover este ficheiro?"
+                                    >
+                                        Remover
+                                    </button>
                                 </div>
                             @endforeach
                         </div>
@@ -346,6 +352,7 @@
                 const prevBtn = document.getElementById('articleWizardPrevBtn');
                 const nextBtn = document.getElementById('articleWizardNextBtn');
                 const submitBtn = document.getElementById('articleWizardSubmitBtn');
+                const deleteButtons = Array.from(wizard.querySelectorAll('[data-delete-url]'));
 
                 const vatRate = document.getElementById('vat_rate_id');
                 const vatExemptionReason = document.getElementById('vat_exemption_reason_id');
@@ -544,6 +551,55 @@
                         }
 
                         event.preventDefault();
+                    });
+                }
+
+                if (deleteButtons.length > 0) {
+                    let deleteForm = null;
+                    const csrfToken = @json(csrf_token());
+
+                    const getDeleteForm = () => {
+                        if (deleteForm) {
+                            return deleteForm;
+                        }
+
+                        deleteForm = document.createElement('form');
+                        deleteForm.method = 'POST';
+                        deleteForm.className = 'd-none';
+
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '_token';
+                        tokenInput.value = csrfToken;
+
+                        const methodInput = document.createElement('input');
+                        methodInput.type = 'hidden';
+                        methodInput.name = '_method';
+                        methodInput.value = 'DELETE';
+
+                        deleteForm.appendChild(tokenInput);
+                        deleteForm.appendChild(methodInput);
+                        document.body.appendChild(deleteForm);
+
+                        return deleteForm;
+                    };
+
+                    deleteButtons.forEach((button) => {
+                        button.addEventListener('click', () => {
+                            const action = button.dataset.deleteUrl;
+                            if (!action) {
+                                return;
+                            }
+
+                            const confirmMessage = button.dataset.confirm || 'Tem a certeza?';
+                            if (!window.confirm(confirmMessage)) {
+                                return;
+                            }
+
+                            const formToSubmit = getDeleteForm();
+                            formToSubmit.action = action;
+                            formToSubmit.submit();
+                        });
                     });
                 }
 
