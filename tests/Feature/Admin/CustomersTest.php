@@ -96,6 +96,49 @@ class CustomersTest extends TestCase
         $this->actingAs($user)->delete(route('admin.customers.destroy', $customer->id))->assertForbidden();
     }
 
+    public function test_customer_show_page_displays_main_data_and_contacts(): void
+    {
+        $company = $this->createCompany('Empresa Clientes Ficha');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $customer = Customer::query()->create([
+            'company_id' => $company->id,
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Ficha',
+            'nif' => '123456789',
+            'email' => 'cliente.ficha@example.test',
+            'phone' => '210000000',
+            'mobile' => '910000000',
+            'locality' => 'Lisboa',
+            'city' => 'Lisboa',
+            'default_commercial_discount' => 5.50,
+            'has_credit_limit' => true,
+            'credit_limit' => 1000,
+            'is_active' => true,
+        ]);
+
+        CustomerContact::query()->create([
+            'company_id' => $company->id,
+            'customer_id' => $customer->id,
+            'name' => 'Contacto Preferencial',
+            'email' => 'contacto@example.test',
+            'phone' => '930000000',
+            'job_title' => 'Compras',
+            'notes' => 'Responsavel principal',
+            'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.customers.show', $customer->id));
+
+        $response->assertOk();
+        $response->assertSee('Cliente Ficha');
+        $response->assertSee('123456789');
+        $response->assertSee('cliente.ficha@example.test');
+        $response->assertSee('Contacto Preferencial');
+        $response->assertSee('Condicoes financeiras');
+        $response->assertSee('Contactos do cliente');
+    }
+
     public function test_company_admin_can_create_customer_with_defaults_and_company_scope(): void
     {
         $company = $this->createCompany('Empresa Clientes Create');
