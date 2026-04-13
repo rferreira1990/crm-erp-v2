@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
 use App\Http\Controllers\Admin\ProductFamilyController;
+use App\Http\Controllers\Admin\QuoteController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
 use App\Http\Controllers\Admin\UnitController;
@@ -244,6 +245,37 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('supplier')
             ->whereNumber('contact')
             ->name('suppliers.contacts.destroy');
+
+        Route::get('/quotes', [QuoteController::class, 'index'])->name('quotes.index');
+        Route::get('/quotes/create', [QuoteController::class, 'create'])->name('quotes.create');
+        Route::post('/quotes', [QuoteController::class, 'store'])->name('quotes.store');
+        Route::get('/quotes/{quote}', [QuoteController::class, 'show'])
+            ->whereNumber('quote')
+            ->name('quotes.show');
+        Route::get('/quotes/{quote}/edit', [QuoteController::class, 'edit'])
+            ->whereNumber('quote')
+            ->name('quotes.edit');
+        Route::patch('/quotes/{quote}', [QuoteController::class, 'update'])
+            ->whereNumber('quote')
+            ->name('quotes.update');
+        Route::delete('/quotes/{quote}', [QuoteController::class, 'destroy'])
+            ->whereNumber('quote')
+            ->name('quotes.destroy');
+        Route::post('/quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])
+            ->whereNumber('quote')
+            ->name('quotes.duplicate');
+        Route::post('/quotes/{quote}/status', [QuoteController::class, 'changeStatus'])
+            ->whereNumber('quote')
+            ->name('quotes.status.change');
+        Route::post('/quotes/{quote}/pdf/generate', [QuoteController::class, 'generatePdf'])
+            ->whereNumber('quote')
+            ->name('quotes.pdf.generate');
+        Route::get('/quotes/{quote}/pdf/download', [QuoteController::class, 'downloadPdf'])
+            ->whereNumber('quote')
+            ->name('quotes.pdf.download');
+        Route::post('/quotes/{quote}/email/send', [QuoteController::class, 'sendEmail'])
+            ->whereNumber('quote')
+            ->name('quotes.email.send');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
