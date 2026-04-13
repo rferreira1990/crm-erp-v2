@@ -59,7 +59,7 @@
                         <hr class="navbar-vertical-line" />
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="users"></span></span>
                                 <span class="nav-link-text">Clientes</span>

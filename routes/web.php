@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\ArticleMediaController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\ProductFamilyController;
@@ -165,6 +166,22 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('article')
             ->whereNumber('articleFile')
             ->name('articles.files.download');
+
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])
+            ->whereNumber('customer')
+            ->name('customers.edit');
+        Route::patch('/customers/{customer}', [CustomerController::class, 'update'])
+            ->whereNumber('customer')
+            ->name('customers.update');
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])
+            ->whereNumber('customer')
+            ->name('customers.destroy');
+        Route::get('/customers/{customer}/logo', [CustomerController::class, 'showLogo'])
+            ->whereNumber('customer')
+            ->name('customers.logo.show');
 
         Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
         Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');
