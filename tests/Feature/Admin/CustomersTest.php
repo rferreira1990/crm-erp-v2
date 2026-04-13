@@ -211,31 +211,28 @@ class CustomersTest extends TestCase
         $this->assertNull($customer->credit_limit);
     }
 
-    public function test_company_admin_can_upload_replace_remove_logo_and_logo_access_is_tenant_safe(): void
+    public function test_customer_update_with_new_logo_replaces_existing_logo_and_removes_old_file(): void
     {
         Storage::fake('local');
 
-        $companyA = $this->createCompany('Empresa Clientes Logo A');
-        $companyB = $this->createCompany('Empresa Clientes Logo B');
+        $companyA = $this->createCompany('Empresa Clientes Logo Replace');
         $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($adminA)->post(route('admin.customers.store'), [
             'customer_type' => Customer::TYPE_COMPANY,
-            'name' => 'Cliente Logo A',
+            'name' => 'Cliente Replace',
             'has_credit_limit' => 0,
             'is_active' => 1,
-            'logo' => UploadedFile::fake()->image('logo-a.png'),
+            'logo' => UploadedFile::fake()->image('logo-old.png'),
         ])->assertRedirect(route('admin.customers.index'));
 
         $customerA = Customer::query()
             ->where('company_id', $companyA->id)
-            ->where('name', 'Cliente Logo A')
+            ->where('name', 'Cliente Replace')
             ->firstOrFail();
 
         $this->assertNotNull($customerA->logo_path);
         Storage::disk('local')->assertExists($customerA->logo_path);
-        $this->actingAs($adminA)->get(route('admin.customers.logo.show', $customerA->id))->assertOk();
-
         $oldPath = $customerA->logo_path;
 
         $this->actingAs($adminA)->patch(route('admin.customers.update', $customerA->id), [
@@ -243,7 +240,7 @@ class CustomersTest extends TestCase
             'name' => $customerA->name,
             'has_credit_limit' => 0,
             'is_active' => 1,
-            'logo' => UploadedFile::fake()->image('logo-new.png'),
+            'logo' => UploadedFile::fake()->image('logo-replacement.png'),
         ])->assertRedirect(route('admin.customers.edit', $customerA->id));
 
         $customerA->refresh();
@@ -251,17 +248,137 @@ class CustomersTest extends TestCase
         $this->assertNotSame($oldPath, $customerA->logo_path);
         Storage::disk('local')->assertMissing($oldPath);
         Storage::disk('local')->assertExists($customerA->logo_path);
+    }
 
-        $this->actingAs($adminA)->patch(route('admin.customers.update', $customerA->id), [
-            'customer_type' => $customerA->customer_type,
-            'name' => $customerA->name,
+    public function test_customer_update_without_new_logo_keeps_existing_logo(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa Clientes Logo Keep');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $this->actingAs($admin)->post(route('admin.customers.store'), [
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Keep Logo',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+            'logo' => UploadedFile::fake()->image('logo-keep.png'),
+        ])->assertRedirect(route('admin.customers.index'));
+
+        $customer = Customer::query()
+            ->where('company_id', $company->id)
+            ->where('name', 'Cliente Keep Logo')
+            ->firstOrFail();
+
+        $existingPath = $customer->logo_path;
+        $this->assertNotNull($existingPath);
+        Storage::disk('local')->assertExists($existingPath);
+
+        $this->actingAs($admin)->patch(route('admin.customers.update', $customer->id), [
+            'customer_type' => $customer->customer_type,
+            'name' => 'Cliente Keep Logo Atualizado',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+        ])->assertRedirect(route('admin.customers.edit', $customer->id));
+
+        $customer->refresh();
+        $this->assertSame($existingPath, $customer->logo_path);
+        Storage::disk('local')->assertExists($existingPath);
+    }
+
+    public function test_customer_update_remove_logo_without_new_upload_deletes_logo(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa Clientes Logo Remove');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $this->actingAs($admin)->post(route('admin.customers.store'), [
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Remove Logo',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+            'logo' => UploadedFile::fake()->image('logo-remove.png'),
+        ])->assertRedirect(route('admin.customers.index'));
+
+        $customer = Customer::query()
+            ->where('company_id', $company->id)
+            ->where('name', 'Cliente Remove Logo')
+            ->firstOrFail();
+
+        $existingPath = $customer->logo_path;
+        $this->assertNotNull($existingPath);
+        Storage::disk('local')->assertExists($existingPath);
+
+        $this->actingAs($admin)->patch(route('admin.customers.update', $customer->id), [
+            'customer_type' => $customer->customer_type,
+            'name' => $customer->name,
             'has_credit_limit' => 0,
             'is_active' => 1,
             'remove_logo' => 1,
-        ])->assertRedirect(route('admin.customers.edit', $customerA->id));
+        ])->assertRedirect(route('admin.customers.edit', $customer->id));
 
-        $customerA->refresh();
-        $this->assertNull($customerA->logo_path);
+        $customer->refresh();
+        $this->assertNull($customer->logo_path);
+        Storage::disk('local')->assertMissing($existingPath);
+    }
+
+    public function test_customer_update_with_remove_logo_and_new_upload_keeps_new_logo(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa Clientes Logo Replace Priority');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $this->actingAs($admin)->post(route('admin.customers.store'), [
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Replace Priority',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+            'logo' => UploadedFile::fake()->image('logo-priority-old.png'),
+        ])->assertRedirect(route('admin.customers.index'));
+
+        $customer = Customer::query()
+            ->where('company_id', $company->id)
+            ->where('name', 'Cliente Replace Priority')
+            ->firstOrFail();
+
+        $oldPath = $customer->logo_path;
+        $this->assertNotNull($oldPath);
+        Storage::disk('local')->assertExists($oldPath);
+
+        $this->actingAs($admin)->patch(route('admin.customers.update', $customer->id), [
+            'customer_type' => $customer->customer_type,
+            'name' => $customer->name,
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+            'remove_logo' => 1,
+            'logo' => UploadedFile::fake()->image('logo-priority-new.png'),
+        ])->assertRedirect(route('admin.customers.edit', $customer->id));
+
+        $customer->refresh();
+        $this->assertNotNull($customer->logo_path);
+        $this->assertNotSame($oldPath, $customer->logo_path);
+        Storage::disk('local')->assertMissing($oldPath);
+        Storage::disk('local')->assertExists($customer->logo_path);
+    }
+
+    public function test_cross_tenant_logo_update_and_access_return_not_found(): void
+    {
+        Storage::fake('local');
+
+        $companyA = $this->createCompany('Empresa Clientes Logo Tenant A');
+        $companyB = $this->createCompany('Empresa Clientes Logo Tenant B');
+        $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
+
+        $customerA = Customer::query()->create([
+            'company_id' => $companyA->id,
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente A',
+            'logo_path' => 'customers/'.$companyA->id.'/1/logo/a.png',
+            'is_active' => true,
+        ]);
+        Storage::disk('local')->put($customerA->logo_path, 'logo-a');
 
         $customerB = Customer::query()->create([
             'company_id' => $companyB->id,
@@ -272,7 +389,19 @@ class CustomersTest extends TestCase
         ]);
         Storage::disk('local')->put($customerB->logo_path, 'logo-b');
 
+        $this->actingAs($adminA)->patch(route('admin.customers.update', $customerB->id), [
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Logo B',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+            'remove_logo' => 1,
+            'logo' => UploadedFile::fake()->image('cross-tenant.png'),
+        ])->assertNotFound();
+
+        $this->actingAs($adminA)->get(route('admin.customers.logo.show', $customerA->id))->assertOk();
         $this->actingAs($adminA)->get(route('admin.customers.logo.show', $customerB->id))->assertNotFound();
+
+        Storage::disk('local')->assertExists($customerB->logo_path);
     }
 
     private function createCompany(string $name): Company

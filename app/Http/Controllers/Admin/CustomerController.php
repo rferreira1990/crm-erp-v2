@@ -77,17 +77,14 @@ class CustomerController extends Controller
     {
         $companyId = (int) $request->user()->company_id;
         $data = $this->normalizePayload($request->validated());
+        $newLogo = $request->file('logo');
 
         $customer = Customer::query()->create([
             ...$data,
             'company_id' => $companyId,
         ]);
 
-        if ($request->hasFile('logo')) {
-            $customer->forceFill([
-                'logo_path' => $this->storeCustomerLogo($request->file('logo'), $companyId, $customer->id),
-            ])->save();
-        }
+        $this->syncCustomerLogo($customer, $newLogo, false, $companyId);
 
         Log::info('Customer created', [
             'context' => 'company_customers',
@@ -121,24 +118,11 @@ class CustomerController extends Controller
 
         $validated = $request->validated();
         $removeLogo = (bool) ($validated['remove_logo'] ?? false);
+        $newLogo = $request->file('logo');
         $data = $this->normalizePayload($validated);
 
         $customerModel->forceFill($data)->save();
-
-        if ($removeLogo && $customerModel->logo_path) {
-            $this->deleteFromDisk($customerModel->logo_path);
-            $customerModel->forceFill(['logo_path' => null])->save();
-        }
-
-        if ($request->hasFile('logo')) {
-            if ($customerModel->logo_path) {
-                $this->deleteFromDisk($customerModel->logo_path);
-            }
-
-            $customerModel->forceFill([
-                'logo_path' => $this->storeCustomerLogo($request->file('logo'), $companyId, $customerModel->id),
-            ])->save();
-        }
+        $this->syncCustomerLogo($customerModel, $newLogo, $removeLogo, $companyId);
 
         Log::info('Customer updated', [
             'context' => 'company_customers',
@@ -293,6 +277,30 @@ class CustomerController extends Controller
             Str::uuid()->toString().'.'.$logo->getClientOriginalExtension(),
             'local'
         );
+    }
+
+    private function syncCustomerLogo(Customer $customer, ?UploadedFile $newLogo, bool $removeLogo, int $companyId): void
+    {
+        // Business rule: when upload and remove flag are both provided, new upload prevails.
+        if ($newLogo instanceof UploadedFile) {
+            $previousPath = $customer->logo_path;
+            $newPath = $this->storeCustomerLogo($newLogo, $companyId, (int) $customer->id);
+
+            if ($newPath !== null) {
+                $customer->forceFill(['logo_path' => $newPath])->save();
+            }
+
+            if ($previousPath) {
+                $this->deleteFromDisk($previousPath);
+            }
+
+            return;
+        }
+
+        if ($removeLogo && $customer->logo_path) {
+            $this->deleteFromDisk($customer->logo_path);
+            $customer->forceFill(['logo_path' => null])->save();
+        }
     }
 
     private function deleteFromDisk(?string $path): void

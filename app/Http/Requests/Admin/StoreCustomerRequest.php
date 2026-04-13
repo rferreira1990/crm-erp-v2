@@ -14,6 +14,7 @@ class StoreCustomerRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $companyId = (int) ($this->user()?->company_id ?? 0);
+        $hasCreditLimit = $this->boolean('has_credit_limit');
 
         $countryId = $this->normalizeNullableInteger($this->input('country_id'));
         if ($countryId === null) {
@@ -43,8 +44,10 @@ class StoreCustomerRequest extends FormRequest
             'payment_term_id' => $paymentTermId,
             'default_vat_rate_id' => $this->normalizeNullableInteger($this->input('default_vat_rate_id')),
             'default_commercial_discount' => $this->normalizeNullableNumeric($this->input('default_commercial_discount')),
-            'has_credit_limit' => $this->boolean('has_credit_limit'),
-            'credit_limit' => $this->normalizeNullableNumeric($this->input('credit_limit')),
+            'has_credit_limit' => $hasCreditLimit,
+            'credit_limit' => $hasCreditLimit
+                ? $this->normalizeNullableNumeric($this->input('credit_limit'))
+                : null,
             'print_comments' => $this->normalizeNullableString($this->input('print_comments')),
             'is_active' => $this->boolean('is_active', true),
         ]);
@@ -163,4 +166,3 @@ class StoreCustomerRequest extends FormRequest
         return $value;
     }
 }
-
