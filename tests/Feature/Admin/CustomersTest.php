@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Company;
 use App\Models\Country;
 use App\Models\Customer;
+use App\Models\CustomerContact;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
 use App\Models\User;
