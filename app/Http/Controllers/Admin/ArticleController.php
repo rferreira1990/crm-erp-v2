@@ -377,12 +377,6 @@ class ArticleController extends Controller
                 'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
             ])
             ->visibleToCompany($companyId)
-            ->when(
-                $includeVatRateId !== null,
-                fn ($query) => $query->where(function ($subQuery) use ($includeVatRateId): void {
-                    $subQuery->whereKey($includeVatRateId)->orWhereRaw('1 = 1');
-                })
-            )
             ->get()
             ->filter(function (VatRate $vatRate) use ($companyId, $includeVatRateId): bool {
                 if ($includeVatRateId !== null && $vatRate->id === $includeVatRateId) {
@@ -410,12 +404,6 @@ class ArticleController extends Controller
                 'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
             ])
             ->visibleToCompany($companyId)
-            ->when(
-                $includeReasonId !== null,
-                fn ($query) => $query->where(function ($subQuery) use ($includeReasonId): void {
-                    $subQuery->whereKey($includeReasonId)->orWhereRaw('1 = 1');
-                })
-            )
             ->orderBy('code')
             ->get()
             ->filter(function (VatExemptionReason $reason) use ($companyId, $includeReasonId): bool {
@@ -542,4 +530,3 @@ class ArticleController extends Controller
         Storage::disk('public')->delete($path);
     }
 }
-
