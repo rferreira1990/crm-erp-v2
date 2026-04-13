@@ -67,10 +67,10 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}" href="{{ route('admin.articles.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="package"></span></span>
-                                <span class="nav-link-text">Produtos</span>
+                                <span class="nav-link-text">Artigos / Produtos</span>
                             </div>
                         </a>
                     </li>
