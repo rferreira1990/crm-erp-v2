@@ -2,6 +2,18 @@
     $isEdit = isset($article);
     $selectedCategoryId = old('category_id', $article->category_id ?? ($defaults['category_id'] ?? ''));
     $selectedUnitId = old('unit_id', $article->unit_id ?? ($defaults['unit_id'] ?? ''));
+    $defaultVatRateId = null;
+
+    if (! $isEdit && isset($vatRateOptions)) {
+        $defaultVatRate = collect($vatRateOptions)->first(function ($rate): bool {
+            return ! $rate->is_exempt
+                && (float) $rate->rate === 23.0;
+        });
+
+        $defaultVatRateId = $defaultVatRate?->id;
+    }
+
+    $selectedVatRateId = old('vat_rate_id', $article->vat_rate_id ?? $defaultVatRateId ?? '');
 @endphp
 
 <div class="card theme-wizard mb-5" data-theme-wizard="data-theme-wizard" id="articleWizard">
@@ -46,13 +58,8 @@
         <div class="tab-content">
             <div class="tab-pane active" role="tabpanel" id="article-wizard-tab1" aria-labelledby="article-wizard-tab1">
                 <div class="row g-3">
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Codigo</label>
-                        <input type="text" class="form-control" value="{{ $article->code ?? 'Gerado automaticamente no create' }}" readonly>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <label for="designation" class="form-label">Designacao</label>
+                    <div class="col-12 col-md-8">
+                        <label for="designation" class="form-label">Descricao</label>
                         <input
                             type="text"
                             id="designation"
@@ -65,7 +72,7 @@
                         @error('designation')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-12 col-md-3">
+                    <div class="col-12 col-md-4">
                         <label for="abbreviation" class="form-label">Abreviatura</label>
                         <input type="text" id="abbreviation" name="abbreviation" value="{{ old('abbreviation', $article->abbreviation ?? '') }}" class="form-control @error('abbreviation') is-invalid @enderror" maxlength="50">
                         @error('abbreviation')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -144,7 +151,7 @@
                         <select id="vat_rate_id" name="vat_rate_id" class="form-select @error('vat_rate_id') is-invalid @enderror" required>
                             <option value="">Selecionar taxa</option>
                             @foreach (($vatRateOptions ?? []) as $vatRateOption)
-                                <option value="{{ $vatRateOption->id }}" data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}" @selected((string) old('vat_rate_id', $article->vat_rate_id ?? '') === (string) $vatRateOption->id)>
+                                <option value="{{ $vatRateOption->id }}" data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}" @selected((string) $selectedVatRateId === (string) $vatRateOption->id)>
                                     {{ $vatRateOption->name }} ({{ number_format((float) $vatRateOption->rate, 2) }}%)
                                 </option>
                             @endforeach
@@ -175,7 +182,7 @@
                     </div>
                     <div class="col-12 col-md-3">
                         <label for="sale_price" class="form-label">Preco de venda</label>
-                        <input type="number" id="sale_price" name="sale_price" value="{{ old('sale_price', $article->sale_price ?? '') }}" class="form-control @error('sale_price') is-invalid @enderror" min="0" step="0.0001">
+                        <input type="number" id="sale_price" name="sale_price" value="{{ old('sale_price', $article->sale_price ?? '') }}" class="form-control @error('sale_price') is-invalid @enderror" min="0" step="0.0001" required>
                         @error('sale_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-2">
@@ -371,6 +378,7 @@
 
                     if (nextBtn) {
                         const isLast = index === navLinks.length - 1;
+                        nextBtn.type = isLast ? 'submit' : 'button';
                         nextBtn.innerHTML = isLast
                             ? finalLabel
                             : 'Seguinte <span class="fas fa-chevron-right ms-1"></span>';
@@ -379,29 +387,72 @@
                     }
                 };
 
-                const validateStep = () => {
-                    const pane = panes[currentStepIndex()];
+                const getValidatableFields = (container) => {
+                    if (!container) {
+                        return [];
+                    }
+
+                    return Array.from(container.querySelectorAll('input, select, textarea'))
+                        .filter((field) => !field.disabled)
+                        .filter((field) => field.type !== 'hidden');
+                };
+
+                const findFirstInvalidField = (container) => {
+                    const fields = getValidatableFields(container);
+                    return fields.find((field) => !field.checkValidity()) ?? null;
+                };
+
+                const validatePane = (index) => {
+                    const pane = panes[index];
                     if (!pane) {
                         return true;
                     }
 
-                    const fields = Array.from(pane.querySelectorAll('input, select, textarea'))
-                        .filter((field) => !field.disabled)
-                        .filter((field) => field.type !== 'hidden');
-
-                    for (const field of fields) {
-                        if (!field.checkValidity()) {
-                            field.reportValidity();
-                            return false;
-                        }
+                    const invalidField = findFirstInvalidField(pane);
+                    if (invalidField) {
+                        setStep(index);
+                        invalidField.reportValidity();
+                        return false;
                     }
 
                     return true;
                 };
 
+                const validateForm = () => {
+                    if (!form) {
+                        return true;
+                    }
+
+                    const invalidField = findFirstInvalidField(form);
+                    if (!invalidField) {
+                        return true;
+                    }
+
+                    const pane = invalidField.closest('.tab-pane');
+                    if (pane) {
+                        const paneIndex = panes.indexOf(pane);
+                        if (paneIndex >= 0) {
+                            setStep(paneIndex);
+                        }
+                    }
+
+                    invalidField.reportValidity();
+                    return false;
+                };
+
                 navLinks.forEach((link, index) => {
                     link.addEventListener('click', (event) => {
                         event.preventDefault();
+
+                        const current = currentStepIndex();
+                        if (index > current) {
+                            for (let step = current; step < index; step++) {
+                                if (!validatePane(step)) {
+                                    return;
+                                }
+                            }
+                        }
+
                         setStep(index);
                     });
                 });
@@ -413,12 +464,12 @@
                 }
 
                 if (nextBtn) {
-                    nextBtn.addEventListener('click', () => {
+                    nextBtn.addEventListener('click', (event) => {
                         const index = currentStepIndex();
                         const isLast = index === navLinks.length - 1;
 
                         if (!isLast) {
-                            if (!validateStep()) {
+                            if (!validatePane(index)) {
                                 return;
                             }
 
@@ -426,8 +477,8 @@
                             return;
                         }
 
-                        if (form) {
-                            form.requestSubmit();
+                        if (!validateForm()) {
+                            event.preventDefault();
                         }
                     });
                 }
@@ -486,26 +537,11 @@
 
                 if (form) {
                     form.addEventListener('submit', (event) => {
-                        if (form.checkValidity()) {
+                        if (validateForm()) {
                             return;
                         }
 
                         event.preventDefault();
-                        const invalidField = form.querySelector(':invalid');
-
-                        if (!invalidField) {
-                            return;
-                        }
-
-                        const pane = invalidField.closest('.tab-pane');
-                        if (pane) {
-                            const paneIndex = panes.indexOf(pane);
-                            if (paneIndex >= 0) {
-                                setStep(paneIndex);
-                            }
-                        }
-
-                        invalidField.reportValidity();
                     });
                 }
 
