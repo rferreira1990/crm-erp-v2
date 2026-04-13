@@ -44,7 +44,7 @@ class CustomerContactController extends Controller
                 ->forCustomer((int) $customerModel->id)
                 ->exists();
 
-            $isPrimary = ! $hasAnyContacts || (bool) $data['is_primary'];
+            $isPrimary = ! $hasAnyContacts || (bool) ($data['is_primary'] ?? false);
 
             if ($isPrimary) {
                 CustomerContact::query()
@@ -112,7 +112,7 @@ class CustomerContactController extends Controller
                 ->whereKeyNot($contactModel->id)
                 ->exists();
 
-            $isPrimary = (bool) $data['is_primary'];
+            $isPrimary = (bool) ($data['is_primary'] ?? false);
 
             if (! $hasOtherContacts) {
                 $isPrimary = true;
