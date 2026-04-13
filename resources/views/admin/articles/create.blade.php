@@ -13,16 +13,14 @@
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-header bg-body-tertiary">
-            <h5 class="mb-0">Criar artigo</h5>
+    @if ($errors->any())
+        <div class="alert alert-danger" role="alert">
+            {{ $errors->first() }}
         </div>
-        <div class="card-body">
-            <form method="POST" action="{{ route('admin.articles.store') }}" enctype="multipart/form-data">
-                @csrf
-                @include('admin.articles._form')
-            </form>
-        </div>
-    </div>
-@endsection
+    @endif
 
+    <form method="POST" action="{{ route('admin.articles.store') }}" enctype="multipart/form-data">
+        @csrf
+        @include('admin.articles._form')
+    </form>
+@endsection
