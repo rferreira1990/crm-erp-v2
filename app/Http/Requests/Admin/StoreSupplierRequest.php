@@ -22,7 +22,7 @@ class StoreSupplierRequest extends FormRequest
         }
 
         $this->merge([
-            'supplier_type' => trim((string) $this->input('supplier_type')),
+            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => trim((string) $this->input('name')),
             'address' => $this->normalizeNullableString($this->input('address')),
             'postal_code' => $this->normalizeNullableString($this->input('postal_code')),
@@ -38,6 +38,8 @@ class StoreSupplierRequest extends FormRequest
             'payment_term_id' => $this->normalizeNullableInteger($this->input('payment_term_id')),
             'default_vat_rate_id' => $this->normalizeNullableInteger($this->input('default_vat_rate_id')),
             'default_payment_method_id' => $this->normalizeNullableInteger($this->input('default_payment_method_id')),
+            'bank_name' => $this->normalizeNullableString($this->input('bank_name')),
+            'bic_swift' => $this->normalizeNullableString($this->input('bic_swift')),
             'iban' => $this->normalizeNullableString($this->input('iban')),
             'payment_notes' => $this->normalizeNullableString($this->input('payment_notes')),
             'is_active' => $this->boolean('is_active', true),
@@ -61,7 +63,7 @@ class StoreSupplierRequest extends FormRequest
         $companyId = (int) $this->user()->company_id;
 
         return [
-            'supplier_type' => ['required', 'string', Rule::in(Supplier::supplierTypes())],
+            'supplier_type' => ['required', 'string', Rule::in([Supplier::TYPE_COMPANY])],
             'name' => ['required', 'string', 'max:190'],
             'address' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'regex:/^\d{4}-\d{3}$/'],
@@ -82,6 +84,8 @@ class StoreSupplierRequest extends FormRequest
             'payment_term_id' => ['nullable', 'integer', Rule::exists('payment_terms', 'id')],
             'default_vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
             'default_payment_method_id' => ['nullable', 'integer', Rule::exists('payment_methods', 'id')],
+            'bank_name' => ['nullable', 'string', 'max:190'],
+            'bic_swift' => ['nullable', 'string', 'max:20'],
             'iban' => ['nullable', 'string', 'max:34'],
             'payment_notes' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['required', 'boolean'],

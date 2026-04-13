@@ -39,6 +39,8 @@ class Supplier extends Model
         'payment_term_id',
         'default_vat_rate_id',
         'default_payment_method_id',
+        'bank_name',
+        'bic_swift',
         'iban',
         'payment_notes',
         'is_active',
@@ -190,6 +192,16 @@ class Supplier extends Model
     public function setIbanAttribute(?string $value): void
     {
         $this->attributes['iban'] = $this->normalizeNullableString($value);
+    }
+
+    public function setBankNameAttribute(?string $value): void
+    {
+        $this->attributes['bank_name'] = $this->normalizeNullableString($value);
+    }
+
+    public function setBicSwiftAttribute(?string $value): void
+    {
+        $this->attributes['bic_swift'] = $this->normalizeNullableString($value);
     }
 
     public function setPaymentNotesAttribute(?string $value): void
