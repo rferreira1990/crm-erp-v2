@@ -819,9 +819,18 @@ class QuoteController extends Controller
                 ->orderBy('id'),
         ]);
 
-        $pdf = Pdf::loadView('admin.quotes.pdf', [
+        $html = view('admin.quotes.pdf', [
             'quote' => $quote,
-        ])->setPaper('a4', 'portrait');
+        ])->render();
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($html);
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
 
         $path = 'quotes/'.$quote->company_id.'/'.$quote->id.'/pdf/'.Str::slug($quote->number).'-'.now()->format('YmdHis').'.pdf';
         Storage::disk('local')->put($path, $pdf->output());
