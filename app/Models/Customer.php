@@ -73,6 +73,11 @@ class Customer extends Model
         return $this->belongsTo(PaymentTerm::class);
     }
 
+    public function priceTier(): BelongsTo
+    {
+        return $this->belongsTo(PriceTier::class);
+    }
+
     public function defaultVatRate(): BelongsTo
     {
         return $this->belongsTo(VatRate::class, 'default_vat_rate_id');
@@ -129,6 +134,17 @@ class Customer extends Model
         }
 
         return null;
+    }
+
+    public static function defaultPriceTierIdForCompany(int $companyId): ?int
+    {
+        return PriceTier::query()
+            ->visibleToCompany($companyId)
+            ->active()
+            ->where('is_system', true)
+            ->where('is_default', true)
+            ->orderBy('id')
+            ->value('id');
     }
 
     public function customerTypeLabel(): string
@@ -212,4 +228,3 @@ class Customer extends Model
         return $normalized !== '' ? $normalized : null;
     }
 }
-
