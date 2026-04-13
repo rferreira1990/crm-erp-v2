@@ -4,6 +4,10 @@
 @section('page_title', 'Editar cliente')
 @section('page_subtitle', 'Atualizar dados do cliente')
 
+@section('page_actions')
+    <a href="{{ route('admin.customers.show', $customer->id) }}" class="btn btn-phoenix-secondary btn-sm">Ver ficha</a>
+@endsection
+
 @section('breadcrumbs')
     <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Admin</a></li>
