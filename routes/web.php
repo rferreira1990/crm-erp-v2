@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\ArticleMediaController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
@@ -183,6 +184,24 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/customers/{customer}/logo', [CustomerController::class, 'showLogo'])
             ->whereNumber('customer')
             ->name('customers.logo.show');
+        Route::get('/customers/{customer}/contacts/create', [CustomerContactController::class, 'create'])
+            ->whereNumber('customer')
+            ->name('customers.contacts.create');
+        Route::post('/customers/{customer}/contacts', [CustomerContactController::class, 'store'])
+            ->whereNumber('customer')
+            ->name('customers.contacts.store');
+        Route::get('/customers/{customer}/contacts/{contact}/edit', [CustomerContactController::class, 'edit'])
+            ->whereNumber('customer')
+            ->whereNumber('contact')
+            ->name('customers.contacts.edit');
+        Route::patch('/customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'update'])
+            ->whereNumber('customer')
+            ->whereNumber('contact')
+            ->name('customers.contacts.update');
+        Route::delete('/customers/{customer}/contacts/{contact}', [CustomerContactController::class, 'destroy'])
+            ->whereNumber('customer')
+            ->whereNumber('contact')
+            ->name('customers.contacts.destroy');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
