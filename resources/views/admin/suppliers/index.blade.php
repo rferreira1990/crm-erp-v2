@@ -52,7 +52,7 @@
                 <table class="table table-sm fs-9 mb-0">
                     <thead class="bg-body-tertiary">
                         <tr>
-                            <th>Designacao</th>
+                            <th class="ps-3">Designacao</th>
                             <th>NIF</th>
                             <th>Telefone</th>
                             <th>Email</th>

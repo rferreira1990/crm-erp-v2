@@ -57,7 +57,6 @@ class SuppliersTest extends TestCase
         $this->actingAs($adminA)->get(route('admin.suppliers.show', $supplierB->id))->assertNotFound();
         $this->actingAs($adminA)->get(route('admin.suppliers.edit', $supplierB->id))->assertNotFound();
         $this->actingAs($adminA)->patch(route('admin.suppliers.update', $supplierB->id), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Novo',
             'is_active' => 1,
         ])->assertNotFound();
@@ -80,13 +79,11 @@ class SuppliersTest extends TestCase
         $this->actingAs($user)->get(route('admin.suppliers.index'))->assertForbidden();
         $this->actingAs($user)->get(route('admin.suppliers.create'))->assertForbidden();
         $this->actingAs($user)->post(route('admin.suppliers.store'), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Novo',
             'is_active' => 1,
         ])->assertForbidden();
         $this->actingAs($user)->get(route('admin.suppliers.show', $supplier->id))->assertForbidden();
         $this->actingAs($user)->patch(route('admin.suppliers.update', $supplier->id), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Atualizado',
             'is_active' => 1,
         ])->assertForbidden();
@@ -101,8 +98,9 @@ class SuppliersTest extends TestCase
         $countryPortugalId = (int) Country::query()->where('iso_code', 'PT')->value('id');
 
         $response = $this->actingAs($admin)->post(route('admin.suppliers.store'), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => '  Fornecedor   Novo  ',
+            'bank_name' => 'Banco Teste',
+            'bic_swift' => 'BICPTLISXXX',
             'is_active' => 1,
         ]);
 
@@ -114,6 +112,8 @@ class SuppliersTest extends TestCase
             'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Fornecedor Novo',
             'country_id' => $countryPortugalId,
+            'bank_name' => 'Banco Teste',
+            'bic_swift' => 'BICPTLISXXX',
             'is_active' => true,
         ]);
     }
@@ -126,7 +126,6 @@ class SuppliersTest extends TestCase
         $response = $this->actingAs($admin)
             ->from(route('admin.suppliers.create'))
             ->post(route('admin.suppliers.store'), [
-                'supplier_type' => 'invalid_type',
                 'name' => '',
                 'postal_code' => '1000-12',
                 'nif' => '123',
@@ -135,7 +134,6 @@ class SuppliersTest extends TestCase
 
         $response->assertRedirect(route('admin.suppliers.create'));
         $response->assertSessionHasErrors([
-            'supplier_type',
             'name',
             'postal_code',
             'nif',
@@ -170,7 +168,6 @@ class SuppliersTest extends TestCase
         $invalidResponse = $this->actingAs($adminA)
             ->from(route('admin.suppliers.create'))
             ->post(route('admin.suppliers.store'), [
-                'supplier_type' => Supplier::TYPE_COMPANY,
                 'name' => 'Fornecedor Financeiro',
                 'payment_term_id' => $termOtherCompany->id,
                 'default_payment_method_id' => $methodOtherCompany->id,
@@ -190,7 +187,6 @@ class SuppliersTest extends TestCase
         $adminA = $this->createCompanyUser($companyA, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($adminA)->post(route('admin.suppliers.store'), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Fornecedor Replace',
             'is_active' => 1,
             'logo' => UploadedFile::fake()->image('logo-old.png'),
@@ -206,7 +202,6 @@ class SuppliersTest extends TestCase
         $oldPath = $supplierA->logo_path;
 
         $this->actingAs($adminA)->patch(route('admin.suppliers.update', $supplierA->id), [
-            'supplier_type' => $supplierA->supplier_type,
             'name' => $supplierA->name,
             'is_active' => 1,
             'logo' => UploadedFile::fake()->image('logo-replacement.png'),
@@ -227,7 +222,6 @@ class SuppliersTest extends TestCase
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($admin)->post(route('admin.suppliers.store'), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Fornecedor Remove Logo',
             'is_active' => 1,
             'logo' => UploadedFile::fake()->image('logo-remove.png'),
@@ -243,7 +237,6 @@ class SuppliersTest extends TestCase
         Storage::disk('local')->assertExists($existingPath);
 
         $this->actingAs($admin)->patch(route('admin.suppliers.update', $supplier->id), [
-            'supplier_type' => $supplier->supplier_type,
             'name' => $supplier->name,
             'is_active' => 1,
             'remove_logo' => 1,
@@ -262,7 +255,6 @@ class SuppliersTest extends TestCase
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
         $this->actingAs($admin)->post(route('admin.suppliers.store'), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Fornecedor Replace Priority',
             'is_active' => 1,
             'logo' => UploadedFile::fake()->image('logo-priority-old.png'),
@@ -278,7 +270,6 @@ class SuppliersTest extends TestCase
         Storage::disk('local')->assertExists($oldPath);
 
         $this->actingAs($admin)->patch(route('admin.suppliers.update', $supplier->id), [
-            'supplier_type' => $supplier->supplier_type,
             'name' => $supplier->name,
             'is_active' => 1,
             'remove_logo' => 1,
@@ -307,6 +298,8 @@ class SuppliersTest extends TestCase
             'mobile' => '910000000',
             'locality' => 'Lisboa',
             'city' => 'Lisboa',
+            'bank_name' => 'Banco Ficha',
+            'bic_swift' => 'BICPTXXXX',
             'iban' => 'PT50000000000000000000000',
             'is_active' => true,
         ]);
@@ -329,6 +322,8 @@ class SuppliersTest extends TestCase
         $response->assertSee('123456789');
         $response->assertSee('fornecedor.ficha@example.test');
         $response->assertSee('Contacto Preferencial');
+        $response->assertSee('Banco Ficha');
+        $response->assertSee('BICPTXXXX');
         $response->assertSee('Condicoes financeiras');
         $response->assertSee('Contactos do fornecedor');
     }
@@ -360,7 +355,6 @@ class SuppliersTest extends TestCase
         Storage::disk('local')->put($supplierB->logo_path, 'logo-b');
 
         $this->actingAs($adminA)->patch(route('admin.suppliers.update', $supplierB->id), [
-            'supplier_type' => Supplier::TYPE_COMPANY,
             'name' => 'Fornecedor B',
             'is_active' => 1,
             'remove_logo' => 1,
