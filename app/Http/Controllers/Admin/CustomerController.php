@@ -123,6 +123,29 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function show(Request $request, int $customer): View
+    {
+        $companyId = (int) $request->user()->company_id;
+        $customerModel = $this->findCompanyCustomerOrFail($companyId, $customer);
+        $this->authorize('view', $customerModel);
+
+        $customerModel->load([
+            'country:id,name,iso_code',
+            'priceTier:id,name,percentage_adjustment',
+            'paymentTerm:id,name',
+            'defaultVatRate:id,name,rate',
+            'contacts' => fn ($query) => $query
+                ->orderByDesc('is_primary')
+                ->orderBy('name')
+                ->orderBy('id'),
+        ]);
+
+        return view('admin.customers.show', [
+            'customer' => $customerModel,
+            'customerTypeLabels' => Customer::customerTypeLabels(),
+        ]);
+    }
+
     public function update(UpdateCustomerRequest $request, int $customer): RedirectResponse
     {
         $companyId = (int) $request->user()->company_id;
