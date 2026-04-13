@@ -82,6 +82,11 @@ class PaymentTerm extends Model
         return $this->hasMany(CompanyPaymentTermOverride::class);
     }
 
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
         return $query->where(function (Builder $builder) use ($companyId): void {

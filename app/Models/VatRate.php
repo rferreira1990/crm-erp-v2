@@ -89,6 +89,11 @@ class VatRate extends Model
         return $this->hasMany(CompanyVatRateOverride::class);
     }
 
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'default_vat_rate_id');
+    }
+
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('is_system', true)
