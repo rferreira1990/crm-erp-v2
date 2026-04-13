@@ -53,6 +53,8 @@ class CustomersTest extends TestCase
         $response->assertSee('Cliente A');
         $response->assertDontSee('Cliente B');
 
+        $this->actingAs($adminA)->get(route('admin.customers.show', $customerA->id))->assertOk();
+        $this->actingAs($adminA)->get(route('admin.customers.show', $customerB->id))->assertNotFound();
         $this->actingAs($adminA)->get(route('admin.customers.edit', $customerB->id))->assertNotFound();
         $this->actingAs($adminA)->patch(route('admin.customers.update', $customerB->id), [
             'customer_type' => Customer::TYPE_COMPANY,
@@ -84,6 +86,7 @@ class CustomersTest extends TestCase
             'has_credit_limit' => 0,
             'is_active' => 1,
         ])->assertForbidden();
+        $this->actingAs($user)->get(route('admin.customers.show', $customer->id))->assertForbidden();
         $this->actingAs($user)->patch(route('admin.customers.update', $customer->id), [
             'customer_type' => Customer::TYPE_COMPANY,
             'name' => 'Atualizado',
