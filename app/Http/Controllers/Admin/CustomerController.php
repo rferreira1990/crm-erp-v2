@@ -239,7 +239,7 @@ class CustomerController extends Controller
         return PaymentTerm::query()
             ->visibleToCompany($companyId)
             ->when($includePaymentTermId !== null, function ($query) use ($includePaymentTermId): void {
-                $query->orWhereKey($includePaymentTermId);
+                $query->orWhere('id', $includePaymentTermId);
             })
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->orderBy('name')
