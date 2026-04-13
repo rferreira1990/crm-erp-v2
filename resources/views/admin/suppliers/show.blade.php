@@ -36,12 +36,19 @@
             <div class="card h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <div class="avatar avatar-4xl">
+                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-3 border bg-body-highlight p-2" style="width: 112px; height: 112px;">
                             @if ($supplier->logo_path)
-                                <img class="rounded-circle" src="{{ route('admin.suppliers.logo.show', $supplier->id) }}" alt="{{ $supplier->name }}">
+                                <img
+                                    src="{{ route('admin.suppliers.logo.show', $supplier->id) }}"
+                                    alt="{{ $supplier->name }}"
+                                    class="mw-100 mh-100"
+                                    style="object-fit: contain;"
+                                >
                             @else
-                                <div class="avatar-name rounded-circle">
-                                    <span>{{ mb_substr($supplier->name, 0, 1) }}</span>
+                                <div class="avatar avatar-4xl">
+                                    <div class="avatar-name rounded-circle">
+                                        <span>{{ mb_substr($supplier->name, 0, 1) }}</span>
+                                    </div>
                                 </div>
                             @endif
                         </div>
