@@ -7,9 +7,7 @@
 @section('page_actions')
     <a href="{{ route('admin.suppliers.index') }}" class="btn btn-phoenix-secondary btn-sm">Voltar</a>
     <a href="{{ route('admin.suppliers.edit', $supplier->id) }}" class="btn btn-primary btn-sm">Editar fornecedor</a>
-    @if ($supplier->supplier_type === \App\Models\Supplier::TYPE_COMPANY)
-        <a href="{{ route('admin.suppliers.contacts.create', $supplier->id) }}" class="btn btn-phoenix-secondary btn-sm">Adicionar contacto</a>
-    @endif
+    <a href="{{ route('admin.suppliers.contacts.create', $supplier->id) }}" class="btn btn-phoenix-secondary btn-sm">Adicionar contacto</a>
 @endsection
 
 @section('breadcrumbs')
@@ -49,7 +47,7 @@
                         </div>
                         <div>
                             <h3 class="mb-1">{{ $supplier->name }}</h3>
-                            <p class="mb-1 text-body-secondary">{{ $supplierTypeLabels[$supplier->supplier_type] ?? $supplier->supplier_type }}</p>
+                            <p class="mb-1 text-body-secondary">Empresa</p>
                             @if ($supplier->is_active)
                                 <span class="badge badge-phoenix badge-phoenix-success">Ativo</span>
                             @else
@@ -94,6 +92,8 @@
                             <div class="mb-2"><span class="text-body-tertiary">Condicao pagamento:</span> <span class="fw-semibold">{{ $supplier->paymentTerm?->name ?: '-' }}</span></div>
                             <div class="mb-2"><span class="text-body-tertiary">Modo pagamento:</span> <span class="fw-semibold">{{ $supplier->defaultPaymentMethod?->name ?: '-' }}</span></div>
                             <div class="mb-2"><span class="text-body-tertiary">IVA habitual:</span> <span class="fw-semibold">{{ $supplier->defaultVatRate ? $supplier->defaultVatRate->name.' ('.number_format((float) $supplier->defaultVatRate->rate, 2).'%)' : '-' }}</span></div>
+                            <div class="mb-2"><span class="text-body-tertiary">Banco:</span> <span class="fw-semibold">{{ $supplier->bank_name ?: '-' }}</span></div>
+                            <div class="mb-2"><span class="text-body-tertiary">BIC / SWIFT:</span> <span class="fw-semibold">{{ $supplier->bic_swift ?: '-' }}</span></div>
                             <div class="mb-2"><span class="text-body-tertiary">IBAN:</span> <span class="fw-semibold">{{ $supplier->iban ?: '-' }}</span></div>
                         </div>
                     </div>
@@ -127,55 +127,49 @@
     <div class="card">
         <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Contactos do fornecedor</h5>
-            @if ($supplier->supplier_type === \App\Models\Supplier::TYPE_COMPANY)
-                <a href="{{ route('admin.suppliers.contacts.create', $supplier->id) }}" class="btn btn-primary btn-sm">Adicionar contacto</a>
-            @endif
+            <a href="{{ route('admin.suppliers.contacts.create', $supplier->id) }}" class="btn btn-primary btn-sm">Adicionar contacto</a>
         </div>
         <div class="card-body p-0">
-            @if ($supplier->supplier_type !== \App\Models\Supplier::TYPE_COMPANY)
-                <div class="p-3 text-body-tertiary">Contactos apenas disponiveis para fornecedores do tipo empresa.</div>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-sm fs-9 mb-0">
-                        <thead class="bg-body-tertiary">
+            <div class="table-responsive">
+                <table class="table table-sm fs-9 mb-0">
+                    <thead class="bg-body-tertiary">
+                        <tr>
+                            <th class="ps-3">Nome</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Cargo</th>
+                            <th>Preferencial</th>
+                            <th>Observacoes</th>
+                            <th class="text-end pe-3">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($supplier->contacts as $contact)
                             <tr>
-                                <th class="ps-3">Nome</th>
-                                <th>Email</th>
-                                <th>Telefone</th>
-                                <th>Cargo</th>
-                                <th>Preferencial</th>
-                                <th>Observacoes</th>
-                                <th class="text-end pe-3">Acoes</th>
+                                <td class="ps-3 fw-semibold">{{ $contact->name }}</td>
+                                <td>{{ $contact->email ?: '-' }}</td>
+                                <td>{{ $contact->phone ?: '-' }}</td>
+                                <td>{{ $contact->job_title ?: '-' }}</td>
+                                <td>
+                                    @if ($contact->is_primary)
+                                        <span class="badge badge-phoenix badge-phoenix-success">Sim</span>
+                                    @else
+                                        <span class="badge badge-phoenix badge-phoenix-secondary">Nao</span>
+                                    @endif
+                                </td>
+                                <td>{{ \Illuminate\Support\Str::limit((string) ($contact->notes ?? ''), 60, '...') ?: '-' }}</td>
+                                <td class="text-end pe-3">
+                                    <a href="{{ route('admin.suppliers.contacts.edit', [$supplier->id, $contact->id]) }}" class="btn btn-phoenix-secondary btn-sm">Editar</a>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($supplier->contacts as $contact)
-                                <tr>
-                                    <td class="ps-3 fw-semibold">{{ $contact->name }}</td>
-                                    <td>{{ $contact->email ?: '-' }}</td>
-                                    <td>{{ $contact->phone ?: '-' }}</td>
-                                    <td>{{ $contact->job_title ?: '-' }}</td>
-                                    <td>
-                                        @if ($contact->is_primary)
-                                            <span class="badge badge-phoenix badge-phoenix-success">Sim</span>
-                                        @else
-                                            <span class="badge badge-phoenix badge-phoenix-secondary">Nao</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ \Illuminate\Support\Str::limit((string) ($contact->notes ?? ''), 60, '...') ?: '-' }}</td>
-                                    <td class="text-end pe-3">
-                                        <a href="{{ route('admin.suppliers.contacts.edit', [$supplier->id, $contact->id]) }}" class="btn btn-phoenix-secondary btn-sm">Editar</a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-4 text-body-tertiary">Sem contactos registados.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            @endif
+                        @empty
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-body-tertiary">Sem contactos registados.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 @endsection
