@@ -106,6 +106,11 @@ class CustomerController extends Controller
         $companyId = (int) $request->user()->company_id;
         $customerModel = $this->findCompanyCustomerOrFail($companyId, $customer);
         $this->authorize('update', $customerModel);
+        $customerModel->load([
+            'contacts' => fn ($query) => $query
+                ->orderByDesc('is_primary')
+                ->orderBy('name'),
+        ]);
 
         return view('admin.customers.edit', [
             'customer' => $customerModel,
