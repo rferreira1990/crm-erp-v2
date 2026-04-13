@@ -424,3 +424,181 @@
                         @error('images')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @error('images.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="documents" class="form-label">Documentos</label>
+                        <input
+                            type="file"
+                            id="documents"
+                            name="documents[]"
+                            class="form-control @error('documents') is-invalid @enderror @error('documents.*') is-invalid @enderror"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp"
+                            multiple
+                        >
+                        @error('documents')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('documents.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                @if ($isEdit)
+                    <hr class="my-4">
+
+                    <h6 class="mb-3">Imagens anexadas</h6>
+                    @if ($article->images->isEmpty())
+                        <p class="text-body-tertiary mb-4">Sem imagens anexadas.</p>
+                    @else
+                        <div class="row g-3 mb-4">
+                            @foreach ($article->images as $articleImage)
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="border rounded p-3 h-100 d-flex flex-column gap-2">
+                                        <a
+                                            href="{{ route('admin.articles.images.show', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="fw-semibold text-break"
+                                        >
+                                            {{ $articleImage->original_name }}
+                                        </a>
+                                        <div class="small text-body-tertiary">
+                                            @if ($articleImage->is_primary)
+                                                <span class="badge badge-phoenix badge-phoenix-success">Primaria</span>
+                                            @endif
+                                            @if ($articleImage->file_size)
+                                                <span class="ms-1">{{ number_format($articleImage->file_size / 1024, 1) }} KB</span>
+                                            @endif
+                                        </div>
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.articles.images.destroy', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}"
+                                            data-confirm="Tem a certeza que pretende remover esta imagem?"
+                                            class="mt-auto"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <h6 class="mb-3">Documentos anexados</h6>
+                    @if ($article->files->isEmpty())
+                        <p class="text-body-tertiary mb-0">Sem documentos anexados.</p>
+                    @else
+                        <div class="list-group">
+                            @foreach ($article->files as $articleFile)
+                                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <a href="{{ route('admin.articles.files.download', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}" class="fw-semibold">
+                                            {{ $articleFile->original_name }}
+                                        </a>
+                                        <div class="small text-body-tertiary">
+                                            {{ $articleFile->mime_type ?? '-' }}
+                                            @if ($articleFile->file_size)
+                                                · {{ number_format($articleFile->file_size / 1024, 1) }} KB
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.articles.files.destroy', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}"
+                                        data-confirm="Tem a certeza que pretende remover este ficheiro?"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
+                                    </form>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer bg-body-highlight border-top-0">
+        <div class="d-flex justify-content-between">
+            <button class="btn btn-phoenix-secondary" type="button" data-wizard-prev-btn="data-wizard-prev-btn">Anterior</button>
+            <button class="btn btn-phoenix-primary" type="button" data-wizard-next-btn="data-wizard-next-btn">Seguinte</button>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2 justify-content-end">
+    <a href="{{ route('admin.articles.index') }}" class="btn btn-phoenix-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary">
+        {{ $isEdit ? 'Guardar alteracoes' : 'Criar artigo' }}
+    </button>
+</div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const vatRate = document.getElementById('vat_rate_id');
+                const vatExemptionReason = document.getElementById('vat_exemption_reason_id');
+                const vatExemptionHelper = document.getElementById('vatExemptionHelper');
+                const movesStock = document.getElementById('moves_stock');
+                const stockAlertEnabled = document.getElementById('stock_alert_enabled');
+                const minimumStockWrapper = document.getElementById('minimum_stock_wrapper');
+                const minimumStock = document.getElementById('minimum_stock');
+
+                const syncVatReason = () => {
+                    if (!vatRate || !vatExemptionReason) {
+                        return;
+                    }
+
+                    const selectedOption = vatRate.options[vatRate.selectedIndex];
+                    const isExempt = selectedOption && selectedOption.dataset.isExempt === '1';
+
+                    vatExemptionReason.required = isExempt;
+
+                    if (!isExempt) {
+                        vatExemptionReason.value = '';
+                    }
+
+                    if (vatExemptionHelper) {
+                        vatExemptionHelper.textContent = isExempt
+                            ? 'Obrigatorio para taxas de IVA isentas.'
+                            : 'Opcional (nao aplicavel para taxa nao isenta).';
+                    }
+                };
+
+                const syncStock = () => {
+                    if (!movesStock || !stockAlertEnabled || !minimumStockWrapper || !minimumStock) {
+                        return;
+                    }
+
+                    if (!movesStock.checked) {
+                        stockAlertEnabled.checked = false;
+                        stockAlertEnabled.disabled = true;
+                    } else {
+                        stockAlertEnabled.disabled = false;
+                    }
+
+                    const showMinimumStock = movesStock.checked && stockAlertEnabled.checked;
+                    minimumStockWrapper.classList.toggle('d-none', !showMinimumStock);
+                    minimumStock.disabled = !showMinimumStock;
+
+                    if (!showMinimumStock) {
+                        minimumStock.value = '';
+                    }
+                };
+
+                if (vatRate) {
+                    vatRate.addEventListener('change', syncVatReason);
+                    syncVatReason();
+                }
+
+                if (movesStock && stockAlertEnabled) {
+                    movesStock.addEventListener('change', syncStock);
+                    stockAlertEnabled.addEventListener('change', syncStock);
+                    syncStock();
+                }
+            });
+        </script>
+    @endpush
+@endonce
