@@ -119,11 +119,13 @@ class CustomerController extends Controller
         $customerModel = $this->findCompanyCustomerOrFail($companyId, $customer);
         $this->authorize('update', $customerModel);
 
-        $data = $this->normalizePayload($request->validated());
+        $validated = $request->validated();
+        $removeLogo = (bool) ($validated['remove_logo'] ?? false);
+        $data = $this->normalizePayload($validated);
 
         $customerModel->forceFill($data)->save();
 
-        if (($data['remove_logo'] ?? false) && $customerModel->logo_path) {
+        if ($removeLogo && $customerModel->logo_path) {
             $this->deleteFromDisk($customerModel->logo_path);
             $customerModel->forceFill(['logo_path' => null])->save();
         }
