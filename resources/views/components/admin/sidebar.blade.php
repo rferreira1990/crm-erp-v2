@@ -67,6 +67,14 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.suppliers.*') ? 'active' : '' }}" href="{{ route('admin.suppliers.index') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-icon"><span data-feather="truck"></span></span>
+                                <span class="nav-link-text">Fornecedores</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}" href="{{ route('admin.articles.index') }}">
                             <div class="d-flex align-items-center">
                                 <span class="nav-link-icon"><span data-feather="package"></span></span>

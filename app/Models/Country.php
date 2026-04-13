@@ -40,6 +40,11 @@ class Country extends Model
         return $this->hasMany(Customer::class);
     }
 
+    public function suppliers(): HasMany
+    {
+        return $this->hasMany(Supplier::class);
+    }
+
     public function setNameAttribute(?string $value): void
     {
         $this->attributes['name'] = $value !== null

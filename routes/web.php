@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
 use App\Http\Controllers\Admin\ProductFamilyController;
+use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\SupplierContactController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
@@ -205,6 +207,43 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('customer')
             ->whereNumber('contact')
             ->name('customers.contacts.destroy');
+
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
+        Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{supplier}', [SupplierController::class, 'show'])
+            ->whereNumber('supplier')
+            ->name('suppliers.show');
+        Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])
+            ->whereNumber('supplier')
+            ->name('suppliers.edit');
+        Route::patch('/suppliers/{supplier}', [SupplierController::class, 'update'])
+            ->whereNumber('supplier')
+            ->name('suppliers.update');
+        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])
+            ->whereNumber('supplier')
+            ->name('suppliers.destroy');
+        Route::get('/suppliers/{supplier}/logo', [SupplierController::class, 'showLogo'])
+            ->whereNumber('supplier')
+            ->name('suppliers.logo.show');
+        Route::get('/suppliers/{supplier}/contacts/create', [SupplierContactController::class, 'create'])
+            ->whereNumber('supplier')
+            ->name('suppliers.contacts.create');
+        Route::post('/suppliers/{supplier}/contacts', [SupplierContactController::class, 'store'])
+            ->whereNumber('supplier')
+            ->name('suppliers.contacts.store');
+        Route::get('/suppliers/{supplier}/contacts/{contact}/edit', [SupplierContactController::class, 'edit'])
+            ->whereNumber('supplier')
+            ->whereNumber('contact')
+            ->name('suppliers.contacts.edit');
+        Route::patch('/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'update'])
+            ->whereNumber('supplier')
+            ->whereNumber('contact')
+            ->name('suppliers.contacts.update');
+        Route::delete('/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'destroy'])
+            ->whereNumber('supplier')
+            ->whereNumber('contact')
+            ->name('suppliers.contacts.destroy');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
