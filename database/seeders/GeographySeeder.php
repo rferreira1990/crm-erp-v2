@@ -7,6 +7,7 @@ use App\Models\District;
 use App\Models\Municipality;
 use App\Models\Parish;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class GeographySeeder extends Seeder
 {
@@ -15,11 +16,7 @@ class GeographySeeder extends Seeder
      */
     public function run(): void
     {
-        $countries = [
-            ['name' => 'Portugal', 'iso_code' => 'PT'],
-            ['name' => 'Espanha', 'iso_code' => 'ES'],
-            ['name' => 'Franca', 'iso_code' => 'FR'],
-        ];
+        $countries = $this->worldCountries();
 
         foreach ($countries as $countryData) {
             Country::query()->updateOrCreate(
@@ -129,5 +126,37 @@ class GeographySeeder extends Seeder
                 }
             }
         }
+    }
+
+    /**
+     * @return array<int, array{name:string,iso_code:string}>
+     */
+    private function worldCountries(): array
+    {
+        $datasetPath = database_path('seeders/data/world_countries.json');
+
+        if (! is_file($datasetPath)) {
+            throw new RuntimeException('World countries dataset not found: '.$datasetPath);
+        }
+
+        $contents = file_get_contents($datasetPath);
+        if ($contents === false) {
+            throw new RuntimeException('Unable to read world countries dataset.');
+        }
+
+        /** @var mixed $decoded */
+        $decoded = json_decode($contents, true);
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Invalid world countries dataset format.');
+        }
+
+        return array_values(array_filter($decoded, static function ($item): bool {
+            return is_array($item)
+                && isset($item['name'], $item['iso_code'])
+                && is_string($item['name'])
+                && is_string($item['iso_code'])
+                && trim($item['name']) !== ''
+                && preg_match('/^[A-Z]{2}$/', strtoupper(trim($item['iso_code']))) === 1;
+        }));
     }
 }
