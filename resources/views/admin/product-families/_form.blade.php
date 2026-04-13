@@ -18,28 +18,6 @@
         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <div class="col-12 col-md-4">
-        <label class="form-label">Codigo da familia (2 digitos)</label>
-        @if ($isEdit)
-            <input
-                type="text"
-                value="{{ $family->family_code ?? '-' }}"
-                class="form-control"
-                readonly
-            >
-            <small class="text-body-tertiary">Codigo gerado automaticamente na criacao.</small>
-        @else
-            <input
-                type="text"
-                value="Gerado automaticamente"
-                class="form-control"
-                readonly
-            >
-            <small class="text-body-tertiary">Sera atribuido automaticamente ao gravar.</small>
-        @endif
-        @error('family_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-    </div>
-
     <div class="col-12">
         <label for="parent_id" class="form-label">Familia pai</label>
         <select
