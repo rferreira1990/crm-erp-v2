@@ -267,6 +267,7 @@ class CustomerController extends Controller
         }
 
         unset($data['remove_logo']);
+        unset($data['logo']);
 
         return $data;
     }
@@ -301,4 +302,3 @@ class CustomerController extends Controller
         Storage::disk('local')->delete($path);
     }
 }
-
