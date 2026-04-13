@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Company;
+use App\Models\Article;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Invitation;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use App\Policies\CategoryPolicy;
+use App\Policies\ArticlePolicy;
 use App\Policies\BrandPolicy;
 use App\Policies\CompanyUserPolicy;
 use App\Policies\CompanyPolicy;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
 
         Gate::policy(Company::class, CompanyPolicy::class);
+        Gate::policy(Article::class, ArticlePolicy::class);
         Gate::policy(Brand::class, BrandPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Invitation::class, InvitationPolicy::class);
