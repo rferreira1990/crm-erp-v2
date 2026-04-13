@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyUserInvitationController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
+use App\Http\Controllers\Admin\ArticleMediaController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\ProductFamilyController;
@@ -152,10 +153,18 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('article')
             ->whereNumber('articleImage')
             ->name('articles.images.destroy');
+        Route::get('/articles/{article}/images/{articleImage}', [ArticleMediaController::class, 'showImage'])
+            ->whereNumber('article')
+            ->whereNumber('articleImage')
+            ->name('articles.images.show');
         Route::delete('/articles/{article}/files/{articleFile}', [ArticleController::class, 'destroyFile'])
             ->whereNumber('article')
             ->whereNumber('articleFile')
             ->name('articles.files.destroy');
+        Route::get('/articles/{article}/files/{articleFile}/download', [ArticleMediaController::class, 'showFile'])
+            ->whereNumber('article')
+            ->whereNumber('articleFile')
+            ->name('articles.files.download');
 
         Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
         Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');

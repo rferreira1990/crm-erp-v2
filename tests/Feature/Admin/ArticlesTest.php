@@ -206,7 +206,7 @@ class ArticlesTest extends TestCase
 
     public function test_company_admin_can_upload_and_remove_own_article_images_and_files_only(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $companyA = $this->createCompany('Empresa Artigos Upload A');
         $companyB = $this->createCompany('Empresa Artigos Upload B');
@@ -233,8 +233,8 @@ class ArticlesTest extends TestCase
         $imageA = ArticleImage::query()->where('article_id', $articleA->id)->firstOrFail();
         $fileA = ArticleFile::query()->where('article_id', $articleA->id)->firstOrFail();
 
-        Storage::disk('public')->assertExists($imageA->file_path);
-        Storage::disk('public')->assertExists($fileA->file_path);
+        Storage::disk('local')->assertExists($imageA->file_path);
+        Storage::disk('local')->assertExists($fileA->file_path);
 
         $articleB = $this->createArticle($companyB, $familyB, 'Artigo upload B');
         $imageB = ArticleImage::query()->create([
@@ -250,8 +250,8 @@ class ArticlesTest extends TestCase
             'original_name' => 'b.pdf',
             'file_path' => 'articles/'.$companyB->id.'/'.$articleB->id.'/files/b.pdf',
         ]);
-        Storage::disk('public')->put($imageB->file_path, 'b-image');
-        Storage::disk('public')->put($fileB->file_path, 'b-file');
+        Storage::disk('local')->put($imageB->file_path, 'b-image');
+        Storage::disk('local')->put($fileB->file_path, 'b-file');
 
         $this->actingAs($adminA)->delete(route('admin.articles.images.destroy', [
             'article' => $articleA->id,
@@ -265,8 +265,8 @@ class ArticlesTest extends TestCase
 
         $this->assertDatabaseMissing('article_images', ['id' => $imageA->id]);
         $this->assertDatabaseMissing('article_files', ['id' => $fileA->id]);
-        Storage::disk('public')->assertMissing($imageA->file_path);
-        Storage::disk('public')->assertMissing($fileA->file_path);
+        Storage::disk('local')->assertMissing($imageA->file_path);
+        Storage::disk('local')->assertMissing($fileA->file_path);
 
         $this->actingAs($adminA)->delete(route('admin.articles.images.destroy', [
             'article' => $articleB->id,
@@ -384,4 +384,3 @@ class ArticlesTest extends TestCase
         return $user;
     }
 }
-

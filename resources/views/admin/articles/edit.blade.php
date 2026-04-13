@@ -51,7 +51,7 @@
                         @forelse ($article->images as $articleImage)
                             <tr>
                                 <td class="ps-3">
-                                    <a href="{{ Storage::disk('public')->url($articleImage->file_path) }}" target="_blank" rel="noopener noreferrer">
+                                    <a href="{{ route('admin.articles.images.show', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}" target="_blank" rel="noopener noreferrer">
                                         {{ $articleImage->original_name }}
                                     </a>
                                 </td>
@@ -111,7 +111,7 @@
                         @forelse ($article->files as $articleFile)
                             <tr>
                                 <td class="ps-3">
-                                    <a href="{{ Storage::disk('public')->url($articleFile->file_path) }}" target="_blank" rel="noopener noreferrer">
+                                    <a href="{{ route('admin.articles.files.download', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}">
                                         {{ $articleFile->original_name }}
                                     </a>
                                 </td>
@@ -146,4 +146,3 @@
         </div>
     </div>
 @endsection
-

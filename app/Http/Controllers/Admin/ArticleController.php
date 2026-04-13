@@ -155,11 +155,11 @@ class ArticleController extends Controller
         $this->authorize('delete', $articleModel);
 
         foreach ($articleModel->images()->get(['file_path']) as $image) {
-            $this->deleteFromPublicDisk($image->file_path);
+            $this->deleteFromDisk($image->file_path);
         }
 
         foreach ($articleModel->files()->get(['file_path']) as $file) {
-            $this->deleteFromPublicDisk($file->file_path);
+            $this->deleteFromDisk($file->file_path);
         }
 
         $articleModel->delete();
@@ -190,7 +190,7 @@ class ArticleController extends Controller
             ->firstOrFail();
 
         $wasPrimary = (bool) $image->is_primary;
-        $this->deleteFromPublicDisk($image->file_path);
+        $this->deleteFromDisk($image->file_path);
         $image->delete();
 
         if ($wasPrimary) {
@@ -221,7 +221,7 @@ class ArticleController extends Controller
             ->whereKey($articleFile)
             ->firstOrFail();
 
-        $this->deleteFromPublicDisk($file->file_path);
+        $this->deleteFromDisk($file->file_path);
         $file->delete();
 
         return redirect()
@@ -460,7 +460,7 @@ class ArticleController extends Controller
             $storedPath = $image->storeAs(
                 $directory,
                 Str::uuid()->toString().'.'.$image->getClientOriginalExtension(),
-                'public'
+                'local'
             );
 
             $isPrimary = ! $hasPrimary;
@@ -507,7 +507,7 @@ class ArticleController extends Controller
             $storedPath = $file->storeAs(
                 $directory,
                 Str::uuid()->toString().'.'.$file->getClientOriginalExtension(),
-                'public'
+                'local'
             );
 
             ArticleFile::query()->create([
@@ -521,12 +521,12 @@ class ArticleController extends Controller
         }
     }
 
-    private function deleteFromPublicDisk(?string $path): void
+    private function deleteFromDisk(?string $path): void
     {
         if (! $path) {
             return;
         }
 
-        Storage::disk('public')->delete($path);
+        Storage::disk('local')->delete($path);
     }
 }
