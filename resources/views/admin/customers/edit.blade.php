@@ -13,6 +13,12 @@
 @endsection
 
 @section('content')
+    @if (session('status'))
+        <div class="alert alert-success" role="alert">
+            {{ session('status') }}
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">
             {{ $errors->first() }}
@@ -24,5 +30,6 @@
         @method('PATCH')
         @include('admin.customers._form', ['customer' => $customer])
     </form>
-@endsection
 
+    @include('admin.customers._contacts', ['customer' => $customer])
+@endsection
