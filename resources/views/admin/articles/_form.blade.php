@@ -4,56 +4,51 @@
     $selectedUnitId = old('unit_id', $article->unit_id ?? ($defaults['unit_id'] ?? ''));
 @endphp
 
-<div class="card theme-wizard mb-4" data-theme-wizard="data-theme-wizard">
+<div class="card theme-wizard mb-5" data-theme-wizard="data-theme-wizard" id="articleWizard">
     <div class="card-header bg-body-highlight pt-3 pb-2 border-bottom-0">
-        <ul class="nav justify-content-between nav-wizard nav-wizard-success">
-            <li class="nav-item">
-                <a class="nav-link active fw-semibold" href="#article-wizard-step-1" data-bs-toggle="tab" data-wizard-step="1">
-                    <span class="nav-item-circle-parent">
-                        <span class="nav-item-circle"><span class="fas fa-tag"></span></span>
-                    </span>
-                    <span class="d-none d-md-block mt-1 fs-9">Identificacao</span>
+        <ul class="nav justify-content-between nav-wizard nav-wizard-success" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active fw-semibold" href="#article-wizard-tab1" data-bs-toggle="tab" data-wizard-step="1" aria-selected="true" role="tab">
+                    <div class="text-center d-inline-block">
+                        <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-tag"></span></span></span>
+                        <span class="d-none d-md-block mt-1 fs-9">Identificacao</span>
+                    </div>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link fw-semibold" href="#article-wizard-step-2" data-bs-toggle="tab" data-wizard-step="2">
-                    <span class="nav-item-circle-parent">
-                        <span class="nav-item-circle"><span class="fas fa-sitemap"></span></span>
-                    </span>
-                    <span class="d-none d-md-block mt-1 fs-9">Classificacao & Fiscalidade</span>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link fw-semibold" href="#article-wizard-tab2" data-bs-toggle="tab" data-wizard-step="2" aria-selected="false" tabindex="-1" role="tab">
+                    <div class="text-center d-inline-block">
+                        <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-sitemap"></span></span></span>
+                        <span class="d-none d-md-block mt-1 fs-9">Classificacao</span>
+                    </div>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link fw-semibold" href="#article-wizard-step-3" data-bs-toggle="tab" data-wizard-step="3">
-                    <span class="nav-item-circle-parent">
-                        <span class="nav-item-circle"><span class="fas fa-euro-sign"></span></span>
-                    </span>
-                    <span class="d-none d-md-block mt-1 fs-9">Precos & Stock</span>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link fw-semibold" href="#article-wizard-tab3" data-bs-toggle="tab" data-wizard-step="3" aria-selected="false" tabindex="-1" role="tab">
+                    <div class="text-center d-inline-block">
+                        <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-euro-sign"></span></span></span>
+                        <span class="d-none d-md-block mt-1 fs-9">Precos e Stock</span>
+                    </div>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link fw-semibold" href="#article-wizard-step-4" data-bs-toggle="tab" data-wizard-step="4">
-                    <span class="nav-item-circle-parent">
-                        <span class="nav-item-circle"><span class="fas fa-file-alt"></span></span>
-                    </span>
-                    <span class="d-none d-md-block mt-1 fs-9">Notas & Ficheiros</span>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link fw-semibold" href="#article-wizard-tab4" data-bs-toggle="tab" data-wizard-step="4" aria-selected="false" tabindex="-1" role="tab">
+                    <div class="text-center d-inline-block">
+                        <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-file-alt"></span></span></span>
+                        <span class="d-none d-md-block mt-1 fs-9">Notas e Ficheiros</span>
+                    </div>
                 </a>
             </li>
         </ul>
     </div>
 
-    <div class="card-body py-4">
+    <div class="card-body pt-4 pb-0">
         <div class="tab-content">
-            <div class="tab-pane active" role="tabpanel" id="article-wizard-step-1">
+            <div class="tab-pane active" role="tabpanel" id="article-wizard-tab1" aria-labelledby="article-wizard-tab1">
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
                         <label class="form-label">Codigo</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            value="{{ $article->code ?? 'Gerado automaticamente no create' }}"
-                            readonly
-                        >
+                        <input type="text" class="form-control" value="{{ $article->code ?? 'Gerado automaticamente no create' }}" readonly>
                     </div>
 
                     <div class="col-12 col-md-6">
@@ -72,75 +67,38 @@
 
                     <div class="col-12 col-md-3">
                         <label for="abbreviation" class="form-label">Abreviatura</label>
-                        <input
-                            type="text"
-                            id="abbreviation"
-                            name="abbreviation"
-                            value="{{ old('abbreviation', $article->abbreviation ?? '') }}"
-                            class="form-control @error('abbreviation') is-invalid @enderror"
-                            maxlength="50"
-                        >
+                        <input type="text" id="abbreviation" name="abbreviation" value="{{ old('abbreviation', $article->abbreviation ?? '') }}" class="form-control @error('abbreviation') is-invalid @enderror" maxlength="50">
                         @error('abbreviation')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-12 col-md-3">
                         <label for="ean" class="form-label">EAN</label>
-                        <input
-                            type="text"
-                            id="ean"
-                            name="ean"
-                            value="{{ old('ean', $article->ean ?? '') }}"
-                            class="form-control @error('ean') is-invalid @enderror"
-                            maxlength="20"
-                            placeholder="8 a 14 digitos"
-                        >
+                        <input type="text" id="ean" name="ean" value="{{ old('ean', $article->ean ?? '') }}" class="form-control @error('ean') is-invalid @enderror" maxlength="20" placeholder="8 a 14 digitos">
                         @error('ean')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-12 col-md-3">
                         <label for="supplier_id" class="form-label">Fornecedor (ID)</label>
-                        <input
-                            type="number"
-                            id="supplier_id"
-                            name="supplier_id"
-                            value="{{ old('supplier_id', $article->supplier_id ?? '') }}"
-                            class="form-control @error('supplier_id') is-invalid @enderror"
-                            min="1"
-                        >
+                        <input type="number" id="supplier_id" name="supplier_id" value="{{ old('supplier_id', $article->supplier_id ?? '') }}" class="form-control @error('supplier_id') is-invalid @enderror" min="1">
                         @error('supplier_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-12 col-md-6">
                         <label for="supplier_reference" class="form-label">Referencia fornecedor</label>
-                        <input
-                            type="text"
-                            id="supplier_reference"
-                            name="supplier_reference"
-                            value="{{ old('supplier_reference', $article->supplier_reference ?? '') }}"
-                            class="form-control @error('supplier_reference') is-invalid @enderror"
-                            maxlength="120"
-                        >
+                        <input type="text" id="supplier_reference" name="supplier_reference" value="{{ old('supplier_reference', $article->supplier_reference ?? '') }}" class="form-control @error('supplier_reference') is-invalid @enderror" maxlength="120">
                         @error('supplier_reference')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
             </div>
 
-            <div class="tab-pane" role="tabpanel" id="article-wizard-step-2">
+            <div class="tab-pane" role="tabpanel" id="article-wizard-tab2" aria-labelledby="article-wizard-tab2">
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
                         <label for="product_family_id" class="form-label">Familia</label>
-                        <select
-                            id="product_family_id"
-                            name="product_family_id"
-                            class="form-select @error('product_family_id') is-invalid @enderror"
-                            required
-                        >
+                        <select id="product_family_id" name="product_family_id" class="form-select @error('product_family_id') is-invalid @enderror" required>
                             <option value="">Selecionar familia</option>
                             @foreach (($familyOptions ?? []) as $familyOption)
-                                <option
-                                    value="{{ $familyOption['id'] }}"
-                                    @selected((string) old('product_family_id', $article->product_family_id ?? '') === (string) $familyOption['id'])
-                                >
+                                <option value="{{ $familyOption['id'] }}" @selected((string) old('product_family_id', $article->product_family_id ?? '') === (string) $familyOption['id'])>
                                     {{ $familyOption['label'] }}
                                 </option>
                             @endforeach
@@ -150,17 +108,10 @@
 
                     <div class="col-12 col-md-4">
                         <label for="category_id" class="form-label">Categoria</label>
-                        <select
-                            id="category_id"
-                            name="category_id"
-                            class="form-select @error('category_id') is-invalid @enderror"
-                            required
-                        >
+                        <select id="category_id" name="category_id" class="form-select @error('category_id') is-invalid @enderror" required>
                             <option value="">Selecionar categoria</option>
                             @foreach (($categoryOptions ?? []) as $categoryOption)
-                                <option value="{{ $categoryOption->id }}" @selected((string) $selectedCategoryId === (string) $categoryOption->id)>
-                                    {{ $categoryOption->name }}
-                                </option>
+                                <option value="{{ $categoryOption->id }}" @selected((string) $selectedCategoryId === (string) $categoryOption->id)>{{ $categoryOption->name }}</option>
                             @endforeach
                         </select>
                         @error('category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -168,17 +119,10 @@
 
                     <div class="col-12 col-md-4">
                         <label for="unit_id" class="form-label">Unidade</label>
-                        <select
-                            id="unit_id"
-                            name="unit_id"
-                            class="form-select @error('unit_id') is-invalid @enderror"
-                            required
-                        >
+                        <select id="unit_id" name="unit_id" class="form-select @error('unit_id') is-invalid @enderror" required>
                             <option value="">Selecionar unidade</option>
                             @foreach (($unitOptions ?? []) as $unitOption)
-                                <option value="{{ $unitOption->id }}" @selected((string) $selectedUnitId === (string) $unitOption->id)>
-                                    {{ $unitOption->code }} - {{ $unitOption->name }}
-                                </option>
+                                <option value="{{ $unitOption->id }}" @selected((string) $selectedUnitId === (string) $unitOption->id)>{{ $unitOption->code }} - {{ $unitOption->name }}</option>
                             @endforeach
                         </select>
                         @error('unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -186,19 +130,10 @@
 
                     <div class="col-12 col-md-4">
                         <label for="brand_id" class="form-label">Marca</label>
-                        <select
-                            id="brand_id"
-                            name="brand_id"
-                            class="form-select @error('brand_id') is-invalid @enderror"
-                        >
+                        <select id="brand_id" name="brand_id" class="form-select @error('brand_id') is-invalid @enderror">
                             <option value="">Sem marca</option>
                             @foreach (($brandOptions ?? []) as $brandOption)
-                                <option
-                                    value="{{ $brandOption->id }}"
-                                    @selected((string) old('brand_id', $article->brand_id ?? '') === (string) $brandOption->id)
-                                >
-                                    {{ $brandOption->name }}
-                                </option>
+                                <option value="{{ $brandOption->id }}" @selected((string) old('brand_id', $article->brand_id ?? '') === (string) $brandOption->id)>{{ $brandOption->name }}</option>
                             @endforeach
                         </select>
                         @error('brand_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -206,19 +141,10 @@
 
                     <div class="col-12 col-md-4">
                         <label for="vat_rate_id" class="form-label">Taxa de IVA</label>
-                        <select
-                            id="vat_rate_id"
-                            name="vat_rate_id"
-                            class="form-select @error('vat_rate_id') is-invalid @enderror"
-                            required
-                        >
+                        <select id="vat_rate_id" name="vat_rate_id" class="form-select @error('vat_rate_id') is-invalid @enderror" required>
                             <option value="">Selecionar taxa</option>
                             @foreach (($vatRateOptions ?? []) as $vatRateOption)
-                                <option
-                                    value="{{ $vatRateOption->id }}"
-                                    data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}"
-                                    @selected((string) old('vat_rate_id', $article->vat_rate_id ?? '') === (string) $vatRateOption->id)
-                                >
+                                <option value="{{ $vatRateOption->id }}" data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}" @selected((string) old('vat_rate_id', $article->vat_rate_id ?? '') === (string) $vatRateOption->id)>
                                     {{ $vatRateOption->name }} ({{ number_format((float) $vatRateOption->rate, 2) }}%)
                                 </option>
                             @endforeach
@@ -228,19 +154,10 @@
 
                     <div class="col-12 col-md-4">
                         <label for="vat_exemption_reason_id" class="form-label">Motivo de isencao IVA</label>
-                        <select
-                            id="vat_exemption_reason_id"
-                            name="vat_exemption_reason_id"
-                            class="form-select @error('vat_exemption_reason_id') is-invalid @enderror"
-                        >
+                        <select id="vat_exemption_reason_id" name="vat_exemption_reason_id" class="form-select @error('vat_exemption_reason_id') is-invalid @enderror">
                             <option value="">Sem motivo</option>
                             @foreach (($vatExemptionReasonOptions ?? []) as $reasonOption)
-                                <option
-                                    value="{{ $reasonOption->id }}"
-                                    @selected((string) old('vat_exemption_reason_id', $article->vat_exemption_reason_id ?? '') === (string) $reasonOption->id)
-                                >
-                                    {{ $reasonOption->code }} - {{ $reasonOption->name }}
-                                </option>
+                                <option value="{{ $reasonOption->id }}" @selected((string) old('vat_exemption_reason_id', $article->vat_exemption_reason_id ?? '') === (string) $reasonOption->id)>{{ $reasonOption->code }} - {{ $reasonOption->name }}</option>
                             @endforeach
                         </select>
                         <small id="vatExemptionHelper" class="text-body-tertiary"></small>
@@ -249,192 +166,84 @@
                 </div>
             </div>
 
-            <div class="tab-pane" role="tabpanel" id="article-wizard-step-3">
+            <div class="tab-pane" role="tabpanel" id="article-wizard-tab3" aria-labelledby="article-wizard-tab3">
                 <div class="row g-3">
                     <div class="col-12 col-md-3">
                         <label for="cost_price" class="form-label">Preco de custo</label>
-                        <input
-                            type="number"
-                            id="cost_price"
-                            name="cost_price"
-                            value="{{ old('cost_price', $article->cost_price ?? '') }}"
-                            class="form-control @error('cost_price') is-invalid @enderror"
-                            min="0"
-                            step="0.0001"
-                        >
+                        <input type="number" id="cost_price" name="cost_price" value="{{ old('cost_price', $article->cost_price ?? '') }}" class="form-control @error('cost_price') is-invalid @enderror" min="0" step="0.0001">
                         @error('cost_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-3">
                         <label for="sale_price" class="form-label">Preco de venda</label>
-                        <input
-                            type="number"
-                            id="sale_price"
-                            name="sale_price"
-                            value="{{ old('sale_price', $article->sale_price ?? '') }}"
-                            class="form-control @error('sale_price') is-invalid @enderror"
-                            min="0"
-                            step="0.0001"
-                        >
+                        <input type="number" id="sale_price" name="sale_price" value="{{ old('sale_price', $article->sale_price ?? '') }}" class="form-control @error('sale_price') is-invalid @enderror" min="0" step="0.0001">
                         @error('sale_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-2">
                         <label for="default_margin" class="form-label">Margem %</label>
-                        <input
-                            type="number"
-                            id="default_margin"
-                            name="default_margin"
-                            value="{{ old('default_margin', $article->default_margin ?? '') }}"
-                            class="form-control @error('default_margin') is-invalid @enderror"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                        >
+                        <input type="number" id="default_margin" name="default_margin" value="{{ old('default_margin', $article->default_margin ?? '') }}" class="form-control @error('default_margin') is-invalid @enderror" min="0" max="100" step="0.01">
                         @error('default_margin')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-2">
                         <label for="direct_discount" class="form-label">Desconto direto %</label>
-                        <input
-                            type="number"
-                            id="direct_discount"
-                            name="direct_discount"
-                            value="{{ old('direct_discount', $article->direct_discount ?? '') }}"
-                            class="form-control @error('direct_discount') is-invalid @enderror"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                        >
+                        <input type="number" id="direct_discount" name="direct_discount" value="{{ old('direct_discount', $article->direct_discount ?? '') }}" class="form-control @error('direct_discount') is-invalid @enderror" min="0" max="100" step="0.01">
                         @error('direct_discount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-2">
                         <label for="max_discount" class="form-label">Desconto max %</label>
-                        <input
-                            type="number"
-                            id="max_discount"
-                            name="max_discount"
-                            value="{{ old('max_discount', $article->max_discount ?? '') }}"
-                            class="form-control @error('max_discount') is-invalid @enderror"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                        >
+                        <input type="number" id="max_discount" name="max_discount" value="{{ old('max_discount', $article->max_discount ?? '') }}" class="form-control @error('max_discount') is-invalid @enderror" min="0" max="100" step="0.01">
                         @error('max_discount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="col-12 col-md-4">
                         <div class="form-check mt-2">
                             <input type="hidden" name="moves_stock" value="0">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                id="moves_stock"
-                                name="moves_stock"
-                                value="1"
-                                @checked(old('moves_stock', $article->moves_stock ?? true))
-                            >
+                            <input class="form-check-input" type="checkbox" id="moves_stock" name="moves_stock" value="1" @checked(old('moves_stock', $article->moves_stock ?? true))>
                             <label class="form-check-label" for="moves_stock">Movimenta stock</label>
                         </div>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <div class="form-check mt-2">
                             <input type="hidden" name="stock_alert_enabled" value="0">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                id="stock_alert_enabled"
-                                name="stock_alert_enabled"
-                                value="1"
-                                @checked(old('stock_alert_enabled', $article->stock_alert_enabled ?? false))
-                            >
+                            <input class="form-check-input" type="checkbox" id="stock_alert_enabled" name="stock_alert_enabled" value="1" @checked(old('stock_alert_enabled', $article->stock_alert_enabled ?? false))>
                             <label class="form-check-label" for="stock_alert_enabled">Alerta de stock</label>
                         </div>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <div class="form-check mt-2">
                             <input type="hidden" name="is_active" value="0">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                id="is_active"
-                                name="is_active"
-                                value="1"
-                                @checked(old('is_active', $article->is_active ?? true))
-                            >
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" @checked(old('is_active', $article->is_active ?? true))>
                             <label class="form-check-label" for="is_active">Ativo</label>
                         </div>
                     </div>
-
                     <div class="col-12 col-md-4" id="minimum_stock_wrapper">
                         <label for="minimum_stock" class="form-label">Stock minimo</label>
-                        <input
-                            type="number"
-                            id="minimum_stock"
-                            name="minimum_stock"
-                            value="{{ old('minimum_stock', $article->minimum_stock ?? '') }}"
-                            class="form-control @error('minimum_stock') is-invalid @enderror"
-                            min="0"
-                            step="0.001"
-                        >
+                        <input type="number" id="minimum_stock" name="minimum_stock" value="{{ old('minimum_stock', $article->minimum_stock ?? '') }}" class="form-control @error('minimum_stock') is-invalid @enderror" min="0" step="0.001">
                         @error('minimum_stock')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
             </div>
 
-            <div class="tab-pane" role="tabpanel" id="article-wizard-step-4">
+            <div class="tab-pane" role="tabpanel" id="article-wizard-tab4" aria-labelledby="article-wizard-tab4">
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label for="internal_notes" class="form-label">Notas internas</label>
-                        <textarea
-                            id="internal_notes"
-                            name="internal_notes"
-                            rows="4"
-                            class="form-control @error('internal_notes') is-invalid @enderror"
-                            maxlength="5000"
-                        >{{ old('internal_notes', $article->internal_notes ?? '') }}</textarea>
+                        <textarea id="internal_notes" name="internal_notes" rows="4" class="form-control @error('internal_notes') is-invalid @enderror" maxlength="5000">{{ old('internal_notes', $article->internal_notes ?? '') }}</textarea>
                         @error('internal_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-6">
                         <label for="print_notes" class="form-label">Notas para impressao</label>
-                        <textarea
-                            id="print_notes"
-                            name="print_notes"
-                            rows="4"
-                            class="form-control @error('print_notes') is-invalid @enderror"
-                            maxlength="5000"
-                        >{{ old('print_notes', $article->print_notes ?? '') }}</textarea>
+                        <textarea id="print_notes" name="print_notes" rows="4" class="form-control @error('print_notes') is-invalid @enderror" maxlength="5000">{{ old('print_notes', $article->print_notes ?? '') }}</textarea>
                         @error('print_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-6">
                         <label for="images" class="form-label">Imagens</label>
-                        <input
-                            type="file"
-                            id="images"
-                            name="images[]"
-                            class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror"
-                            accept=".jpg,.jpeg,.png,.webp"
-                            multiple
-                        >
+                        <input type="file" id="images" name="images[]" class="form-control @error('images') is-invalid @enderror @error('images.*') is-invalid @enderror" accept=".jpg,.jpeg,.png,.webp" multiple>
                         @error('images')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @error('images.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-
                     <div class="col-12 col-md-6">
                         <label for="documents" class="form-label">Documentos</label>
-                        <input
-                            type="file"
-                            id="documents"
-                            name="documents[]"
-                            class="form-control @error('documents') is-invalid @enderror @error('documents.*') is-invalid @enderror"
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp"
-                            multiple
-                        >
+                        <input type="file" id="documents" name="documents[]" class="form-control @error('documents') is-invalid @enderror @error('documents.*') is-invalid @enderror" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp" multiple>
                         @error('documents')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @error('documents.*')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
@@ -442,7 +251,6 @@
 
                 @if ($isEdit)
                     <hr class="my-4">
-
                     <h6 class="mb-3">Imagens anexadas</h6>
                     @if ($article->images->isEmpty())
                         <p class="text-body-tertiary mb-4">Sem imagens anexadas.</p>
@@ -451,14 +259,7 @@
                             @foreach ($article->images as $articleImage)
                                 <div class="col-12 col-md-6 col-xl-4">
                                     <div class="border rounded p-3 h-100 d-flex flex-column gap-2">
-                                        <a
-                                            href="{{ route('admin.articles.images.show', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="fw-semibold text-break"
-                                        >
-                                            {{ $articleImage->original_name }}
-                                        </a>
+                                        <a href="{{ route('admin.articles.images.show', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}" target="_blank" rel="noopener noreferrer" class="fw-semibold text-break">{{ $articleImage->original_name }}</a>
                                         <div class="small text-body-tertiary">
                                             @if ($articleImage->is_primary)
                                                 <span class="badge badge-phoenix badge-phoenix-success">Primaria</span>
@@ -467,12 +268,7 @@
                                                 <span class="ms-1">{{ number_format($articleImage->file_size / 1024, 1) }} KB</span>
                                             @endif
                                         </div>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.articles.images.destroy', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}"
-                                            data-confirm="Tem a certeza que pretende remover esta imagem?"
-                                            class="mt-auto"
-                                        >
+                                        <form method="POST" action="{{ route('admin.articles.images.destroy', ['article' => $article->id, 'articleImage' => $articleImage->id]) }}" data-confirm="Tem a certeza que pretende remover esta imagem?" class="mt-auto">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
@@ -491,21 +287,15 @@
                             @foreach ($article->files as $articleFile)
                                 <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <div>
-                                        <a href="{{ route('admin.articles.files.download', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}" class="fw-semibold">
-                                            {{ $articleFile->original_name }}
-                                        </a>
+                                        <a href="{{ route('admin.articles.files.download', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}" class="fw-semibold">{{ $articleFile->original_name }}</a>
                                         <div class="small text-body-tertiary">
                                             {{ $articleFile->mime_type ?? '-' }}
                                             @if ($articleFile->file_size)
-                                                · {{ number_format($articleFile->file_size / 1024, 1) }} KB
+                                                &middot; {{ number_format($articleFile->file_size / 1024, 1) }} KB
                                             @endif
                                         </div>
                                     </div>
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.articles.files.destroy', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}"
-                                        data-confirm="Tem a certeza que pretende remover este ficheiro?"
-                                    >
+                                    <form method="POST" action="{{ route('admin.articles.files.destroy', ['article' => $article->id, 'articleFile' => $articleFile->id]) }}" data-confirm="Tem a certeza que pretende remover este ficheiro?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-phoenix-danger btn-sm">Remover</button>
@@ -519,25 +309,36 @@
         </div>
     </div>
 
-    <div class="card-footer bg-body-highlight border-top-0">
-        <div class="d-flex justify-content-between">
-            <button class="btn btn-phoenix-secondary" type="button" data-wizard-prev-btn="data-wizard-prev-btn">Anterior</button>
-            <button class="btn btn-phoenix-primary" type="button" data-wizard-next-btn="data-wizard-next-btn">Seguinte</button>
+    <div class="card-footer border-top-0" data-wizard-footer="data-wizard-footer">
+        <div class="d-flex pager wizard list-inline mb-0">
+            <button class="d-none btn btn-link ps-0" type="button" data-wizard-prev-btn="data-wizard-prev-btn"><span class="fas fa-chevron-left me-1"></span>Anterior</button>
+            <div class="flex-1 text-end">
+                <button class="btn btn-primary px-6 px-sm-6" type="button" data-wizard-next-btn="data-wizard-next-btn">Seguinte <span class="fas fa-chevron-right ms-1"></span></button>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="d-flex gap-2 justify-content-end">
     <a href="{{ route('admin.articles.index') }}" class="btn btn-phoenix-secondary">Cancelar</a>
-    <button type="submit" class="btn btn-primary">
-        {{ $isEdit ? 'Guardar alteracoes' : 'Criar artigo' }}
-    </button>
 </div>
 
 @once
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                const wizard = document.getElementById('articleWizard');
+                if (!wizard) {
+                    return;
+                }
+
+                const form = wizard.closest('form');
+                const navLinks = Array.from(wizard.querySelectorAll('[data-wizard-step]'));
+                const panes = Array.from(wizard.querySelectorAll('.tab-pane'));
+                const prevBtn = wizard.querySelector('[data-wizard-prev-btn]');
+                const nextBtn = wizard.querySelector('[data-wizard-next-btn]');
+                const finalLabel = @json($isEdit ? 'Gravar' : 'Criar artigo');
+
                 const vatRate = document.getElementById('vat_rate_id');
                 const vatExemptionReason = document.getElementById('vat_exemption_reason_id');
                 const vatExemptionHelper = document.getElementById('vatExemptionHelper');
@@ -546,6 +347,91 @@
                 const minimumStockWrapper = document.getElementById('minimum_stock_wrapper');
                 const minimumStock = document.getElementById('minimum_stock');
 
+                const currentStepIndex = () => {
+                    const index = navLinks.findIndex((link) => link.classList.contains('active'));
+                    return index >= 0 ? index : 0;
+                };
+
+                const setStep = (index) => {
+                    navLinks.forEach((link, i) => {
+                        const pane = panes[i];
+                        const isActive = i === index;
+                        link.classList.toggle('active', isActive);
+                        link.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        link.setAttribute('tabindex', isActive ? '0' : '-1');
+                        if (pane) {
+                            pane.classList.toggle('active', isActive);
+                            pane.classList.toggle('show', isActive);
+                        }
+                    });
+
+                    if (prevBtn) {
+                        prevBtn.classList.toggle('d-none', index === 0);
+                    }
+
+                    if (nextBtn) {
+                        const isLast = index === navLinks.length - 1;
+                        nextBtn.innerHTML = isLast
+                            ? finalLabel
+                            : 'Seguinte <span class="fas fa-chevron-right ms-1"></span>';
+                        nextBtn.classList.toggle('btn-success', isLast);
+                        nextBtn.classList.toggle('btn-primary', !isLast);
+                    }
+                };
+
+                const validateStep = () => {
+                    const pane = panes[currentStepIndex()];
+                    if (!pane) {
+                        return true;
+                    }
+
+                    const fields = Array.from(pane.querySelectorAll('input, select, textarea'))
+                        .filter((field) => !field.disabled)
+                        .filter((field) => field.type !== 'hidden');
+
+                    for (const field of fields) {
+                        if (!field.checkValidity()) {
+                            field.reportValidity();
+                            return false;
+                        }
+                    }
+
+                    return true;
+                };
+
+                navLinks.forEach((link, index) => {
+                    link.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        setStep(index);
+                    });
+                });
+
+                if (prevBtn) {
+                    prevBtn.addEventListener('click', () => {
+                        setStep(Math.max(0, currentStepIndex() - 1));
+                    });
+                }
+
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', () => {
+                        const index = currentStepIndex();
+                        const isLast = index === navLinks.length - 1;
+
+                        if (!isLast) {
+                            if (!validateStep()) {
+                                return;
+                            }
+
+                            setStep(index + 1);
+                            return;
+                        }
+
+                        if (form) {
+                            form.requestSubmit();
+                        }
+                    });
+                }
+
                 const syncVatReason = () => {
                     if (!vatRate || !vatExemptionReason) {
                         return;
@@ -553,7 +439,6 @@
 
                     const selectedOption = vatRate.options[vatRate.selectedIndex];
                     const isExempt = selectedOption && selectedOption.dataset.isExempt === '1';
-
                     vatExemptionReason.required = isExempt;
 
                     if (!isExempt) {
@@ -563,7 +448,7 @@
                     if (vatExemptionHelper) {
                         vatExemptionHelper.textContent = isExempt
                             ? 'Obrigatorio para taxas de IVA isentas.'
-                            : 'Opcional (nao aplicavel para taxa nao isenta).';
+                            : 'Opcional para taxas nao isentas.';
                     }
                 };
 
@@ -597,6 +482,40 @@
                     movesStock.addEventListener('change', syncStock);
                     stockAlertEnabled.addEventListener('change', syncStock);
                     syncStock();
+                }
+
+                if (form) {
+                    form.addEventListener('submit', (event) => {
+                        if (form.checkValidity()) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        const invalidField = form.querySelector(':invalid');
+
+                        if (!invalidField) {
+                            return;
+                        }
+
+                        const pane = invalidField.closest('.tab-pane');
+                        if (pane) {
+                            const paneIndex = panes.indexOf(pane);
+                            if (paneIndex >= 0) {
+                                setStep(paneIndex);
+                            }
+                        }
+
+                        invalidField.reportValidity();
+                    });
+                }
+
+                const firstInvalid = wizard.querySelector('.is-invalid');
+                if (firstInvalid) {
+                    const pane = firstInvalid.closest('.tab-pane');
+                    const paneIndex = pane ? panes.indexOf(pane) : 0;
+                    setStep(paneIndex >= 0 ? paneIndex : 0);
+                } else {
+                    setStep(0);
                 }
             });
         </script>
