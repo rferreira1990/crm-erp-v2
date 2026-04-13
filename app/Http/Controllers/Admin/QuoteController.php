@@ -625,11 +625,8 @@ class QuoteController extends Controller
     {
         return Unit::query()
             ->visibleToCompany($companyId)
-            ->where(function ($query) use ($includeUnitIds): void {
-                $query->where('is_active', true);
-                if ($includeUnitIds !== []) {
-                    $query->orWhereIn('id', $includeUnitIds);
-                }
+            ->when($includeUnitIds !== [], function ($query) use ($includeUnitIds): void {
+                $query->orWhereIn('id', $includeUnitIds);
             })
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->orderBy('name')
