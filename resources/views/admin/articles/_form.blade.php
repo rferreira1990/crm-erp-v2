@@ -16,40 +16,40 @@
     $selectedVatRateId = old('vat_rate_id', $article->vat_rate_id ?? $defaultVatRateId ?? '');
 @endphp
 
-<div class="card theme-wizard mb-5" data-theme-wizard="data-theme-wizard" id="articleWizard">
+<div class="card theme-wizard mb-5" id="articleWizard">
     <div class="card-header bg-body-highlight pt-3 pb-2 border-bottom-0">
         <ul class="nav justify-content-between nav-wizard nav-wizard-success" role="tablist">
             <li class="nav-item" role="presentation">
-                <a class="nav-link active fw-semibold" href="#article-wizard-tab1" data-bs-toggle="tab" data-wizard-step="1" aria-selected="true" role="tab">
+                <button class="nav-link active fw-semibold" type="button" data-step-index="0" aria-selected="true" aria-controls="article-wizard-tab1" role="tab">
                     <div class="text-center d-inline-block">
                         <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-tag"></span></span></span>
                         <span class="d-none d-md-block mt-1 fs-9">Identificacao</span>
                     </div>
-                </a>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link fw-semibold" href="#article-wizard-tab2" data-bs-toggle="tab" data-wizard-step="2" aria-selected="false" tabindex="-1" role="tab">
+                <button class="nav-link fw-semibold" type="button" data-step-index="1" aria-selected="false" tabindex="-1" aria-controls="article-wizard-tab2" role="tab">
                     <div class="text-center d-inline-block">
                         <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-sitemap"></span></span></span>
                         <span class="d-none d-md-block mt-1 fs-9">Classificacao</span>
                     </div>
-                </a>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link fw-semibold" href="#article-wizard-tab3" data-bs-toggle="tab" data-wizard-step="3" aria-selected="false" tabindex="-1" role="tab">
+                <button class="nav-link fw-semibold" type="button" data-step-index="2" aria-selected="false" tabindex="-1" aria-controls="article-wizard-tab3" role="tab">
                     <div class="text-center d-inline-block">
                         <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-euro-sign"></span></span></span>
                         <span class="d-none d-md-block mt-1 fs-9">Precos e Stock</span>
                     </div>
-                </a>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link fw-semibold" href="#article-wizard-tab4" data-bs-toggle="tab" data-wizard-step="4" aria-selected="false" tabindex="-1" role="tab">
+                <button class="nav-link fw-semibold" type="button" data-step-index="3" aria-selected="false" tabindex="-1" aria-controls="article-wizard-tab4" role="tab">
                     <div class="text-center d-inline-block">
                         <span class="nav-item-circle-parent"><span class="nav-item-circle"><span class="fas fa-file-alt"></span></span></span>
                         <span class="d-none d-md-block mt-1 fs-9">Notas e Ficheiros</span>
                     </div>
-                </a>
+                </button>
             </li>
         </ul>
     </div>
@@ -318,9 +318,10 @@
 
     <div class="card-footer border-top-0" data-wizard-footer="data-wizard-footer">
         <div class="d-flex pager wizard list-inline mb-0">
-            <button class="d-none btn btn-link ps-0" type="button" data-wizard-prev-btn="data-wizard-prev-btn"><span class="fas fa-chevron-left me-1"></span>Anterior</button>
+            <button class="d-none btn btn-link ps-0" type="button" id="articleWizardPrevBtn"><span class="fas fa-chevron-left me-1"></span>Anterior</button>
             <div class="flex-1 text-end">
-                <button class="btn btn-primary px-6 px-sm-6" type="button" data-wizard-next-btn="data-wizard-next-btn">Seguinte <span class="fas fa-chevron-right ms-1"></span></button>
+                <button class="btn btn-primary px-6 px-sm-6" type="button" id="articleWizardNextBtn">Seguinte <span class="fas fa-chevron-right ms-1"></span></button>
+                <button class="btn btn-success px-6 px-sm-6 d-none" type="submit" id="articleWizardSubmitBtn">{{ $isEdit ? 'Gravar' : 'Criar artigo' }}</button>
             </div>
         </div>
     </div>
@@ -340,11 +341,11 @@
                 }
 
                 const form = wizard.closest('form');
-                const navLinks = Array.from(wizard.querySelectorAll('[data-wizard-step]'));
+                const navLinks = Array.from(wizard.querySelectorAll('[data-step-index]'));
                 const panes = Array.from(wizard.querySelectorAll('.tab-pane'));
-                const prevBtn = wizard.querySelector('[data-wizard-prev-btn]');
-                const nextBtn = wizard.querySelector('[data-wizard-next-btn]');
-                const finalLabel = @json($isEdit ? 'Gravar' : 'Criar artigo');
+                const prevBtn = document.getElementById('articleWizardPrevBtn');
+                const nextBtn = document.getElementById('articleWizardNextBtn');
+                const submitBtn = document.getElementById('articleWizardSubmitBtn');
 
                 const vatRate = document.getElementById('vat_rate_id');
                 const vatExemptionReason = document.getElementById('vat_exemption_reason_id');
@@ -378,12 +379,11 @@
 
                     if (nextBtn) {
                         const isLast = index === navLinks.length - 1;
-                        nextBtn.type = isLast ? 'submit' : 'button';
-                        nextBtn.innerHTML = isLast
-                            ? finalLabel
-                            : 'Seguinte <span class="fas fa-chevron-right ms-1"></span>';
-                        nextBtn.classList.toggle('btn-success', isLast);
-                        nextBtn.classList.toggle('btn-primary', !isLast);
+                        nextBtn.classList.toggle('d-none', isLast);
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.classList.toggle('d-none', index !== navLinks.length - 1);
                     }
                 };
 
@@ -440,9 +440,10 @@
                     return false;
                 };
 
-                navLinks.forEach((link, index) => {
+                navLinks.forEach((link) => {
                     link.addEventListener('click', (event) => {
                         event.preventDefault();
+                        const index = Number(link.dataset.stepIndex ?? 0);
 
                         const current = currentStepIndex();
                         if (index > current) {
@@ -464,22 +465,23 @@
                 }
 
                 if (nextBtn) {
-                    nextBtn.addEventListener('click', (event) => {
+                    nextBtn.addEventListener('click', () => {
                         const index = currentStepIndex();
-                        const isLast = index === navLinks.length - 1;
-
-                        if (!isLast) {
-                            if (!validatePane(index)) {
-                                return;
-                            }
-
-                            setStep(index + 1);
+                        if (!validatePane(index)) {
                             return;
                         }
 
-                        if (!validateForm()) {
-                            event.preventDefault();
+                        setStep(Math.min(navLinks.length - 1, index + 1));
+                    });
+                }
+
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', (event) => {
+                        if (validateForm()) {
+                            return;
                         }
+
+                        event.preventDefault();
                     });
                 }
 
