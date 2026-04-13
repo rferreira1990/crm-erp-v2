@@ -122,6 +122,38 @@ class CustomerContactsTest extends TestCase
         ]);
     }
 
+    public function test_store_without_is_primary_field_is_valid_and_keeps_single_primary(): void
+    {
+        $company = $this->createCompany('Empresa Contactos Checkbox');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $customer = Customer::query()->create([
+            'company_id' => $company->id,
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Empresa',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.customers.contacts.store', $customer->id), [
+                'name' => 'Contacto 1',
+            ])
+            ->assertRedirect(route('admin.customers.edit', $customer->id));
+
+        $this->actingAs($admin)
+            ->post(route('admin.customers.contacts.store', $customer->id), [
+                'name' => 'Contacto 2',
+            ])
+            ->assertRedirect(route('admin.customers.edit', $customer->id));
+
+        $primaryCount = CustomerContact::query()
+            ->where('company_id', $company->id)
+            ->where('customer_id', $customer->id)
+            ->where('is_primary', true)
+            ->count();
+
+        $this->assertSame(1, $primaryCount);
+    }
+
     public function test_only_one_primary_contact_is_kept_per_customer(): void
     {
         $company = $this->createCompany('Empresa Contactos Primario Unico');
