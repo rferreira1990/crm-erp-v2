@@ -46,8 +46,8 @@ class QuotesTest extends TestCase
 
         $response = $this->actingAs($adminA)->get(route('admin.quotes.index'));
         $response->assertOk();
-        $response->assertSee($quoteA->number);
-        $response->assertDontSee($quoteB->number);
+        $response->assertSee('Cliente A');
+        $response->assertDontSee('Cliente B');
 
         $this->actingAs($adminA)->get(route('admin.quotes.show', $quoteB->id))->assertNotFound();
         $this->actingAs($adminA)->get(route('admin.quotes.edit', $quoteB->id))->assertNotFound();
@@ -487,4 +487,3 @@ class QuotesTest extends TestCase
         return $user;
     }
 }
-
