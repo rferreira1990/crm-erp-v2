@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\PaymentTerm;
+use App\Models\PriceTier;
 use App\Models\User;
 use App\Models\VatRate;
 use Database\Seeders\InitialSaasSeeder;
@@ -116,11 +117,18 @@ class CustomersTest extends TestCase
         $response->assertRedirect(route('admin.customers.index'));
         $response->assertSessionHas('status');
 
+        $normalTierId = (int) PriceTier::query()
+            ->where('is_system', true)
+            ->where('is_default', true)
+            ->where('name', PriceTier::SYSTEM_DEFAULT_NAME)
+            ->value('id');
+
         $this->assertDatabaseHas('customers', [
             'company_id' => $company->id,
             'customer_type' => Customer::TYPE_COMPANY,
             'name' => 'Cliente Novo',
             'country_id' => $countryPortugalId,
+            'price_tier_id' => $normalTierId,
             'payment_term_id' => $paymentTerm->id,
             'is_active' => true,
         ]);
@@ -166,6 +174,14 @@ class CustomersTest extends TestCase
             'days' => 30,
             'is_system' => false,
         ]);
+        $tierOtherCompany = PriceTier::query()->create([
+            'company_id' => $companyB->id,
+            'name' => 'Tier B',
+            'percentage_adjustment' => 5,
+            'is_system' => false,
+            'is_default' => false,
+            'is_active' => true,
+        ]);
 
         $inactiveVatRate = VatRate::query()
             ->where('region', VatRate::REGION_AZORES)
@@ -177,6 +193,7 @@ class CustomersTest extends TestCase
             ->post(route('admin.customers.store'), [
                 'customer_type' => Customer::TYPE_COMPANY,
                 'name' => 'Cliente Financeiro',
+                'price_tier_id' => $tierOtherCompany->id,
                 'payment_term_id' => $termOtherCompany->id,
                 'default_vat_rate_id' => $inactiveVatRate->id,
                 'has_credit_limit' => 0,
@@ -185,7 +202,7 @@ class CustomersTest extends TestCase
             ]);
 
         $invalidResponse->assertRedirect(route('admin.customers.create'));
-        $invalidResponse->assertSessionHasErrors(['payment_term_id', 'default_vat_rate_id']);
+        $invalidResponse->assertSessionHasErrors(['price_tier_id', 'payment_term_id', 'default_vat_rate_id']);
 
         $activeVatRate = VatRate::query()
             ->where('region', VatRate::REGION_MAINLAND)
