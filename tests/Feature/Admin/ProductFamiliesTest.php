@@ -85,6 +85,32 @@ class ProductFamiliesTest extends TestCase
         ]);
     }
 
+    public function test_company_admin_create_generates_incremental_family_code(): void
+    {
+        $company = $this->createCompany('Empresa Family Code');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $this->actingAs($admin)->post(route('admin.product-families.store'), [
+            'name' => 'Familia A',
+            'parent_id' => null,
+        ])->assertRedirect(route('admin.product-families.index'));
+
+        $this->actingAs($admin)->post(route('admin.product-families.store'), [
+            'name' => 'Familia B',
+            'parent_id' => null,
+        ])->assertRedirect(route('admin.product-families.index'));
+
+        $createdFamilies = ProductFamily::query()
+            ->where('company_id', $company->id)
+            ->where('is_system', false)
+            ->orderBy('id')
+            ->get(['name', 'family_code']);
+
+        $this->assertCount(2, $createdFamilies);
+        $this->assertSame('01', $createdFamilies[0]->family_code);
+        $this->assertSame('02', $createdFamilies[1]->family_code);
+    }
+
     public function test_company_admin_can_create_subfamily_with_visible_parent(): void
     {
         $company = $this->createCompany('Empresa Parent Family');
@@ -335,4 +361,3 @@ class ProductFamiliesTest extends TestCase
         return $user;
     }
 }
-

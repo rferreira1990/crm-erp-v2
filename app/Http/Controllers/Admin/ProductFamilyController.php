@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use DomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductFamilyRequest;
 use App\Http\Requests\Admin\UpdateProductFamilyRequest;
@@ -57,14 +58,20 @@ class ProductFamilyController extends Controller
     public function store(StoreProductFamilyRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $companyId = (int) $request->user()->company_id;
 
-        $family = ProductFamily::query()->create([
-            'company_id' => $request->user()->company_id,
-            'is_system' => false,
-            'name' => $data['name'],
-            'parent_id' => $data['parent_id'] ?? null,
-            'family_code' => $data['family_code'] ?? null,
-        ]);
+        try {
+            $family = ProductFamily::createCompanyFamilyWithGeneratedCode($companyId, [
+                'name' => $data['name'],
+                'parent_id' => $data['parent_id'] ?? null,
+            ]);
+        } catch (DomainException $exception) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'family_code' => $exception->getMessage(),
+                ]);
+        }
 
         Log::info('Company product family created', [
             'context' => 'company_product_families',
@@ -104,7 +111,6 @@ class ProductFamilyController extends Controller
         $family->forceFill([
             'name' => $data['name'],
             'parent_id' => $data['parent_id'] ?? null,
-            'family_code' => $data['family_code'] ?? null,
         ])->save();
 
         Log::info('Company product family updated', [

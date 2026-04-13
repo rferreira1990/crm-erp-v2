@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ProductFamily extends Model
@@ -79,6 +80,52 @@ class ProductFamily extends Model
     public static function normalizeNameKey(string $name): string
     {
         return Str::lower(self::normalizeName($name));
+    }
+
+    public static function generateNextFamilyCodeForCompany(int $companyId): string
+    {
+        $codes = self::query()
+            ->where('company_id', $companyId)
+            ->where('is_system', false)
+            ->whereNotNull('family_code')
+            ->lockForUpdate()
+            ->pluck('family_code');
+
+        $maxCode = $codes
+            ->filter(fn ($code): bool => is_string($code) && preg_match('/^\d{2}$/', $code) === 1)
+            ->map(fn ($code): int => (int) $code)
+            ->max();
+
+        $nextCode = (int) ($maxCode ?? 0) + 1;
+
+        if ($nextCode > 99) {
+            throw new DomainException('Limite de codigos de familia atingido para esta empresa.');
+        }
+
+        return sprintf('%02d', $nextCode);
+    }
+
+    public static function createCompanyFamilyWithGeneratedCode(int $companyId, array $attributes): self
+    {
+        return DB::transaction(function () use ($companyId, $attributes): self {
+            $companyExists = DB::table('companies')
+                ->where('id', $companyId)
+                ->lockForUpdate()
+                ->exists();
+
+            if (! $companyExists) {
+                throw new DomainException('Empresa nao encontrada para gerar codigo de familia.');
+            }
+
+            $attributes['company_id'] = $companyId;
+            $attributes['is_system'] = false;
+            $attributes['family_code'] = self::generateNextFamilyCodeForCompany($companyId);
+
+            /** @var self $family */
+            $family = self::query()->create($attributes);
+
+            return $family;
+        });
     }
 
     public function isSystem(): bool

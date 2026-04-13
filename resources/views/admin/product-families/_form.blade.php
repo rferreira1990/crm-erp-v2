@@ -19,18 +19,25 @@
     </div>
 
     <div class="col-12 col-md-4">
-        <label for="family_code" class="form-label">Codigo da familia (2 digitos)</label>
-        <input
-            type="text"
-            id="family_code"
-            name="family_code"
-            value="{{ old('family_code', $family->family_code ?? '') }}"
-            class="form-control @error('family_code') is-invalid @enderror"
-            maxlength="2"
-            pattern="\d{2}"
-            placeholder="Ex: 01"
-        >
-        @error('family_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <label class="form-label">Codigo da familia (2 digitos)</label>
+        @if ($isEdit)
+            <input
+                type="text"
+                value="{{ $family->family_code ?? '-' }}"
+                class="form-control"
+                readonly
+            >
+            <small class="text-body-tertiary">Codigo gerado automaticamente na criacao.</small>
+        @else
+            <input
+                type="text"
+                value="Gerado automaticamente"
+                class="form-control"
+                readonly
+            >
+            <small class="text-body-tertiary">Sera atribuido automaticamente ao gravar.</small>
+        @endif
+        @error('family_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <div class="col-12">
