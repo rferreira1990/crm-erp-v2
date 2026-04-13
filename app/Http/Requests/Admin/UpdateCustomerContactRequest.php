@@ -8,14 +8,19 @@ class UpdateCustomerContactRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $payload = [
             'name' => trim((string) $this->input('name')),
             'email' => $this->normalizeNullableString($this->input('email')),
             'phone' => $this->normalizeNullableString($this->input('phone')),
             'job_title' => $this->normalizeNullableString($this->input('job_title')),
             'notes' => $this->normalizeNullableString($this->input('notes')),
-            'is_primary' => $this->boolean('is_primary'),
-        ]);
+        ];
+
+        if ($this->has('is_primary')) {
+            $payload['is_primary'] = $this->boolean('is_primary');
+        }
+
+        $this->merge($payload);
     }
 
     public function authorize(): bool
@@ -38,7 +43,7 @@ class UpdateCustomerContactRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'job_title' => ['nullable', 'string', 'max:190'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'is_primary' => ['required', 'boolean'],
+            'is_primary' => ['sometimes', 'boolean'],
         ];
     }
 
