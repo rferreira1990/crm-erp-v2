@@ -307,7 +307,7 @@ class ArticleController extends Controller
                 $query->whereNotNull('family_code');
 
                 if ($includeFamilyId !== null) {
-                    $query->orWhereKey($includeFamilyId);
+                    $query->orWhere('id', $includeFamilyId);
                 }
             })
             ->get(['id', 'parent_id', 'name', 'family_code']);
