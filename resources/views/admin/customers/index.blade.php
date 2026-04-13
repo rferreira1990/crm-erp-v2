@@ -90,6 +90,9 @@
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="d-inline-flex gap-2">
+                                        <a href="{{ route('admin.customers.show', $customer->id) }}" class="btn btn-phoenix-secondary btn-sm">
+                                            Ficha
+                                        </a>
                                         <a href="{{ route('admin.customers.edit', $customer->id) }}" class="btn btn-phoenix-secondary btn-sm">
                                             Editar
                                         </a>
@@ -122,4 +125,3 @@
         @endif
     </div>
 @endsection
-
