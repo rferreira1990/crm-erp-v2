@@ -156,7 +156,7 @@ class Article extends Model
     {
         return Category::query()
             ->visibleToCompany($companyId)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower(self::DEFAULT_CATEGORY_NAME)])
+            ->whereRaw('LOWER(name) = ?', [Category::normalizeNameKey(self::DEFAULT_CATEGORY_NAME)])
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->value('id');
     }
@@ -234,4 +234,3 @@ class Article extends Model
         return round((($sale - $cost) / $cost) * 100, 2);
     }
 }
-
