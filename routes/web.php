@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ArticleMediaController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
+use App\Http\Controllers\Admin\PriceTierController;
 use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
@@ -182,6 +183,19 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/customers/{customer}/logo', [CustomerController::class, 'showLogo'])
             ->whereNumber('customer')
             ->name('customers.logo.show');
+
+        Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
+        Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
+        Route::post('/price-tiers', [PriceTierController::class, 'store'])->name('price-tiers.store');
+        Route::get('/price-tiers/{priceTier}/edit', [PriceTierController::class, 'edit'])
+            ->whereNumber('priceTier')
+            ->name('price-tiers.edit');
+        Route::patch('/price-tiers/{priceTier}', [PriceTierController::class, 'update'])
+            ->whereNumber('priceTier')
+            ->name('price-tiers.update');
+        Route::delete('/price-tiers/{priceTier}', [PriceTierController::class, 'destroy'])
+            ->whereNumber('priceTier')
+            ->name('price-tiers.destroy');
 
         Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
         Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');
