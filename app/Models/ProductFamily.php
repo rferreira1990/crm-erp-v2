@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use DomainException;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ class ProductFamily extends Model
         'parent_id',
         'is_system',
         'name',
+        'family_code',
     ];
 
     /**
@@ -56,6 +58,11 @@ class ProductFamily extends Model
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
+    }
+
+    public function articles(): HasMany
+    {
+        return $this->hasMany(Article::class);
     }
 
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
@@ -105,5 +112,20 @@ class ProductFamily extends Model
         $this->attributes['name'] = $value !== null
             ? self::normalizeName($value)
             : null;
+    }
+
+    protected function familyCode(): Attribute
+    {
+        return Attribute::make(
+            set: function (?string $value): ?string {
+                if ($value === null) {
+                    return null;
+                }
+
+                $normalized = trim($value);
+
+                return $normalized !== '' ? $normalized : null;
+            }
+        );
     }
 }
