@@ -13,7 +13,7 @@ class QuotePdfService
     public function generateAndStore(Quote $quote): string
     {
         $quote->loadMissing([
-            'company:id,name,nif,email,phone,address,postal_code,city,country_id',
+            'company:id,name,nif,email,phone',
             'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
             'customerContact:id,customer_id,name,email,phone,job_title',
             'paymentTerm:id,name',
@@ -62,4 +62,3 @@ class QuotePdfService
         Storage::disk('local')->delete($path);
     }
 }
-
