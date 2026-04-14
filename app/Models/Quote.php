@@ -265,6 +265,7 @@ class Quote extends Model
     public function recalculateTotals(): void
     {
         $totals = $this->items()
+            ->reorder()
             ->selectRaw('COALESCE(SUM(subtotal), 0) as subtotal_sum')
             ->selectRaw('COALESCE(SUM(discount_amount), 0) as discount_sum')
             ->selectRaw('COALESCE(SUM(tax_amount), 0) as tax_sum')
@@ -414,4 +415,3 @@ class Quote extends Model
         return $normalized !== '' ? $normalized : null;
     }
 }
-
