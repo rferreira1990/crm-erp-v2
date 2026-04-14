@@ -442,6 +442,28 @@ class QuotesTest extends TestCase
         $updateResponse->assertSessionHasNoErrors();
     }
 
+    public function test_delete_is_allowed_for_draft_and_blocked_for_non_draft(): void
+    {
+        $company = $this->createCompany('Empresa Orcamentos Delete');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $draftQuote = $this->createQuoteForCompany($company, 'Cliente Delete Draft');
+        $sentQuote = $this->createQuoteForCompany($company, 'Cliente Delete Sent');
+        $sentQuote->forceFill(['status' => Quote::STATUS_SENT])->save();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.quotes.destroy', $draftQuote->id))
+            ->assertRedirect(route('admin.quotes.index'));
+        $this->assertDatabaseMissing('quotes', ['id' => $draftQuote->id]);
+
+        $blockedDelete = $this->actingAs($admin)
+            ->from(route('admin.quotes.show', $sentQuote->id))
+            ->delete(route('admin.quotes.destroy', $sentQuote->id));
+        $blockedDelete->assertRedirect(route('admin.quotes.show', $sentQuote->id));
+        $blockedDelete->assertSessionHasErrors('quote');
+        $this->assertDatabaseHas('quotes', ['id' => $sentQuote->id]);
+    }
+
     private function createQuoteForCompany(Company $company, string $customerName): Quote
     {
         $customer = $this->createCustomer($company, $customerName);

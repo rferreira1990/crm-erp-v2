@@ -82,7 +82,7 @@
                                 <td>{{ optional($quote->issue_date)->format('Y-m-d') }}</td>
                                 <td>{{ optional($quote->valid_until)->format('Y-m-d') ?? '-' }}</td>
                                 <td>
-                                    <span class="badge badge-phoenix {{ in_array($quote->status, ['approved'], true) ? 'badge-phoenix-success' : (in_array($quote->status, ['rejected', 'cancelled', 'expired'], true) ? 'badge-phoenix-danger' : 'badge-phoenix-secondary') }}">
+                                    <span class="badge badge-phoenix {{ $quote->statusBadgeClass() }}">
                                         {{ $statusLabels[$quote->status] ?? $quote->status }}
                                     </span>
                                 </td>
@@ -94,6 +94,13 @@
                                         <a href="{{ route('admin.quotes.show', $quote->id) }}" class="btn btn-phoenix-secondary btn-sm">Ficha</a>
                                         @if ($quote->isEditable() && auth()->user()->can('company.quotes.update'))
                                             <a href="{{ route('admin.quotes.edit', $quote->id) }}" class="btn btn-phoenix-secondary btn-sm">Editar</a>
+                                        @endif
+                                        @if ($quote->status === \App\Models\Quote::STATUS_DRAFT && auth()->user()->can('company.quotes.delete'))
+                                            <form method="POST" action="{{ route('admin.quotes.destroy', $quote->id) }}" onsubmit="return confirm('Eliminar este orcamento em rascunho?');" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-phoenix-danger btn-sm">Apagar</button>
+                                            </form>
                                         @endif
                                     </div>
                                 </td>
