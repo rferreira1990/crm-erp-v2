@@ -181,6 +181,17 @@ class Quote extends Model
         return self::statusLabels()[$this->status] ?? $this->status;
     }
 
+    public function statusBadgeClass(): string
+    {
+        return match ($this->status) {
+            self::STATUS_DRAFT => 'badge-phoenix-warning',
+            self::STATUS_SENT, self::STATUS_APPROVED => 'badge-phoenix-success',
+            self::STATUS_VIEWED => 'badge-phoenix-info',
+            self::STATUS_REJECTED, self::STATUS_EXPIRED, self::STATUS_CANCELLED => 'badge-phoenix-danger',
+            default => 'badge-phoenix-secondary',
+        };
+    }
+
     public function isEditable(): bool
     {
         return ! $this->is_locked && $this->status === self::STATUS_DRAFT;

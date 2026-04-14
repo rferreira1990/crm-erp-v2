@@ -255,6 +255,12 @@ class QuoteController extends Controller
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('delete', $quoteModel);
 
+        if ($quoteModel->status !== Quote::STATUS_DRAFT) {
+            return redirect()
+                ->route('admin.quotes.show', $quoteModel->id)
+                ->withErrors(['quote' => 'Apenas orcamentos em rascunho podem ser eliminados.']);
+        }
+
         $this->quotePdfService->delete($quoteModel->pdf_path);
 
         $quoteModel->delete();
