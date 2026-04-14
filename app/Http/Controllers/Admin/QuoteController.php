@@ -95,7 +95,9 @@ class QuoteController extends Controller
                 'currency' => 'EUR',
                 'is_active' => true,
             ],
-            ...$this->buildFormOptions($companyId),
+            ...$this->buildFormOptions(
+                companyId: $companyId
+            ),
         ]);
     }
 
@@ -117,7 +119,7 @@ class QuoteController extends Controller
                 'grand_total' => 0,
             ]);
 
-            $this->syncQuoteItems($quote, $validated['items'] ?? [], $companyId);
+            $this->quoteItemsSyncService->sync($quote, $validated['items'] ?? [], $companyId);
             $quote->recalculateTotals();
             $quote->addStatusLog(Quote::STATUS_DRAFT, null, 'Orcamento criado.', (int) $request->user()->id);
 
@@ -197,17 +199,19 @@ class QuoteController extends Controller
         return view('admin.quotes.edit', [
             'quote' => $quoteModel,
             ...$this->buildFormOptions(
-                $companyId,
-                (int) $quoteModel->customer_id,
-                $quoteModel->price_tier_id,
-                $quoteModel->payment_term_id,
-                $quoteModel->payment_method_id,
-                $quoteModel->default_vat_rate_id,
-                $quoteModel->assigned_user_id,
-                $includeArticleIds,
-                $includeUnitIds,
-                $includeVatRateIds,
-                $includeReasonIds
+                companyId: $companyId,
+                customerId: (int) $quoteModel->customer_id,
+                includeCustomerId: (int) $quoteModel->customer_id,
+                includeCustomerContactId: $quoteModel->customer_contact_id,
+                includePriceTierId: $quoteModel->price_tier_id,
+                includePaymentTermId: $quoteModel->payment_term_id,
+                includePaymentMethodId: $quoteModel->payment_method_id,
+                includeVatRateId: $quoteModel->default_vat_rate_id,
+                includeAssignedUserId: $quoteModel->assigned_user_id,
+                includeArticleIds: $includeArticleIds,
+                includeUnitIds: $includeUnitIds,
+                includeVatRateIds: $includeVatRateIds,
+                includeReasonIds: $includeReasonIds
             ),
         ]);
     }
@@ -230,7 +234,7 @@ class QuoteController extends Controller
             $payload = $this->normalizeQuotePayload($validated, $companyId);
             $quoteModel->forceFill($payload)->save();
 
-            $this->syncQuoteItems($quoteModel, $validated['items'] ?? [], $companyId);
+            $this->quoteItemsSyncService->sync($quoteModel, $validated['items'] ?? [], $companyId);
             $quoteModel->recalculateTotals();
             $quoteModel->addStatusLog($quoteModel->status, $quoteModel->status, 'Orcamento atualizado.', (int) $request->user()->id);
         });
@@ -253,9 +257,7 @@ class QuoteController extends Controller
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('delete', $quoteModel);
 
-        if ($quoteModel->pdf_path) {
-            $this->deleteFromDisk($quoteModel->pdf_path);
-        }
+        $this->quotePdfService->delete($quoteModel->pdf_path);
 
         $quoteModel->delete();
 
@@ -386,7 +388,7 @@ class QuoteController extends Controller
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('view', $quoteModel);
 
-        $this->generateAndStorePdf($quoteModel);
+        $this->quotePdfService->generateAndStore($quoteModel);
 
         return redirect()
             ->route('admin.quotes.show', $quoteModel->id)
@@ -416,7 +418,7 @@ class QuoteController extends Controller
         $this->authorize('update', $quoteModel);
 
         if (! $quoteModel->pdf_path || ! Storage::disk('local')->exists($quoteModel->pdf_path)) {
-            $this->generateAndStorePdf($quoteModel);
+            $this->quotePdfService->generateAndStore($quoteModel);
             $quoteModel->refresh();
         }
 
