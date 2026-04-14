@@ -279,6 +279,14 @@ class QuotesTest extends TestCase
             'status' => Quote::STATUS_SENT,
         ])->assertRedirect(route('admin.quotes.show', $quote->id));
 
+        $backToDraft = $this->actingAs($admin)
+            ->from(route('admin.quotes.show', $quote->id))
+            ->post(route('admin.quotes.status.change', $quote->id), [
+                'status' => Quote::STATUS_DRAFT,
+            ]);
+        $backToDraft->assertRedirect(route('admin.quotes.show', $quote->id));
+        $backToDraft->assertSessionHasErrors('status');
+
         $this->actingAs($admin)->post(route('admin.quotes.status.change', $quote->id), [
             'status' => Quote::STATUS_APPROVED,
         ])->assertRedirect(route('admin.quotes.show', $quote->id));

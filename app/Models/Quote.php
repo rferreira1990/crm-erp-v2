@@ -207,7 +207,6 @@ class Quote extends Model
         return match ($this->status) {
             self::STATUS_DRAFT => in_array($toStatus, [self::STATUS_SENT, self::STATUS_CANCELLED], true),
             self::STATUS_SENT => in_array($toStatus, [
-                self::STATUS_DRAFT,
                 self::STATUS_VIEWED,
                 self::STATUS_APPROVED,
                 self::STATUS_REJECTED,
@@ -215,7 +214,6 @@ class Quote extends Model
                 self::STATUS_CANCELLED,
             ], true),
             self::STATUS_VIEWED => in_array($toStatus, [
-                self::STATUS_DRAFT,
                 self::STATUS_APPROVED,
                 self::STATUS_REJECTED,
                 self::STATUS_EXPIRED,
