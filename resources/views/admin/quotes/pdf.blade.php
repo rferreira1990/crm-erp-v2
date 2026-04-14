@@ -48,8 +48,6 @@
                 <p class="card-title">Empresa</p>
                 <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
                 <div>NIF: {{ $quote->company?->nif ?? '-' }}</div>
-                <div>{{ $quote->company?->address ?? '-' }}</div>
-                <div>{{ $quote->company?->postal_code ?? '' }} {{ $quote->company?->city ?? '' }}</div>
                 <div>{{ $quote->company?->email ?? '-' }} | {{ $quote->company?->phone ?? '-' }}</div>
             </div>
         </div>
@@ -189,4 +187,3 @@
     </div>
 </body>
 </html>
-
