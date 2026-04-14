@@ -104,31 +104,45 @@
                             </thead>
                             <tbody>
                                 @forelse ($quote->items as $item)
-                                    <tr>
-                                        <td class="ps-3">{{ $item->sort_order }}</td>
-                                        <td>{{ \App\Models\QuoteItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
-                                        <td>
-                                            <div class="fw-semibold">{{ $item->description }}</div>
-                                            @if ($item->article)
-                                                <div class="text-body-tertiary fs-10">{{ $item->article->code }}</div>
-                                            @endif
-                                        </td>
-                                        <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                                        <td>{{ $item->unit?->code ?? '-' }}</td>
-                                        <td>{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>
-                                        <td>{{ number_format((float) ($item->discount_percent ?? 0), 2, ',', '.') }}%</td>
-                                        <td>
-                                            @if ($item->vatRate)
-                                                {{ $item->vatRate->name }} ({{ number_format((float) $item->vatRate->rate, 2, ',', '.') }}%)
-                                                @if ($item->vatExemptionReason)
-                                                    <div class="text-body-tertiary fs-10">{{ $item->vatExemptionReason->code }}</div>
+                                    @if ($item->line_type === \App\Models\QuoteItem::TYPE_SECTION)
+                                        <tr class="table-light">
+                                            <td class="ps-3 fw-bold">{{ $item->sort_order }}</td>
+                                            <td class="fw-bold">{{ \App\Models\QuoteItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
+                                            <td class="fw-bold" colspan="7">{{ $item->description }}</td>
+                                        </tr>
+                                    @elseif ($item->line_type === \App\Models\QuoteItem::TYPE_NOTE)
+                                        <tr>
+                                            <td class="ps-3">{{ $item->sort_order }}</td>
+                                            <td>{{ \App\Models\QuoteItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
+                                            <td class="fst-italic" colspan="7">{{ $item->description }}</td>
+                                        </tr>
+                                    @else
+                                        <tr>
+                                            <td class="ps-3">{{ $item->sort_order }}</td>
+                                            <td>{{ \App\Models\QuoteItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
+                                            <td>
+                                                <div class="fw-semibold">{{ $item->description }}</div>
+                                                @if ($item->article)
+                                                    <div class="text-body-tertiary fs-10">{{ $item->article->code }}</div>
                                                 @endif
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td class="fw-semibold">{{ number_format((float) $item->total, 2, ',', '.') }} {{ $quote->currency }}</td>
-                                    </tr>
+                                            </td>
+                                            <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
+                                            <td>{{ $item->unit?->code ?? '-' }}</td>
+                                            <td>{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>
+                                            <td>{{ number_format((float) ($item->discount_percent ?? 0), 2, ',', '.') }}%</td>
+                                            <td>
+                                                @if ($item->vatRate)
+                                                    {{ $item->vatRate->name }} ({{ number_format((float) $item->vatRate->rate, 2, ',', '.') }}%)
+                                                    @if ($item->vatExemptionReason)
+                                                        <div class="text-body-tertiary fs-10">{{ $item->vatExemptionReason->code }}</div>
+                                                    @endif
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td class="fw-semibold">{{ number_format((float) $item->total, 2, ',', '.') }} {{ $quote->currency }}</td>
+                                        </tr>
+                                    @endif
                                 @empty
                                     <tr>
                                         <td colspan="9" class="text-center py-4 text-body-tertiary">Sem linhas.</td>
@@ -233,4 +247,3 @@
         </div>
     </div>
 @endsection
-

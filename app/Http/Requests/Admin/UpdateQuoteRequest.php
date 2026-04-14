@@ -8,6 +8,7 @@ use App\Models\CustomerContact;
 use App\Models\PaymentMethod;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
+use App\Models\Quote;
 use App\Models\QuoteItem;
 use App\Models\Unit;
 use App\Models\User;
@@ -19,6 +20,9 @@ use Illuminate\Validation\Validator;
 
 class UpdateQuoteRequest extends FormRequest
 {
+    private ?Quote $resolvedQuote = null;
+    private bool $resolvedQuoteLoaded = false;
+
     protected function prepareForValidation(): void
     {
         $items = $this->normalizeItems($this->input('items', []));
@@ -143,6 +147,9 @@ class UpdateQuoteRequest extends FormRequest
 
     private function validatePriceTier(Validator $validator, int $companyId): void
     {
+        $quote = $this->currentQuote($companyId);
+        $allowedInactivePriceTierId = $quote?->price_tier_id !== null ? (int) $quote->price_tier_id : null;
+
         $priceTierId = $this->input('price_tier_id');
         if ($priceTierId === null) {
             return;
@@ -150,7 +157,13 @@ class UpdateQuoteRequest extends FormRequest
 
         $exists = PriceTier::query()
             ->visibleToCompany($companyId)
-            ->where('is_active', true)
+            ->where(function ($query) use ($allowedInactivePriceTierId): void {
+                $query->where('is_active', true);
+
+                if ($allowedInactivePriceTierId !== null) {
+                    $query->orWhere('id', $allowedInactivePriceTierId);
+                }
+            })
             ->whereKey((int) $priceTierId)
             ->exists();
 
@@ -161,15 +174,31 @@ class UpdateQuoteRequest extends FormRequest
 
     private function validatePaymentTerm(Validator $validator, int $companyId): void
     {
+        $quote = $this->currentQuote($companyId);
+        $allowedHistoricalTermId = $quote?->payment_term_id !== null ? (int) $quote->payment_term_id : null;
+
         $paymentTermId = $this->input('payment_term_id');
         if ($paymentTermId === null) {
             return;
         }
 
-        $exists = PaymentTerm::query()
-            ->visibleToCompany($companyId)
-            ->whereKey((int) $paymentTermId)
-            ->exists();
+        $exists = PaymentTerm::query()->where(function ($query) use ($companyId, $allowedHistoricalTermId): void {
+            $query->visibleToCompany($companyId);
+
+            if ($allowedHistoricalTermId !== null) {
+                $query->orWhere(function ($selectedQuery) use ($companyId, $allowedHistoricalTermId): void {
+                    $selectedQuery->where('id', $allowedHistoricalTermId)
+                        ->where(function ($ownershipQuery) use ($companyId): void {
+                            $ownershipQuery
+                                ->where('company_id', $companyId)
+                                ->orWhere(function ($systemQuery): void {
+                                    $systemQuery->where('is_system', true)
+                                        ->whereNull('company_id');
+                                });
+                        });
+                });
+            }
+        })->whereKey((int) $paymentTermId)->exists();
 
         if (! $exists) {
             $validator->errors()->add('payment_term_id', 'A condicao de pagamento selecionada nao esta disponivel para a empresa.');
@@ -178,15 +207,31 @@ class UpdateQuoteRequest extends FormRequest
 
     private function validatePaymentMethod(Validator $validator, int $companyId): void
     {
+        $quote = $this->currentQuote($companyId);
+        $allowedHistoricalMethodId = $quote?->payment_method_id !== null ? (int) $quote->payment_method_id : null;
+
         $paymentMethodId = $this->input('payment_method_id');
         if ($paymentMethodId === null) {
             return;
         }
 
-        $exists = PaymentMethod::query()
-            ->visibleToCompany($companyId)
-            ->whereKey((int) $paymentMethodId)
-            ->exists();
+        $exists = PaymentMethod::query()->where(function ($query) use ($companyId, $allowedHistoricalMethodId): void {
+            $query->visibleToCompany($companyId);
+
+            if ($allowedHistoricalMethodId !== null) {
+                $query->orWhere(function ($selectedQuery) use ($companyId, $allowedHistoricalMethodId): void {
+                    $selectedQuery->where('id', $allowedHistoricalMethodId)
+                        ->where(function ($ownershipQuery) use ($companyId): void {
+                            $ownershipQuery
+                                ->where('company_id', $companyId)
+                                ->orWhere(function ($systemQuery): void {
+                                    $systemQuery->where('is_system', true)
+                                        ->whereNull('company_id');
+                                });
+                        });
+                });
+            }
+        })->whereKey((int) $paymentMethodId)->exists();
 
         if (! $exists) {
             $validator->errors()->add('payment_method_id', 'O modo de pagamento selecionado nao esta disponivel para a empresa.');
@@ -195,6 +240,9 @@ class UpdateQuoteRequest extends FormRequest
 
     private function validateDefaultVatRate(Validator $validator, int $companyId): void
     {
+        $quote = $this->currentQuote($companyId);
+        $allowedHistoricalVatRateId = $quote?->default_vat_rate_id !== null ? (int) $quote->default_vat_rate_id : null;
+
         $vatRateId = $this->input('default_vat_rate_id');
         if ($vatRateId === null) {
             return;
@@ -208,7 +256,13 @@ class UpdateQuoteRequest extends FormRequest
             ->whereKey((int) $vatRateId)
             ->first();
 
-        if (! $vatRate || ! $vatRate->isEnabledForCompany($companyId)) {
+        if (! $vatRate) {
+            $validator->errors()->add('default_vat_rate_id', 'A taxa de IVA habitual nao esta ativa para a empresa.');
+
+            return;
+        }
+
+        if (! $vatRate->isEnabledForCompany($companyId) && (int) $vatRate->id !== $allowedHistoricalVatRateId) {
             $validator->errors()->add('default_vat_rate_id', 'A taxa de IVA habitual nao esta ativa para a empresa.');
         }
     }
@@ -234,6 +288,22 @@ class UpdateQuoteRequest extends FormRequest
 
     private function validateItems(Validator $validator, int $companyId): void
     {
+        $quote = $this->currentQuote($companyId);
+        $allowedHistoricalVatRateIds = $quote?->items()
+            ->whereNotNull('vat_rate_id')
+            ->pluck('vat_rate_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all() ?? [];
+        $allowedHistoricalReasonIds = $quote?->items()
+            ->whereNotNull('vat_exemption_reason_id')
+            ->pluck('vat_exemption_reason_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all() ?? [];
+
         $items = $this->input('items', []);
 
         foreach ($items as $index => $item) {
@@ -303,7 +373,12 @@ class UpdateQuoteRequest extends FormRequest
                 ->whereKey((int) $vatRateId)
                 ->first();
 
-            if (! $vatRate || ! $vatRate->isEnabledForCompany($companyId)) {
+            if (! $vatRate) {
+                $validator->errors()->add("$prefix.vat_rate_id", 'A taxa de IVA selecionada nao esta ativa para a empresa.');
+                continue;
+            }
+
+            if (! $vatRate->isEnabledForCompany($companyId) && ! in_array((int) $vatRate->id, $allowedHistoricalVatRateIds, true)) {
                 $validator->errors()->add("$prefix.vat_rate_id", 'A taxa de IVA selecionada nao esta ativa para a empresa.');
                 continue;
             }
@@ -322,7 +397,12 @@ class UpdateQuoteRequest extends FormRequest
                     ->whereKey((int) $reasonId)
                     ->first();
 
-                if (! $reason || ! $reason->isEnabledForCompany($companyId)) {
+                if (! $reason) {
+                    $validator->errors()->add("$prefix.vat_exemption_reason_id", 'O motivo de isencao selecionado nao esta ativo para a empresa.');
+                    continue;
+                }
+
+                if (! $reason->isEnabledForCompany($companyId) && ! in_array((int) $reason->id, $allowedHistoricalReasonIds, true)) {
                     $validator->errors()->add("$prefix.vat_exemption_reason_id", 'O motivo de isencao selecionado nao esta ativo para a empresa.');
                 }
             } elseif ($reasonId !== null) {
@@ -390,5 +470,25 @@ class UpdateQuoteRequest extends FormRequest
 
         return $normalized !== '' ? $normalized : null;
     }
-}
 
+    private function currentQuote(int $companyId): ?Quote
+    {
+        if ($this->resolvedQuoteLoaded) {
+            return $this->resolvedQuote;
+        }
+
+        $quoteId = (int) $this->route('quote');
+        if ($quoteId <= 0) {
+            $this->resolvedQuoteLoaded = true;
+            return null;
+        }
+
+        $this->resolvedQuote = Quote::query()
+            ->forCompany($companyId)
+            ->whereKey($quoteId)
+            ->first();
+        $this->resolvedQuoteLoaded = true;
+
+        return $this->resolvedQuote;
+    }
+}

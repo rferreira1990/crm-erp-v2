@@ -6,6 +6,7 @@ use App\Mail\Admin\QuoteSentMail;
 use App\Models\Article;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\CompanyPaymentTermOverride;
 use App\Models\CompanyVatExemptionReasonOverride;
 use App\Models\CompanyVatRateOverride;
 use App\Models\Customer;
@@ -350,6 +351,87 @@ class QuotesTest extends TestCase
         $this->assertNotSame($original->number, $duplicate->number);
         $this->assertSame(Quote::STATUS_DRAFT, $duplicate->status);
         $this->assertSame($original->items()->count(), $duplicate->items()->count());
+    }
+
+    public function test_edit_keeps_historical_selected_values_and_update_accepts_them(): void
+    {
+        $company = $this->createCompany('Empresa Orcamentos Historico');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente Historico');
+
+        $contact = $quote->customer->contacts()->create([
+            'company_id' => $company->id,
+            'name' => 'Contacto Historico',
+            'email' => 'historico@example.test',
+            'is_primary' => true,
+        ]);
+
+        $inactiveTier = PriceTier::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Escalao Inativo',
+            'percentage_adjustment' => -5,
+            'is_system' => false,
+            'is_default' => false,
+            'is_active' => false,
+        ]);
+
+        $hiddenTerm = PaymentTerm::query()
+            ->visibleToCompany($company->id)
+            ->orderBy('id')
+            ->firstOrFail();
+
+        CompanyPaymentTermOverride::query()->create([
+            'company_id' => $company->id,
+            'payment_term_id' => $hiddenTerm->id,
+            'is_enabled' => false,
+        ]);
+
+        $disabledVat = $this->mainland23Rate();
+        CompanyVatRateOverride::query()->create([
+            'company_id' => $company->id,
+            'vat_rate_id' => $disabledVat->id,
+            'is_enabled' => false,
+        ]);
+
+        $quote->forceFill([
+            'customer_contact_id' => $contact->id,
+            'price_tier_id' => $inactiveTier->id,
+            'payment_term_id' => $hiddenTerm->id,
+            'default_vat_rate_id' => $disabledVat->id,
+        ])->save();
+
+        $quote->customer->forceFill(['is_active' => false])->save();
+        $quote->items()->update(['vat_rate_id' => $disabledVat->id]);
+
+        $editResponse = $this->actingAs($admin)->get(route('admin.quotes.edit', $quote->id));
+        $editResponse->assertOk();
+        $editResponse->assertSee('Cliente Historico');
+        $editResponse->assertSee('Contacto Historico');
+        $editResponse->assertSee('Escalao Inativo');
+        $editResponse->assertSee($hiddenTerm->name);
+
+        $updateResponse = $this->actingAs($admin)->patch(route('admin.quotes.update', $quote->id), [
+            'customer_id' => $quote->customer_id,
+            'customer_contact_id' => $contact->id,
+            'issue_date' => now()->toDateString(),
+            'price_tier_id' => $inactiveTier->id,
+            'payment_term_id' => $hiddenTerm->id,
+            'default_vat_rate_id' => $disabledVat->id,
+            'currency' => 'EUR',
+            'is_active' => 1,
+            'items' => [
+                [
+                    'line_type' => 'text',
+                    'description' => 'Linha historica',
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                    'vat_rate_id' => $disabledVat->id,
+                ],
+            ],
+        ]);
+
+        $updateResponse->assertRedirect(route('admin.quotes.edit', $quote->id));
+        $updateResponse->assertSessionHasNoErrors();
     }
 
     private function createQuoteForCompany(Company $company, string $customerName): Quote

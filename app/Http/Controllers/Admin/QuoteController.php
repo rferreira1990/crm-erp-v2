@@ -200,9 +200,7 @@ class QuoteController extends Controller
             'quote' => $quoteModel,
             ...$this->buildFormOptions(
                 companyId: $companyId,
-                customerId: (int) $quoteModel->customer_id,
                 includeCustomerId: (int) $quoteModel->customer_id,
-                includeCustomerContactId: $quoteModel->customer_contact_id,
                 includePriceTierId: $quoteModel->price_tier_id,
                 includePaymentTermId: $quoteModel->payment_term_id,
                 includePaymentMethodId: $quoteModel->payment_method_id,
@@ -472,7 +470,7 @@ class QuoteController extends Controller
      */
     private function buildFormOptions(
         int $companyId,
-        ?int $customerId = null,
+        ?int $includeCustomerId = null,
         ?int $includePriceTierId = null,
         ?int $includePaymentTermId = null,
         ?int $includePaymentMethodId = null,
@@ -485,7 +483,6 @@ class QuoteController extends Controller
     ): array {
         $customerContacts = CustomerContact::query()
             ->forCompany($companyId)
-            ->when($customerId !== null, fn ($query) => $query->where('customer_id', $customerId))
             ->orderByDesc('is_primary')
             ->orderBy('name')
             ->get(['id', 'customer_id', 'name', 'email']);
@@ -493,7 +490,13 @@ class QuoteController extends Controller
         return [
             'customers' => Customer::query()
                 ->forCompany($companyId)
-                ->where('is_active', true)
+                ->where(function ($query) use ($includeCustomerId): void {
+                    $query->where('is_active', true);
+
+                    if ($includeCustomerId !== null) {
+                        $query->orWhere('id', $includeCustomerId);
+                    }
+                })
                 ->orderBy('name')
                 ->get(['id', 'name', 'price_tier_id', 'payment_term_id', 'default_vat_rate_id', 'default_commercial_discount', 'email']),
             'customerContacts' => $customerContacts,
@@ -508,10 +511,21 @@ class QuoteController extends Controller
             'articleOptions' => $this->visibleArticles($companyId, $includeArticleIds),
             'unitOptions' => $this->visibleUnits($companyId, $includeUnitIds),
             'assignedUserOptions' => User::query()
-                ->where('is_super_admin', false)
-                ->where('company_id', $companyId)
-                ->where('is_active', true)
-                ->when($includeAssignedUserId !== null, fn ($query) => $query->orWhere('id', $includeAssignedUserId))
+                ->where(function ($query) use ($companyId, $includeAssignedUserId): void {
+                    $query->where(function ($activeQuery) use ($companyId): void {
+                        $activeQuery->where('is_super_admin', false)
+                            ->where('company_id', $companyId)
+                            ->where('is_active', true);
+                    });
+
+                    if ($includeAssignedUserId !== null) {
+                        $query->orWhere(function ($selectedQuery) use ($companyId, $includeAssignedUserId): void {
+                            $selectedQuery->where('is_super_admin', false)
+                                ->where('company_id', $companyId)
+                                ->where('id', $includeAssignedUserId);
+                        });
+                    }
+                })
                 ->orderBy('name')
                 ->get(['id', 'name', 'company_id']),
             'lineTypeOptions' => QuoteItem::lineTypeLabels(),
@@ -539,9 +553,22 @@ class QuoteController extends Controller
     private function visiblePaymentTerms(int $companyId, ?int $includePaymentTermId = null): Collection
     {
         return PaymentTerm::query()
-            ->visibleToCompany($companyId)
-            ->when($includePaymentTermId !== null, function ($query) use ($includePaymentTermId): void {
-                $query->orWhere('id', $includePaymentTermId);
+            ->where(function ($query) use ($companyId, $includePaymentTermId): void {
+                $query->visibleToCompany($companyId);
+
+                if ($includePaymentTermId !== null) {
+                    $query->orWhere(function ($selectedQuery) use ($companyId, $includePaymentTermId): void {
+                        $selectedQuery->where('id', $includePaymentTermId)
+                            ->where(function ($ownershipQuery) use ($companyId): void {
+                                $ownershipQuery
+                                    ->where('company_id', $companyId)
+                                    ->orWhere(function ($systemQuery): void {
+                                        $systemQuery->where('is_system', true)
+                                            ->whereNull('company_id');
+                                    });
+                            });
+                    });
+                }
             })
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->orderBy('name')
@@ -551,9 +578,22 @@ class QuoteController extends Controller
     private function visiblePaymentMethods(int $companyId, ?int $includePaymentMethodId = null): Collection
     {
         return PaymentMethod::query()
-            ->visibleToCompany($companyId)
-            ->when($includePaymentMethodId !== null, function ($query) use ($includePaymentMethodId): void {
-                $query->orWhere('id', $includePaymentMethodId);
+            ->where(function ($query) use ($companyId, $includePaymentMethodId): void {
+                $query->visibleToCompany($companyId);
+
+                if ($includePaymentMethodId !== null) {
+                    $query->orWhere(function ($selectedQuery) use ($companyId, $includePaymentMethodId): void {
+                        $selectedQuery->where('id', $includePaymentMethodId)
+                            ->where(function ($ownershipQuery) use ($companyId): void {
+                                $ownershipQuery
+                                    ->where('company_id', $companyId)
+                                    ->orWhere(function ($systemQuery): void {
+                                        $systemQuery->where('is_system', true)
+                                            ->whereNull('company_id');
+                                    });
+                            });
+                    });
+                }
             })
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->orderBy('name')
@@ -632,9 +672,22 @@ class QuoteController extends Controller
     private function visibleUnits(int $companyId, array $includeUnitIds = []): Collection
     {
         return Unit::query()
-            ->visibleToCompany($companyId)
-            ->when($includeUnitIds !== [], function ($query) use ($includeUnitIds): void {
-                $query->orWhereIn('id', $includeUnitIds);
+            ->where(function ($query) use ($companyId, $includeUnitIds): void {
+                $query->visibleToCompany($companyId);
+
+                if ($includeUnitIds !== []) {
+                    $query->orWhere(function ($selectedQuery) use ($companyId, $includeUnitIds): void {
+                        $selectedQuery->whereIn('id', $includeUnitIds)
+                            ->where(function ($ownershipQuery) use ($companyId): void {
+                                $ownershipQuery
+                                    ->where('company_id', $companyId)
+                                    ->orWhere(function ($systemQuery): void {
+                                        $systemQuery->where('is_system', true)
+                                            ->whereNull('company_id');
+                                    });
+                            });
+                    });
+                }
             })
             ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
             ->orderBy('name')
@@ -677,184 +730,11 @@ class QuoteController extends Controller
         return $data;
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $items
-     */
-    private function syncQuoteItems(Quote $quote, array $items, int $companyId): void
-    {
-        $quote->items()->delete();
-
-        $articleIds = collect($items)
-            ->pluck('article_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $vatIds = collect($items)
-            ->pluck('vat_rate_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $articles = Article::query()
-            ->forCompany($companyId)
-            ->whereIn('id', $articleIds)
-            ->get()
-            ->keyBy('id');
-
-        $vatRates = VatRate::query()
-            ->with([
-                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
-            ])
-            ->visibleToCompany($companyId)
-            ->whereIn('id', $vatIds)
-            ->get()
-            ->keyBy('id');
-
-        foreach ($items as $index => $item) {
-            $lineType = (string) ($item['line_type'] ?? QuoteItem::TYPE_ARTICLE);
-            $articleId = isset($item['article_id']) ? (int) $item['article_id'] : null;
-            $article = $articleId !== null ? $articles->get($articleId) : null;
-
-            $description = trim((string) ($item['description'] ?? ''));
-            if ($description === '' && $article) {
-                $description = (string) $article->designation;
-            }
-
-            $quantity = isset($item['quantity']) ? (float) $item['quantity'] : 1.0;
-            $unitPriceInput = $item['unit_price'] ?? null;
-            $unitPrice = $unitPriceInput !== null ? (float) $unitPriceInput : 0.0;
-
-            if ($article && $unitPriceInput === null && $article->sale_price !== null) {
-                $unitPrice = (float) $article->sale_price;
-
-                if ($quote->priceTier) {
-                    $unitPrice = $quote->priceTier->applyToAmount($unitPrice);
-                }
-            }
-
-            $discountPercent = isset($item['discount_percent']) ? (float) $item['discount_percent'] : 0.0;
-            if ($discountPercent < 0) {
-                $discountPercent = 0.0;
-            }
-
-            $vatRateId = isset($item['vat_rate_id']) ? (int) $item['vat_rate_id'] : null;
-            if ($vatRateId === null && $article?->vat_rate_id !== null) {
-                $vatRateId = (int) $article->vat_rate_id;
-            }
-            if ($vatRateId === null && $quote->default_vat_rate_id !== null) {
-                $vatRateId = (int) $quote->default_vat_rate_id;
-            }
-
-            $vatRate = $vatRateId !== null ? $vatRates->get($vatRateId) : null;
-            $vatPercent = $vatRate ? (float) $vatRate->rate : 0.0;
-            $isExempt = $vatRate ? (bool) $vatRate->is_exempt : false;
-
-            $reasonId = isset($item['vat_exemption_reason_id']) ? (int) $item['vat_exemption_reason_id'] : null;
-            if (! $isExempt) {
-                $reasonId = null;
-            }
-
-            $unitId = isset($item['unit_id']) ? (int) $item['unit_id'] : null;
-            if ($unitId === null && $article?->unit_id !== null) {
-                $unitId = (int) $article->unit_id;
-            }
-
-            if (in_array($lineType, [QuoteItem::TYPE_SECTION, QuoteItem::TYPE_NOTE], true)) {
-                $quantity = 1;
-                $unitPrice = 0;
-                $discountPercent = 0;
-                $vatRateId = null;
-                $reasonId = null;
-                $vatPercent = 0;
-                $isExempt = false;
-                $unitId = null;
-            }
-
-            $amounts = QuoteItem::calculateAmounts($quantity, $unitPrice, $discountPercent, $vatPercent, $isExempt);
-
-            $quote->items()->create([
-                'company_id' => $companyId,
-                'sort_order' => (int) ($item['sort_order'] ?? ($index + 1)),
-                'line_type' => $lineType,
-                'article_id' => $article?->id,
-                'description' => $description !== '' ? $description : '-',
-                'internal_description' => $item['internal_description'] ?? null,
-                'quantity' => $quantity,
-                'unit_id' => $unitId,
-                'unit_price' => $unitPrice,
-                'discount_percent' => $discountPercent,
-                'vat_rate_id' => $vatRateId,
-                'vat_exemption_reason_id' => $reasonId,
-                'subtotal' => $amounts['subtotal'],
-                'discount_amount' => $amounts['discount_amount'],
-                'tax_amount' => $amounts['tax_amount'],
-                'total' => $amounts['total'],
-                'metadata' => is_array($item['metadata'] ?? null) ? $item['metadata'] : null,
-            ]);
-        }
-    }
-
     private function findCompanyQuoteOrFail(int $companyId, int $quoteId): Quote
     {
         return Quote::query()
             ->forCompany($companyId)
             ->whereKey($quoteId)
             ->firstOrFail();
-    }
-
-    private function generateAndStorePdf(Quote $quote): string
-    {
-        $quote->loadMissing([
-            'company:id,name,nif,email,phone,address,postal_code,city,country_id',
-            'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
-            'customerContact:id,customer_id,name,email,phone,job_title',
-            'paymentTerm:id,name',
-            'paymentMethod:id,name',
-            'items' => fn ($query) => $query
-                ->with([
-                    'unit:id,code,name',
-                    'vatRate:id,name,rate,is_exempt',
-                ])
-                ->orderBy('sort_order')
-                ->orderBy('id'),
-        ]);
-
-        $html = view('admin.quotes.pdf', [
-            'quote' => $quote,
-        ])->render();
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', false);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $pdf = new Dompdf($options);
-        $pdf->loadHtml($html);
-        $pdf->setPaper('A4', 'portrait');
-        $pdf->render();
-
-        $path = 'quotes/'.$quote->company_id.'/'.$quote->id.'/pdf/'.Str::slug($quote->number).'-'.now()->format('YmdHis').'.pdf';
-        Storage::disk('local')->put($path, $pdf->output());
-
-        if ($quote->pdf_path && $quote->pdf_path !== $path) {
-            $this->deleteFromDisk($quote->pdf_path);
-        }
-
-        $quote->forceFill(['pdf_path' => $path])->save();
-
-        return $path;
-    }
-
-    private function deleteFromDisk(?string $path): void
-    {
-        if (! $path) {
-            return;
-        }
-
-        Storage::disk('local')->delete($path);
     }
 }

@@ -12,13 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('
-            UPDATE quotes
-            LEFT JOIN price_tiers ON price_tiers.id = quotes.price_tier_id
-            SET quotes.price_tier_id = NULL
-            WHERE quotes.price_tier_id IS NOT NULL
-              AND price_tiers.id IS NULL
-        ');
+        DB::table('quotes')
+            ->whereNotNull('price_tier_id')
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('price_tiers')
+                    ->whereColumn('price_tiers.id', 'quotes.price_tier_id');
+            })
+            ->update(['price_tier_id' => null]);
 
         Schema::table('quotes', function (Blueprint $table): void {
             $table->foreign('price_tier_id')
@@ -38,4 +39,3 @@ return new class extends Migration
         });
     }
 };
-

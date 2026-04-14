@@ -133,6 +133,7 @@
                                         <option
                                             value="{{ $vatRateOption->id }}"
                                             data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}"
+                                            data-rate="{{ $vatRateOption->rate }}"
                                             @selected((string) old("items.$rowIndex.vat_rate_id", $item['vat_rate_id'] ?? '') === (string) $vatRateOption->id)
                                         >
                                             {{ $vatRateOption->name }} ({{ number_format((float) $vatRateOption->rate, 2) }}%)
@@ -210,7 +211,7 @@
             <select name="items[__INDEX__][vat_rate_id]" class="form-select form-select-sm vat-rate-select">
                 <option value="">Sem taxa</option>
                 @foreach (($vatRateOptions ?? []) as $vatRateOption)
-                    <option value="{{ $vatRateOption->id }}" data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}">
+                    <option value="{{ $vatRateOption->id }}" data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}" data-rate="{{ $vatRateOption->rate }}">
                         {{ $vatRateOption->name }} ({{ number_format((float) $vatRateOption->rate, 2) }}%)
                     </option>
                 @endforeach
@@ -250,6 +251,76 @@
                         if (indexLabel) indexLabel.textContent = position;
                         if (sortOrderInput) sortOrderInput.value = position;
                     });
+                };
+
+                const parseNumber = (value) => {
+                    const normalized = String(value ?? '').replace(',', '.').trim();
+                    if (normalized === '') {
+                        return 0;
+                    }
+
+                    const parsed = Number.parseFloat(normalized);
+                    return Number.isFinite(parsed) ? parsed : 0;
+                };
+
+                const formatMoney = (amount, currencyCode) => {
+                    const formatter = new Intl.NumberFormat('pt-PT', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+
+                    return `${formatter.format(amount)} ${currencyCode}`;
+                };
+
+                const updatePreviewTotals = () => {
+                    const subtotalInput = document.getElementById('quote-preview-subtotal');
+                    const discountTotalInput = document.getElementById('quote-preview-discount-total');
+                    const taxTotalInput = document.getElementById('quote-preview-tax-total');
+                    const grandTotalInput = document.getElementById('quote-preview-grand-total');
+
+                    if (!subtotalInput || !discountTotalInput || !taxTotalInput || !grandTotalInput) {
+                        return;
+                    }
+
+                    const currencyInput = document.getElementById('currency');
+                    const currencyCode = (currencyInput?.value || 'EUR').toUpperCase();
+
+                    let subtotal = 0;
+                    let discountTotal = 0;
+                    let taxTotal = 0;
+                    let grandTotal = 0;
+
+                    Array.from(tbody.querySelectorAll('tr.quote-item-row')).forEach((row) => {
+                        const lineType = row.querySelector('.line-type-select')?.value || 'article';
+                        if (lineType === 'section' || lineType === 'note') {
+                            return;
+                        }
+
+                        const quantity = parseNumber(row.querySelector('.quantity-input')?.value);
+                        const unitPrice = parseNumber(row.querySelector('.unit-price-input')?.value);
+                        const discountPercent = Math.max(0, Math.min(100, parseNumber(row.querySelector('.discount-input')?.value)));
+
+                        const lineSubtotal = Math.max(0, quantity * unitPrice);
+                        const lineDiscount = Math.max(0, lineSubtotal * (discountPercent / 100));
+                        const taxableBase = Math.max(0, lineSubtotal - lineDiscount);
+
+                        const vatSelect = row.querySelector('.vat-rate-select');
+                        const vatOption = vatSelect?.options?.[vatSelect.selectedIndex] ?? null;
+                        const vatPercent = parseNumber(vatOption?.dataset?.rate);
+                        const isExempt = vatOption?.dataset?.isExempt === '1';
+                        const lineTax = isExempt ? 0 : Math.max(0, taxableBase * (vatPercent / 100));
+                        const lineTotal = taxableBase + lineTax;
+
+                        subtotal += lineSubtotal;
+                        discountTotal += lineDiscount;
+                        taxTotal += lineTax;
+                        grandTotal += lineTotal;
+                    });
+
+                    subtotalInput.value = formatMoney(subtotal, currencyCode);
+                    discountTotalInput.value = formatMoney(discountTotal, currencyCode);
+                    taxTotalInput.value = formatMoney(taxTotal, currencyCode);
+                    grandTotalInput.value = formatMoney(grandTotal, currencyCode);
                 };
 
                 const syncVatReasonField = (row) => {
@@ -300,7 +371,11 @@
                         if (vatRateSelect) vatRateSelect.value = '';
                     }
 
+                    row.classList.toggle('table-warning', type === 'section');
+                    row.classList.toggle('table-light', type === 'note');
+
                     syncVatReasonField(row);
+                    updatePreviewTotals();
                 };
 
                 const syncArticleData = (row) => {
@@ -347,6 +422,7 @@
                     }
 
                     syncVatReasonField(row);
+                    updatePreviewTotals();
                 };
 
                 const bindRowEvents = (row) => {
@@ -358,6 +434,7 @@
                             }
                             row.remove();
                             syncRowOrder();
+                            updatePreviewTotals();
                         });
                     }
 
@@ -372,6 +449,7 @@
                     if (articleSelect) {
                         articleSelect.addEventListener('change', function () {
                             syncArticleData(row);
+                            updatePreviewTotals();
                         });
                     }
 
@@ -379,11 +457,23 @@
                     if (vatRateSelect) {
                         vatRateSelect.addEventListener('change', function () {
                             syncVatReasonField(row);
+                            updatePreviewTotals();
                         });
                     }
 
+                    ['.quantity-input', '.unit-price-input', '.discount-input', '.vat-reason-select', '.description-input'].forEach((selector) => {
+                        const input = row.querySelector(selector);
+                        if (!input) {
+                            return;
+                        }
+
+                        input.addEventListener('input', updatePreviewTotals);
+                        input.addEventListener('change', updatePreviewTotals);
+                    });
+
                     syncLineType(row);
                     syncVatReasonField(row);
+                    updatePreviewTotals();
                 };
 
                 addButton.addEventListener('click', function () {
@@ -397,8 +487,14 @@
 
                 Array.from(tbody.querySelectorAll('tr.quote-item-row')).forEach((row) => bindRowEvents(row));
                 syncRowOrder();
+                updatePreviewTotals();
+
+                const currencyInput = document.getElementById('currency');
+                if (currencyInput) {
+                    currencyInput.addEventListener('input', updatePreviewTotals);
+                    currencyInput.addEventListener('change', updatePreviewTotals);
+                }
             });
         </script>
     @endpush
 @endonce
-
