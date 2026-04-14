@@ -20,8 +20,8 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Services\Admin\QuoteItemsSyncService;
+use App\Services\Admin\QuotePdfService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,6 +36,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class QuoteController extends Controller
 {
+    public function __construct(
+        private readonly QuoteItemsSyncService $quoteItemsSyncService,
+        private readonly QuotePdfService $quotePdfService
+    ) {
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Quote::class);
