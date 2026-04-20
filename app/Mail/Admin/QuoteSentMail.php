@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class QuoteSentMail extends Mailable
 {
@@ -60,7 +61,7 @@ class QuoteSentMail extends Mailable
     public function content(): Content
     {
         $this->quote->loadMissing([
-            'company:id,name,email,phone,website,mail_from_name,mail_from_address',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address',
             'customer:id,name',
             'assignedUser:id,name',
         ]);
@@ -75,6 +76,9 @@ class QuoteSentMail extends Mailable
             ?? ''));
 
         $logoUrl = $this->normalizeUrl((string) setting('company.'.$this->quote->company_id.'.mail_logo_url'));
+        if (! $logoUrl) {
+            $logoUrl = $this->companyLogoDataUri((string) ($company?->logo_path ?? ''));
+        }
         if (! $logoUrl) {
             $logoUrl = $this->normalizeUrl((string) setting('mail.logo_url'));
         }
@@ -91,6 +95,15 @@ class QuoteSentMail extends Mailable
 
         $safePrimaryColor = preg_match('/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/', $primaryColor) ? $primaryColor : '#1D4ED8';
 
+        $addressLine = $this->joinAddressParts([
+            $company?->address,
+        ]);
+        $locationLine = $this->joinAddressParts([
+            $company?->postal_code,
+            $company?->locality,
+            $company?->city,
+        ]);
+
         $summary = [
             'number' => $this->quote->number,
             'customer' => $this->quote->customer_name ?? $this->quote->customer?->name ?? '-',
@@ -101,8 +114,12 @@ class QuoteSentMail extends Mailable
         ];
 
         $contact = [
+            'nif' => $company?->nif,
             'email' => $company?->email ?: (string) config('mail.from.address'),
             'phone' => $company?->phone,
+            'mobile' => $company?->mobile,
+            'address' => $addressLine,
+            'location' => $locationLine,
             'website' => $website,
         ];
 
@@ -174,5 +191,45 @@ class QuoteSentMail extends Mailable
         $dateValue = $date instanceof Carbon ? $date : Carbon::parse((string) $date);
 
         return $dateValue->format('d/m/Y');
+    }
+
+    private function companyLogoDataUri(string $path): ?string
+    {
+        $normalizedPath = trim($path);
+        if ($normalizedPath === '' || ! Storage::disk('local')->exists($normalizedPath)) {
+            return null;
+        }
+
+        $contents = Storage::disk('local')->get($normalizedPath);
+        if ($contents === '') {
+            return null;
+        }
+
+        $mime = Storage::disk('local')->mimeType($normalizedPath);
+        if (! is_string($mime) || ! str_starts_with($mime, 'image/')) {
+            $mime = 'image/png';
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
+    }
+
+    /**
+     * @param array<int, mixed> $parts
+     */
+    private function joinAddressParts(array $parts): ?string
+    {
+        $normalized = [];
+        foreach ($parts as $part) {
+            $text = trim((string) $part);
+            if ($text !== '') {
+                $normalized[] = $text;
+            }
+        }
+
+        if ($normalized === []) {
+            return null;
+        }
+
+        return implode(' ', $normalized);
     }
 }
