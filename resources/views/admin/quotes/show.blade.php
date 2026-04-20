@@ -231,6 +231,11 @@
                             @error('to')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
+                            <label for="cc" class="form-label">CC (opcional)</label>
+                            <input type="text" id="cc" name="cc" value="{{ old('cc') }}" class="form-control form-control-sm @error('cc') is-invalid @enderror" placeholder="email1@empresa.pt, email2@empresa.pt">
+                            @error('cc')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12">
                             <label for="subject" class="form-label">Assunto</label>
                             <input type="text" id="subject" name="subject" value="{{ old('subject', \App\Mail\Admin\QuoteSentMail::defaultSubjectForQuote($quote)) }}" class="form-control form-control-sm @error('subject') is-invalid @enderror" required>
                             @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror

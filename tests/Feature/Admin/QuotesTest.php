@@ -327,16 +327,45 @@ class QuotesTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.quotes.email.send', $quote->id), [
             'to' => 'cliente@example.test',
+            'cc' => 'gestor@example.test; financeiro@example.test',
             'subject' => 'Orcamento '.$quote->number,
             'message' => 'Segue anexo.',
         ])->assertRedirect(route('admin.quotes.show', $quote->id));
 
-        Mail::assertSent(QuoteSentMail::class);
+        Mail::assertSent(QuoteSentMail::class, function (QuoteSentMail $mail): bool {
+            $mail->assertHasCc('gestor@example.test');
+            $mail->assertHasCc('financeiro@example.test');
+
+            return true;
+        });
 
         $quote->refresh();
         $this->assertSame('cliente@example.test', $quote->email_last_sent_to);
         $this->assertNotNull($quote->email_last_sent_at);
         $this->assertSame(Quote::STATUS_SENT, $quote->status);
+    }
+
+    public function test_send_email_rejects_invalid_cc_addresses(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+
+        $company = $this->createCompany('Empresa Orcamentos Email CC Invalido');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente CC Invalido');
+
+        $response = $this->actingAs($admin)
+            ->from(route('admin.quotes.show', $quote->id))
+            ->post(route('admin.quotes.email.send', $quote->id), [
+                'to' => 'cliente@example.test',
+                'cc' => 'gestor@example.test, cc-invalido',
+                'subject' => 'Orcamento '.$quote->number,
+                'message' => 'Segue anexo.',
+            ]);
+
+        $response->assertRedirect(route('admin.quotes.show', $quote->id));
+        $response->assertSessionHasErrors('cc');
+        Mail::assertNothingSent();
     }
 
     public function test_send_email_from_draft_refreshes_snapshot_before_freezing(): void

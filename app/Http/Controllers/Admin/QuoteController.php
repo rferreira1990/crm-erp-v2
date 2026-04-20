@@ -471,13 +471,23 @@ class QuoteController extends Controller
         }
 
         $to = $request->validated('to');
+        $ccRecipients = $request->ccRecipients();
         $subject = $request->validated('subject');
         $message = $request->validated('message');
 
-        Mail::to($to)->send(new QuoteSentMail($quoteModel, $subject, $message));
+        $mailer = Mail::to($to);
+        if ($ccRecipients !== []) {
+            $mailer->cc($ccRecipients);
+        }
 
-        DB::transaction(function () use ($quoteModel, $to, $request): void {
+        $mailer->send(new QuoteSentMail($quoteModel, $subject, $message));
+
+        DB::transaction(function () use ($quoteModel, $to, $ccRecipients, $request): void {
             $fromStatus = $quoteModel->status;
+            $targetSummary = $to;
+            if ($ccRecipients !== []) {
+                $targetSummary .= ' (cc: '.implode(', ', $ccRecipients).')';
+            }
 
             if ($quoteModel->canTransitionTo(Quote::STATUS_SENT)) {
                 $payload = $quoteModel->applyStatusTransition(Quote::STATUS_SENT);
@@ -486,14 +496,14 @@ class QuoteController extends Controller
                     'email_last_sent_to' => $to,
                     'email_last_sent_at' => now(),
                 ])->save();
-                $quoteModel->addStatusLog(Quote::STATUS_SENT, $fromStatus, 'Orcamento enviado por email para '.$to.'.', (int) $request->user()->id);
+                $quoteModel->addStatusLog(Quote::STATUS_SENT, $fromStatus, 'Orcamento enviado por email para '.$targetSummary.'.', (int) $request->user()->id);
             } else {
                 $quoteModel->forceFill([
                     'email_last_sent_to' => $to,
                     'email_last_sent_at' => now(),
                     'last_sent_at' => now(),
                 ])->save();
-                $quoteModel->addStatusLog($quoteModel->status, $quoteModel->status, 'Email enviado para '.$to.'.', (int) $request->user()->id);
+                $quoteModel->addStatusLog($quoteModel->status, $quoteModel->status, 'Email enviado para '.$targetSummary.'.', (int) $request->user()->id);
             }
         });
 
