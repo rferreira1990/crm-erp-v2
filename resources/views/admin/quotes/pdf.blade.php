@@ -6,8 +6,14 @@
     <style>
         body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #0f172a; margin: 26px; }
         .header { border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-bottom: 16px; }
+        .header-table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: top; }
+        .header-logo-cell { width: 140px; }
+        .header-logo { max-width: 120px; max-height: 54px; }
+        .header-doc-cell { text-align: right; }
         .doc-title { margin: 0 0 4px 0; font-size: 22px; font-weight: bold; letter-spacing: 0.3px; }
         .doc-meta { font-size: 10px; color: #475569; }
+        .company-small { font-size: 10px; line-height: 1.35; color: #334155; }
         .row { width: 100%; margin-bottom: 12px; }
         .col-50 { width: 49%; display: inline-block; vertical-align: top; }
         .card { border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; min-height: 94px; }
@@ -33,6 +39,7 @@
 </head>
 <body>
     @php
+        $companyLogoDataUri = $companyLogoDataUri ?? null;
         $isDraft = $quote->status === \App\Models\Quote::STATUS_DRAFT;
         $customerName = $quote->customer_name ?? ($isDraft ? $quote->customer?->name : null);
         $customerNif = $quote->customer_nif ?? ($isDraft ? $quote->customer?->nif : null);
@@ -49,16 +56,60 @@
         $contactEmail = $quote->customer_contact_email ?? ($isDraft ? $quote->customerContact?->email : null);
         $paymentTermName = $quote->payment_term_name ?? ($isDraft ? $quote->paymentTerm?->name : null);
         $paymentMethodName = $quote->payment_method_name ?? ($isDraft ? $quote->paymentMethod?->name : null);
+        $companyAddress = trim((string) ($quote->company?->address ?? ''));
+        $companyLocation = trim(implode(' ', array_filter([
+            $quote->company?->postal_code,
+            $quote->company?->locality,
+            $quote->company?->city,
+        ], fn ($value) => trim((string) $value) !== '')));
+        $hasBankDetails = trim((string) ($quote->company?->bank_name ?? '')) !== ''
+            || trim((string) ($quote->company?->iban ?? '')) !== ''
+            || trim((string) ($quote->company?->bic_swift ?? '')) !== '';
     @endphp
 
     <div class="header">
-        <p class="doc-title">Proposta Comercial</p>
-        <div class="doc-meta">
-            <span class="strong">{{ $quote->number }}</span>
-            | Emissao: {{ optional($quote->issue_date)->format('Y-m-d') }}
-            | Validade: {{ optional($quote->valid_until)->format('Y-m-d') ?? '-' }}
-            | Estado: {{ $quote->statusLabel() }}
-        </div>
+        <table class="header-table">
+            <tr>
+                <td class="header-logo-cell">
+                    @if ($companyLogoDataUri)
+                        <img src="{{ $companyLogoDataUri }}" alt="{{ $quote->company?->name ?? 'Empresa' }}" class="header-logo">
+                    @else
+                        <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
+                    @endif
+                </td>
+                <td>
+                    <div class="company-small">
+                        <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
+                        @if ($companyAddress !== '')
+                            <div>{{ $companyAddress }}</div>
+                        @endif
+                        @if ($companyLocation !== '')
+                            <div>{{ $companyLocation }}</div>
+                        @endif
+                        <div>
+                            @if ($quote->company?->email)
+                                {{ $quote->company->email }}
+                            @endif
+                            @if ($quote->company?->phone || $quote->company?->mobile)
+                                @if ($quote->company?->email)
+                                    |
+                                @endif
+                                {{ $quote->company?->phone ?? $quote->company?->mobile }}
+                            @endif
+                        </div>
+                    </div>
+                </td>
+                <td class="header-doc-cell">
+                    <p class="doc-title">Proposta Comercial</p>
+                    <div class="doc-meta">
+                        <span class="strong">{{ $quote->number }}</span>
+                        | Emissao: {{ optional($quote->issue_date)->format('Y-m-d') }}
+                        | Validade: {{ optional($quote->valid_until)->format('Y-m-d') ?? '-' }}
+                        | Estado: {{ $quote->statusLabel() }}
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="row">
@@ -67,7 +118,16 @@
                 <p class="card-title">Empresa</p>
                 <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
                 <div>NIF: {{ $quote->company?->nif ?? '-' }}</div>
-                <div>{{ $quote->company?->email ?? '-' }} | {{ $quote->company?->phone ?? '-' }}</div>
+                <div>{{ $quote->company?->email ?? '-' }} | {{ $quote->company?->phone ?? $quote->company?->mobile ?? '-' }}</div>
+                @if ($companyAddress !== '')
+                    <div>{{ $companyAddress }}</div>
+                @endif
+                @if ($companyLocation !== '')
+                    <div>{{ $companyLocation }}</div>
+                @endif
+                @if ($quote->company?->website)
+                    <div>{{ $quote->company->website }}</div>
+                @endif
             </div>
         </div>
         <div class="col-50" style="float:right;">
@@ -100,6 +160,16 @@
             <td><span class="muted">Moeda:</span> <span class="strong">{{ $quote->currency }}</span></td>
         </tr>
     </table>
+
+    @if ($hasBankDetails)
+        <table class="conditions" style="margin-top: 6px;">
+            <tr>
+                <td><span class="muted">Banco:</span> <span class="strong">{{ $quote->company?->bank_name ?? '-' }}</span></td>
+                <td><span class="muted">IBAN:</span> <span class="strong">{{ $quote->company?->iban ?? '-' }}</span></td>
+                <td><span class="muted">BIC/SWIFT:</span> <span class="strong">{{ $quote->company?->bic_swift ?? '-' }}</span></td>
+            </tr>
+        </table>
+    @endif
 
     @if ($quote->header_notes)
         <div class="notes">
@@ -209,6 +279,16 @@
 
     <div class="footer">
         Documento gerado em {{ now()->format('Y-m-d H:i') }}.
+        @if ($quote->company?->email || $quote->company?->phone || $quote->company?->website)
+            | Contactos empresa:
+            {{ $quote->company?->email ?? '-' }}
+            @if ($quote->company?->phone || $quote->company?->mobile)
+                / {{ $quote->company?->phone ?? $quote->company?->mobile }}
+            @endif
+            @if ($quote->company?->website)
+                / {{ $quote->company->website }}
+            @endif
+        @endif
     </div>
 </body>
 </html>
