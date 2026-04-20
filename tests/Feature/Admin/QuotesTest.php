@@ -345,6 +345,40 @@ class QuotesTest extends TestCase
         $this->assertSame(Quote::STATUS_SENT, $quote->status);
     }
 
+    public function test_pdf_generation_supports_company_logo_and_extended_company_data(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa Orcamentos PDF Branding');
+        $logoPath = 'companies/'.$company->id.'/logo/logo.png';
+        Storage::disk('local')->put(
+            $logoPath,
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7wW1cAAAAASUVORK5CYII=', true) ?: ''
+        );
+        $company->forceFill([
+            'logo_path' => $logoPath,
+            'address' => 'Rua da Empresa 12',
+            'postal_code' => '4000-100',
+            'locality' => 'Porto',
+            'city' => 'Porto',
+            'email' => 'comercial@empresa-pdf.test',
+            'phone' => '+351220000000',
+            'bank_name' => 'Banco XPTO',
+            'iban' => 'PT50000000000000000000000',
+            'bic_swift' => 'TOTAPTPL',
+        ])->save();
+
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente PDF Branding');
+
+        $this->actingAs($admin)->post(route('admin.quotes.pdf.generate', $quote->id))
+            ->assertRedirect(route('admin.quotes.show', $quote->id));
+
+        $quote->refresh();
+        $this->assertNotNull($quote->pdf_path);
+        Storage::disk('local')->assertExists($quote->pdf_path);
+    }
+
     public function test_send_email_rejects_invalid_cc_addresses(): void
     {
         Storage::fake('local');
