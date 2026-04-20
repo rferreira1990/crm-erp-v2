@@ -22,6 +22,14 @@ class QuoteSentMailTest extends TestCase
         Storage::fake('local');
 
         $company = $this->createCompany('Empresa Comercial');
+        $company->forceFill([
+            'nif' => '509123456',
+            'address' => 'Av. Comercial 120',
+            'postal_code' => '1000-120',
+            'locality' => 'Lisboa',
+            'city' => 'Lisboa',
+            'mobile' => '+351910000000',
+        ])->save();
         $customer = $this->createCustomer($company, 'Cliente Exemplo');
         $assignedUser = User::factory()->create([
             'company_id' => $company->id,
@@ -60,6 +68,9 @@ class QuoteSentMailTest extends TestCase
         $mail->assertSeeInHtml('30/04/2026');
         $mail->assertSeeInHtml('1.234,56 EUR');
         $mail->assertSeeInHtml('Mensagem personalizada');
+        $mail->assertSeeInHtml('NIF: 509123456');
+        $mail->assertSeeInHtml('Morada: Av. Comercial 120');
+        $mail->assertSeeInText('Telemovel: +351910000000');
         $mail->assertSeeInText('Mensagem personalizada');
         $attachments = $mail->attachments();
         $this->assertCount(1, $attachments);
@@ -100,6 +111,41 @@ class QuoteSentMailTest extends TestCase
         $mail->assertSeeInHtml('Empresa Sem Logo');
         $mail->assertSeeInHtml('Estamos disponiveis para qualquer esclarecimento adicional.');
         $mail->assertSeeInText('Com os melhores cumprimentos');
+    }
+
+    public function test_quote_email_uses_company_logo_file_as_fallback_when_available(): void
+    {
+        Storage::fake('local');
+        Setting::forgetByPrefix('company.');
+        Setting::forgetByPrefix('mail.logo_url');
+
+        $company = $this->createCompany('Empresa Logo Ficheiro');
+        $logoPath = 'companies/'.$company->id.'/logo/logo.png';
+        Storage::disk('local')->put(
+            $logoPath,
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7wW1cAAAAASUVORK5CYII=', true) ?: ''
+        );
+        $company->forceFill(['logo_path' => $logoPath])->save();
+
+        $customer = $this->createCustomer($company, 'Cliente Logo');
+        $quote = Quote::createWithGeneratedNumber($company->id, [
+            'version' => 1,
+            'status' => Quote::STATUS_SENT,
+            'customer_id' => $customer->id,
+            'issue_date' => '2026-04-14',
+            'grand_total' => 250,
+            'currency' => 'EUR',
+            'is_active' => true,
+            'is_locked' => false,
+        ]);
+
+        $mail = new QuoteSentMail(
+            quote: $quote,
+            subjectLine: '',
+            messageBody: null
+        );
+
+        $mail->assertSeeInHtml('data:image/png;base64,', false);
     }
 
     private function createCompany(string $name): Company
