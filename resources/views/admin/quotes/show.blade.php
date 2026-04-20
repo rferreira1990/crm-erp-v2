@@ -232,12 +232,12 @@
                         </div>
                         <div class="col-12">
                             <label for="subject" class="form-label">Assunto</label>
-                            <input type="text" id="subject" name="subject" value="{{ old('subject', 'Orcamento '.$quote->number) }}" class="form-control form-control-sm @error('subject') is-invalid @enderror" required>
+                            <input type="text" id="subject" name="subject" value="{{ old('subject', \App\Mail\Admin\QuoteSentMail::defaultSubjectForQuote($quote)) }}" class="form-control form-control-sm @error('subject') is-invalid @enderror" required>
                             @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
                             <label for="message" class="form-label">Mensagem</label>
-                            <textarea id="message" name="message" rows="4" class="form-control form-control-sm @error('message') is-invalid @enderror">{{ old('message', 'Segue em anexo o nosso orcamento.') }}</textarea>
+                            <textarea id="message" name="message" rows="4" class="form-control form-control-sm @error('message') is-invalid @enderror" placeholder="Mensagem opcional para incluir no email.">{{ old('message') }}</textarea>
                             @error('message')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
