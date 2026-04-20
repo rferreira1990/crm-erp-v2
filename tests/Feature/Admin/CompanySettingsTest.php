@@ -43,6 +43,10 @@ class CompanySettingsTest extends TestCase
         $user = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
 
         $this->actingAs($user)->get(route('admin.company-settings.edit'))->assertForbidden();
+        $this->actingAs($user)->put(route('admin.company-settings.update'), [
+            'mail_use_custom_settings' => 0,
+        ])->assertForbidden();
+        $this->actingAs($user)->post(route('admin.company-settings.test-smtp'))->assertForbidden();
     }
 
     public function test_superadmin_cannot_access_company_settings_page(): void
@@ -100,7 +104,7 @@ class CompanySettingsTest extends TestCase
         $company->refresh();
 
         $this->assertSame('Banco Teste', $company->bank_name);
-        $this->assertSame('PT5000000000000000000000000', $company->iban);
+        $this->assertSame('PT50000000000000000000000', $company->iban);
         $this->assertSame('CGDIPTPL', $company->bic_swift);
     }
 
@@ -276,4 +280,3 @@ class CompanySettingsTest extends TestCase
         return $user;
     }
 }
-
