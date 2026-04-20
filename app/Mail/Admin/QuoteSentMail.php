@@ -36,7 +36,7 @@ class QuoteSentMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $this->quote->loadMissing(['company:id,name,email,website,mail_from_name,mail_from_address']);
+        $this->quote->loadMissing(['company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address']);
 
         $fromAddress = $this->normalizeEmail((string) ($this->quote->company?->mail_from_address ?? ''))
             ?? (string) config('mail.from.address');
