@@ -5,6 +5,8 @@ namespace App\Services\Admin;
 use App\Models\Article;
 use App\Models\Quote;
 use App\Models\QuoteItem;
+use App\Models\Unit;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use Illuminate\Support\Collection;
 
@@ -33,6 +35,20 @@ class QuoteItemsSyncService
             ->unique()
             ->values()
             ->all();
+        $unitIds = collect($items)
+            ->pluck('unit_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $reasonIds = collect($items)
+            ->pluck('vat_exemption_reason_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         /** @var Collection<int, Article> $articles */
         $articles = Article::query()
@@ -48,6 +64,18 @@ class QuoteItemsSyncService
             ])
             ->visibleToCompany($companyId)
             ->whereIn('id', $vatIds)
+            ->get()
+            ->keyBy('id');
+        /** @var Collection<int, Unit> $units */
+        $units = Unit::query()
+            ->visibleToCompany($companyId)
+            ->whereIn('id', $unitIds)
+            ->get()
+            ->keyBy('id');
+        /** @var Collection<int, VatExemptionReason> $reasons */
+        $reasons = VatExemptionReason::query()
+            ->visibleToCompany($companyId)
+            ->whereIn('id', $reasonIds)
             ->get()
             ->keyBy('id');
 
@@ -112,20 +140,30 @@ class QuoteItemsSyncService
             }
 
             $amounts = QuoteItem::calculateAmounts($quantity, $unitPrice, $discountPercent, $vatPercent, $isExempt);
+            $unit = $unitId !== null ? $units->get($unitId) : null;
+            $reason = $reasonId !== null ? $reasons->get($reasonId) : null;
 
             $quote->items()->create([
                 'company_id' => $companyId,
                 'sort_order' => (int) ($item['sort_order'] ?? ($index + 1)),
                 'line_type' => $lineType,
                 'article_id' => $article?->id,
+                'article_code' => $article?->code,
+                'article_designation' => $article?->designation,
                 'description' => $description !== '' ? $description : '-',
                 'internal_description' => $item['internal_description'] ?? null,
                 'quantity' => $quantity,
                 'unit_id' => $unitId,
+                'unit_code' => $unit?->code,
+                'unit_name' => $unit?->name,
                 'unit_price' => $unitPrice,
                 'discount_percent' => $discountPercent,
                 'vat_rate_id' => $vatRateId,
+                'vat_rate_name' => $vatRate?->name,
+                'vat_rate_percentage' => $vatRate?->rate,
                 'vat_exemption_reason_id' => $reasonId,
+                'vat_exemption_reason_code' => $reason?->code,
+                'vat_exemption_reason_name' => $reason?->name,
                 'subtotal' => $amounts['subtotal'],
                 'discount_amount' => $amounts['discount_amount'],
                 'tax_amount' => $amounts['tax_amount'],
@@ -134,5 +172,51 @@ class QuoteItemsSyncService
             ]);
         }
     }
-}
 
+    public function refreshSnapshots(Quote $quote, int $companyId, bool $force = false): void
+    {
+        if (! $force && $quote->status !== Quote::STATUS_DRAFT) {
+            return;
+        }
+
+        $quote->load([
+            'items' => fn ($query) => $query
+                ->orderBy('sort_order')
+                ->orderBy('id'),
+        ]);
+
+        $articleIds = $quote->items->pluck('article_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $unitIds = $quote->items->pluck('unit_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $vatIds = $quote->items->pluck('vat_rate_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $reasonIds = $quote->items->pluck('vat_exemption_reason_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        $articles = Article::query()->forCompany($companyId)->whereIn('id', $articleIds)->get()->keyBy('id');
+        $units = Unit::query()->visibleToCompany($companyId)->whereIn('id', $unitIds)->get()->keyBy('id');
+        $vatRates = VatRate::query()->visibleToCompany($companyId)->whereIn('id', $vatIds)->get()->keyBy('id');
+        $reasons = VatExemptionReason::query()->visibleToCompany($companyId)->whereIn('id', $reasonIds)->get()->keyBy('id');
+
+        foreach ($quote->items as $item) {
+            $article = $item->article_id ? $articles->get((int) $item->article_id) : null;
+            $unit = $item->unit_id ? $units->get((int) $item->unit_id) : null;
+            $vatRate = $item->vat_rate_id ? $vatRates->get((int) $item->vat_rate_id) : null;
+            $reason = $item->vat_exemption_reason_id ? $reasons->get((int) $item->vat_exemption_reason_id) : null;
+
+            $item->forceFill([
+                'article_code' => $article?->code ?? $item->article_code,
+                'article_designation' => $article?->designation ?? $item->article_designation,
+                'unit_code' => $unit?->code ?? $item->unit_code,
+                'unit_name' => $unit?->name ?? $item->unit_name,
+                'vat_rate_name' => $vatRate?->name ?? $item->vat_rate_name,
+                'vat_rate_percentage' => $vatRate?->rate ?? $item->vat_rate_percentage,
+                'vat_exemption_reason_code' => $reason?->code ?? $item->vat_exemption_reason_code,
+                'vat_exemption_reason_name' => $reason?->name ?? $item->vat_exemption_reason_name,
+            ])->save();
+        }
+    }
+
+    public function syncSnapshots(Quote $quote, int $companyId, bool $force = false): void
+    {
+        $this->refreshSnapshots($quote, $companyId, $force);
+        $quote->syncHeaderSnapshot($force);
+    }
+}

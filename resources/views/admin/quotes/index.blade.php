@@ -5,6 +5,7 @@
 @section('page_subtitle', 'Gestao de propostas comerciais da empresa')
 
 @section('page_actions')
+    <a href="{{ route('admin.quotes.dashboard') }}" class="btn btn-phoenix-secondary btn-sm">Dashboard</a>
     <a href="{{ route('admin.quotes.create') }}" class="btn btn-primary btn-sm">Novo orcamento</a>
 @endsection
 

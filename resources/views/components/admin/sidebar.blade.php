@@ -98,6 +98,13 @@
                             </div>
                         </a>
                     </li>
+                    <li class="nav-item ms-4">
+                        <a class="nav-link {{ request()->routeIs('admin.quotes.dashboard') ? 'active' : '' }}" href="{{ route('admin.quotes.dashboard') }}">
+                            <div class="d-flex align-items-center">
+                                <span class="nav-link-text">Dashboard Orcamentos</span>
+                            </div>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">
                             <div class="d-flex align-items-center">

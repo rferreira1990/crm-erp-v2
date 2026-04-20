@@ -15,6 +15,7 @@ use App\Models\PaymentTerm;
 use App\Models\PriceTier;
 use App\Models\ProductFamily;
 use App\Models\Quote;
+use App\Models\QuoteItem;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\VatExemptionReason;
@@ -338,6 +339,34 @@ class QuotesTest extends TestCase
         $this->assertSame(Quote::STATUS_SENT, $quote->status);
     }
 
+    public function test_send_email_from_draft_refreshes_snapshot_before_freezing(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+
+        $company = $this->createCompany('Empresa Orcamentos Email Freeze');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente Freeze Email');
+
+        $quote->customer->forceFill([
+            'name' => 'Cliente Alterado Antes Envio',
+            'email' => 'freeze-email@example.test',
+            'phone' => '911111111',
+        ])->save();
+
+        $this->actingAs($admin)->post(route('admin.quotes.email.send', $quote->id), [
+            'to' => 'destino@example.test',
+            'subject' => 'Orcamento '.$quote->number,
+            'message' => 'Segue anexo.',
+        ])->assertRedirect(route('admin.quotes.show', $quote->id));
+
+        $quote->refresh();
+        $this->assertSame(Quote::STATUS_SENT, $quote->status);
+        $this->assertSame('Cliente Alterado Antes Envio', $quote->customer_name);
+        $this->assertSame('freeze-email@example.test', $quote->customer_email);
+        $this->assertSame('911111111', $quote->customer_phone);
+    }
+
     public function test_quote_duplication_creates_new_draft_with_copied_lines(): void
     {
         $company = $this->createCompany('Empresa Orcamentos Duplicar');
@@ -462,6 +491,169 @@ class QuotesTest extends TestCase
         $blockedDelete->assertRedirect(route('admin.quotes.show', $sentQuote->id));
         $blockedDelete->assertSessionHasErrors('quote');
         $this->assertDatabaseHas('quotes', ['id' => $sentQuote->id]);
+    }
+
+    public function test_sent_quote_keeps_snapshot_when_customer_contact_and_article_change(): void
+    {
+        $company = $this->createCompany('Empresa Orcamentos Snapshot');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $customer = $this->createCustomer($company, 'Cliente Snapshot Original');
+        $contact = $customer->contacts()->create([
+            'company_id' => $company->id,
+            'name' => 'Contacto Snapshot Original',
+            'email' => 'contacto.original@example.test',
+            'phone' => '111111111',
+            'job_title' => 'Compras',
+            'is_primary' => true,
+        ]);
+        $article = $this->createArticle($company, 'Artigo Snapshot Original', 125.50);
+        $unit = Unit::query()->whereKey($article->unit_id)->firstOrFail();
+
+        $store = $this->actingAs($admin)->post(route('admin.quotes.store'), [
+            'customer_id' => $customer->id,
+            'customer_contact_id' => $contact->id,
+            'issue_date' => now()->toDateString(),
+            'currency' => 'EUR',
+            'is_active' => 1,
+            'items' => [
+                [
+                    'line_type' => 'article',
+                    'article_id' => $article->id,
+                    'quantity' => 1,
+                    'unit_price' => 125.50,
+                    'unit_id' => $unit->id,
+                    'vat_rate_id' => $this->mainland23Rate()->id,
+                ],
+            ],
+        ]);
+        $store->assertRedirect();
+
+        $quote = Quote::query()->where('company_id', $company->id)->latest('id')->firstOrFail();
+
+        $this->actingAs($admin)->post(route('admin.quotes.status.change', $quote->id), [
+            'status' => Quote::STATUS_SENT,
+        ])->assertRedirect(route('admin.quotes.show', $quote->id));
+
+        $quote->refresh();
+        $item = $quote->items()->firstOrFail();
+
+        $oldCustomerName = (string) $quote->customer_name;
+        $oldContactName = (string) $quote->customer_contact_name;
+        $oldArticleDesignation = (string) $item->article_designation;
+        $oldArticleCode = (string) $item->article_code;
+        $oldUnitCode = (string) $item->unit_code;
+
+        $customer->forceFill([
+            'name' => 'Cliente Snapshot Alterado',
+            'nif' => '999999999',
+            'email' => 'cliente.alterado@example.test',
+            'phone' => '222222222',
+            'address' => 'Rua alterada',
+            'postal_code' => '1000-001',
+            'locality' => 'Lisboa',
+            'city' => 'Lisboa',
+        ])->save();
+        $contact->forceFill([
+            'name' => 'Contacto Snapshot Alterado',
+            'email' => 'contacto.alterado@example.test',
+            'phone' => '333333333',
+            'job_title' => 'Direcao',
+        ])->save();
+        $article->forceFill([
+            'designation' => 'Artigo Snapshot Alterado',
+            'code' => '99-9999',
+        ])->save();
+        $unit->forceFill([
+            'code' => 'CX',
+            'name' => 'Caixa',
+        ])->save();
+
+        $show = $this->actingAs($admin)->get(route('admin.quotes.show', $quote->id));
+        $show->assertOk();
+        $show->assertSee($oldCustomerName);
+        $show->assertSee($oldContactName);
+        $show->assertSee($oldArticleDesignation);
+        $show->assertSee($oldArticleCode);
+        $show->assertSee($oldUnitCode);
+        $show->assertDontSee('Cliente Snapshot Alterado');
+        $show->assertDontSee('Contacto Snapshot Alterado');
+        $show->assertDontSee('Artigo Snapshot Alterado');
+
+        $quote->refresh();
+        $line = $quote->items()->firstOrFail();
+        $pdfHtml = view('admin.quotes.pdf', ['quote' => $quote->load(['items'])])->render();
+        $this->assertStringContainsString($quote->customer_name, $pdfHtml);
+        $this->assertStringContainsString((string) $line->article_code, $pdfHtml);
+        $this->assertStringContainsString((string) $line->article_designation, $pdfHtml);
+        $this->assertStringNotContainsString('Cliente Snapshot Alterado', $pdfHtml);
+        $this->assertStringNotContainsString('Artigo Snapshot Alterado', $pdfHtml);
+    }
+
+    public function test_regenerating_pdf_after_sent_does_not_reimport_live_data(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa Orcamentos PDF Snapshot');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente PDF Snapshot');
+
+        $this->actingAs($admin)->post(route('admin.quotes.status.change', $quote->id), [
+            'status' => Quote::STATUS_SENT,
+        ])->assertRedirect(route('admin.quotes.show', $quote->id));
+
+        $quote->refresh();
+        $frozenName = (string) $quote->customer_name;
+
+        $quote->customer->forceFill([
+            'name' => 'Cliente Alterado Depois Envio',
+        ])->save();
+
+        $this->actingAs($admin)
+            ->post(route('admin.quotes.pdf.generate', $quote->id))
+            ->assertRedirect(route('admin.quotes.show', $quote->id));
+
+        $quote->refresh();
+        $this->assertSame($frozenName, $quote->customer_name);
+        $this->assertNotNull($quote->pdf_path);
+        Storage::disk('local')->assertExists($quote->pdf_path);
+    }
+
+    public function test_duplicate_keeps_header_and_item_snapshots(): void
+    {
+        $company = $this->createCompany('Empresa Orcamentos Snapshot Duplicar');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $quote = $this->createQuoteForCompany($company, 'Cliente Snapshot Duplicar');
+
+        $quote->forceFill([
+            'customer_name' => 'Snapshot Cliente',
+            'customer_contact_name' => 'Snapshot Contacto',
+            'payment_term_name' => '30 dias',
+        ])->save();
+
+        $quote->items()->update([
+            'article_code' => 'SNAP-001',
+            'article_designation' => 'Snapshot Artigo',
+            'unit_code' => 'UN',
+            'vat_rate_name' => 'IVA 23%',
+            'vat_rate_percentage' => 23,
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.quotes.duplicate', $quote->id))->assertRedirect();
+
+        $duplicate = Quote::query()
+            ->where('company_id', $company->id)
+            ->where('id', '!=', $quote->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame('Snapshot Cliente', $duplicate->customer_name);
+        $this->assertSame('Snapshot Contacto', $duplicate->customer_contact_name);
+        $this->assertSame('30 dias', $duplicate->payment_term_name);
+
+        $duplicateItem = QuoteItem::query()->where('quote_id', $duplicate->id)->firstOrFail();
+        $this->assertSame('SNAP-001', $duplicateItem->article_code);
+        $this->assertSame('Snapshot Artigo', $duplicateItem->article_designation);
+        $this->assertSame('UN', $duplicateItem->unit_code);
     }
 
     private function createQuoteForCompany(Company $company, string $customerName): Quote

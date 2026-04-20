@@ -32,6 +32,25 @@
     </style>
 </head>
 <body>
+    @php
+        $isDraft = $quote->status === \App\Models\Quote::STATUS_DRAFT;
+        $customerName = $quote->customer_name ?? ($isDraft ? $quote->customer?->name : null);
+        $customerNif = $quote->customer_nif ?? ($isDraft ? $quote->customer?->nif : null);
+        $customerAddress = $quote->customer_address ?? ($isDraft ? $quote->customer?->address : null);
+        $customerPostalCode = $quote->customer_postal_code ?? ($isDraft ? $quote->customer?->postal_code : null);
+        $customerLocality = $quote->customer_locality ?? ($isDraft ? $quote->customer?->locality : null);
+        $customerCity = $quote->customer_city ?? ($isDraft ? $quote->customer?->city : null);
+        $customerEmail = $quote->customer_email ?? ($isDraft ? $quote->customer?->email : null);
+        $customerPhone = $quote->customer_phone
+            ?? $quote->customer_mobile
+            ?? ($isDraft ? ($quote->customer?->phone ?? $quote->customer?->mobile) : null);
+        $contactName = $quote->customer_contact_name ?? ($isDraft ? $quote->customerContact?->name : null);
+        $contactJobTitle = $quote->customer_contact_job_title ?? ($isDraft ? $quote->customerContact?->job_title : null);
+        $contactEmail = $quote->customer_contact_email ?? ($isDraft ? $quote->customerContact?->email : null);
+        $paymentTermName = $quote->payment_term_name ?? ($isDraft ? $quote->paymentTerm?->name : null);
+        $paymentMethodName = $quote->payment_method_name ?? ($isDraft ? $quote->paymentMethod?->name : null);
+    @endphp
+
     <div class="header">
         <p class="doc-title">Proposta Comercial</p>
         <div class="doc-meta">
@@ -54,19 +73,19 @@
         <div class="col-50" style="float:right;">
             <div class="card">
                 <p class="card-title">Cliente</p>
-                <div class="strong">{{ $quote->customer?->name ?? '-' }}</div>
-                <div>NIF: {{ $quote->customer?->nif ?? '-' }}</div>
-                <div>{{ $quote->customer?->address ?? '-' }}</div>
-                <div>{{ $quote->customer?->postal_code ?? '' }} {{ $quote->customer?->locality ?? '' }} {{ $quote->customer?->city ?? '' }}</div>
-                <div>{{ $quote->customer?->email ?? '-' }} | {{ $quote->customer?->phone ?? $quote->customer?->mobile ?? '-' }}</div>
-                @if ($quote->customerContact)
+                <div class="strong">{{ $customerName ?? '-' }}</div>
+                <div>NIF: {{ $customerNif ?? '-' }}</div>
+                <div>{{ $customerAddress ?? '-' }}</div>
+                <div>{{ $customerPostalCode ?? '' }} {{ $customerLocality ?? '' }} {{ $customerCity ?? '' }}</div>
+                <div>{{ $customerEmail ?? '-' }} | {{ $customerPhone ?? '-' }}</div>
+                @if ($contactName)
                     <div class="muted" style="margin-top: 4px;">
-                        Contacto: {{ $quote->customerContact->name }}
-                        @if ($quote->customerContact->job_title)
-                            ({{ $quote->customerContact->job_title }})
+                        Contacto: {{ $contactName }}
+                        @if ($contactJobTitle)
+                            ({{ $contactJobTitle }})
                         @endif
-                        @if ($quote->customerContact->email)
-                            | {{ $quote->customerContact->email }}
+                        @if ($contactEmail)
+                            | {{ $contactEmail }}
                         @endif
                     </div>
                 @endif
@@ -76,8 +95,8 @@
 
     <table class="conditions">
         <tr>
-            <td><span class="muted">Cond. pagamento:</span> <span class="strong">{{ $quote->paymentTerm?->name ?? '-' }}</span></td>
-            <td><span class="muted">Modo pagamento:</span> <span class="strong">{{ $quote->paymentMethod?->name ?? '-' }}</span></td>
+            <td><span class="muted">Cond. pagamento:</span> <span class="strong">{{ $paymentTermName ?? '-' }}</span></td>
+            <td><span class="muted">Modo pagamento:</span> <span class="strong">{{ $paymentMethodName ?? '-' }}</span></td>
             <td><span class="muted">Moeda:</span> <span class="strong">{{ $quote->currency }}</span></td>
         </tr>
     </table>
@@ -115,23 +134,29 @@
                         <td colspan="7">{{ $item->description }}</td>
                     </tr>
                 @else
+                    @php
+                        $articleCode = $item->article_code ?? ($isDraft ? $item->article?->code : null);
+                        $unitCode = $item->unit_code ?? ($isDraft ? $item->unit?->code : null);
+                        $vatRatePercentage = $item->vat_rate_percentage ?? ($isDraft ? $item->vatRate?->rate : null);
+                        $exemptionCode = $item->vat_exemption_reason_code ?? ($isDraft ? $item->vatExemptionReason?->code : null);
+                    @endphp
                     <tr>
                         <td>{{ $item->sort_order }}</td>
                         <td>
                             {{ $item->description }}
-                            @if ($item->article)
-                                <div class="muted">{{ $item->article->code }}</div>
+                            @if ($articleCode)
+                                <div class="muted">{{ $articleCode }}</div>
                             @endif
                         </td>
                         <td class="text-right">{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                        <td>{{ $item->unit?->code ?? '-' }}</td>
+                        <td>{{ $unitCode ?? '-' }}</td>
                         <td class="text-right">{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>
                         <td class="text-right">{{ number_format((float) ($item->discount_percent ?? 0), 2, ',', '.') }}%</td>
                         <td class="text-right">
-                            @if ($item->vatRate)
-                                {{ number_format((float) $item->vatRate->rate, 2, ',', '.') }}%
-                                @if ($item->vatExemptionReason)
-                                    <div class="muted">{{ $item->vatExemptionReason->code }}</div>
+                            @if ($item->vat_rate_name || $vatRatePercentage !== null)
+                                {{ number_format((float) ($vatRatePercentage ?? 0), 2, ',', '.') }}%
+                                @if ($exemptionCode)
+                                    <div class="muted">{{ $exemptionCode }}</div>
                                 @endif
                             @else
                                 -

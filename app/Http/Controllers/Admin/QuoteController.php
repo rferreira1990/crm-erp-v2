@@ -120,6 +120,7 @@ class QuoteController extends Controller
             ]);
 
             $this->quoteItemsSyncService->sync($quote, $validated['items'] ?? [], $companyId);
+            $this->syncQuoteSnapshots($quote, true);
             $quote->recalculateTotals();
             $quote->addStatusLog(Quote::STATUS_DRAFT, null, 'Orcamento criado.', (int) $request->user()->id);
 
@@ -233,6 +234,7 @@ class QuoteController extends Controller
             $quoteModel->forceFill($payload)->save();
 
             $this->quoteItemsSyncService->sync($quoteModel, $validated['items'] ?? [], $companyId);
+            $this->syncQuoteSnapshots($quoteModel, true);
             $quoteModel->recalculateTotals();
             $quoteModel->addStatusLog($quoteModel->status, $quoteModel->status, 'Orcamento atualizado.', (int) $request->user()->id);
         });
@@ -291,11 +293,28 @@ class QuoteController extends Controller
                 'subject',
                 'customer_id',
                 'customer_contact_id',
+                'customer_name',
+                'customer_nif',
+                'customer_email',
+                'customer_phone',
+                'customer_mobile',
+                'customer_address',
+                'customer_postal_code',
+                'customer_locality',
+                'customer_city',
+                'customer_contact_name',
+                'customer_contact_email',
+                'customer_contact_phone',
+                'customer_contact_job_title',
                 'price_tier_id',
+                'price_tier_name',
                 'payment_term_id',
+                'payment_term_name',
                 'payment_method_id',
+                'payment_method_name',
                 'currency',
                 'default_vat_rate_id',
+                'default_vat_rate_name',
                 'header_notes',
                 'footer_notes',
                 'internal_notes',
@@ -332,14 +351,22 @@ class QuoteController extends Controller
                     'sort_order' => (int) $item->sort_order,
                     'line_type' => $item->line_type,
                     'article_id' => $item->article_id,
+                    'article_code' => $item->article_code,
+                    'article_designation' => $item->article_designation,
                     'description' => $item->description,
                     'internal_description' => $item->internal_description,
                     'quantity' => $item->quantity,
                     'unit_id' => $item->unit_id,
+                    'unit_code' => $item->unit_code,
+                    'unit_name' => $item->unit_name,
                     'unit_price' => $item->unit_price,
                     'discount_percent' => $item->discount_percent,
                     'vat_rate_id' => $item->vat_rate_id,
+                    'vat_rate_name' => $item->vat_rate_name,
+                    'vat_rate_percentage' => $item->vat_rate_percentage,
                     'vat_exemption_reason_id' => $item->vat_exemption_reason_id,
+                    'vat_exemption_reason_code' => $item->vat_exemption_reason_code,
+                    'vat_exemption_reason_name' => $item->vat_exemption_reason_name,
                     'subtotal' => $item->subtotal,
                     'discount_amount' => $item->discount_amount,
                     'tax_amount' => $item->tax_amount,
@@ -376,6 +403,11 @@ class QuoteController extends Controller
 
         DB::transaction(function () use ($quoteModel, $toStatus, $message, $request): void {
             $fromStatus = $quoteModel->status;
+
+            if ($fromStatus === Quote::STATUS_DRAFT && $toStatus !== Quote::STATUS_DRAFT) {
+                $this->syncQuoteSnapshots($quoteModel, true);
+            }
+
             $payload = $quoteModel->applyStatusTransition($toStatus);
             $quoteModel->forceFill($payload)->save();
             $quoteModel->addStatusLog($toStatus, $fromStatus, $message, (int) $request->user()->id);
@@ -391,6 +423,12 @@ class QuoteController extends Controller
         $companyId = (int) $request->user()->company_id;
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('view', $quoteModel);
+
+        if ($quoteModel->status === Quote::STATUS_DRAFT) {
+            DB::transaction(function () use ($quoteModel): void {
+                $this->syncQuoteSnapshots($quoteModel, true);
+            });
+        }
 
         $this->quotePdfService->generateAndStore($quoteModel);
 
@@ -420,6 +458,12 @@ class QuoteController extends Controller
         $companyId = (int) $request->user()->company_id;
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('update', $quoteModel);
+
+        if ($quoteModel->status === Quote::STATUS_DRAFT) {
+            DB::transaction(function () use ($quoteModel): void {
+                $this->syncQuoteSnapshots($quoteModel, true);
+            });
+        }
 
         if (! $quoteModel->pdf_path || ! Storage::disk('local')->exists($quoteModel->pdf_path)) {
             $this->quotePdfService->generateAndStore($quoteModel);
@@ -742,5 +786,10 @@ class QuoteController extends Controller
             ->forCompany($companyId)
             ->whereKey($quoteId)
             ->firstOrFail();
+    }
+
+    private function syncQuoteSnapshots(Quote $quote, bool $force = false): void
+    {
+        $this->quoteItemsSyncService->syncSnapshots($quote, (int) $quote->company_id, $force);
     }
 }

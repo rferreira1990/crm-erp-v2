@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
+use App\Http\Controllers\Admin\QuoteDashboardController;
 use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
 use App\Http\Controllers\Admin\SupplierController;
@@ -247,6 +248,7 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->name('suppliers.contacts.destroy');
 
         Route::get('/quotes', [QuoteController::class, 'index'])->name('quotes.index');
+        Route::get('/quotes/dashboard', QuoteDashboardController::class)->name('quotes.dashboard');
         Route::get('/quotes/create', [QuoteController::class, 'create'])->name('quotes.create');
         Route::post('/quotes', [QuoteController::class, 'store'])->name('quotes.store');
         Route::get('/quotes/{quote}', [QuoteController::class, 'show'])

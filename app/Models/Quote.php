@@ -35,16 +35,33 @@ class Quote extends Model
         'subject',
         'customer_id',
         'customer_contact_id',
+        'customer_name',
+        'customer_nif',
+        'customer_email',
+        'customer_phone',
+        'customer_mobile',
+        'customer_address',
+        'customer_postal_code',
+        'customer_locality',
+        'customer_city',
+        'customer_contact_name',
+        'customer_contact_email',
+        'customer_contact_phone',
+        'customer_contact_job_title',
         'issue_date',
         'valid_until',
         'sent_at',
         'accepted_at',
         'rejected_at',
         'price_tier_id',
+        'price_tier_name',
         'payment_term_id',
+        'payment_term_name',
         'payment_method_id',
+        'payment_method_name',
         'currency',
         'default_vat_rate_id',
+        'default_vat_rate_name',
         'subtotal',
         'discount_total',
         'tax_total',
@@ -161,6 +178,31 @@ class Quote extends Model
     }
 
     /**
+     * @return list<string>
+     */
+    public static function openCommercialStatuses(): array
+    {
+        return [
+            self::STATUS_DRAFT,
+            self::STATUS_SENT,
+            self::STATUS_VIEWED,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function closedCommercialStatuses(): array
+    {
+        return [
+            self::STATUS_APPROVED,
+            self::STATUS_REJECTED,
+            self::STATUS_EXPIRED,
+            self::STATUS_CANCELLED,
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function statusLabels(): array
@@ -199,12 +241,7 @@ class Quote extends Model
 
     public function isFinalStatus(): bool
     {
-        return in_array($this->status, [
-            self::STATUS_APPROVED,
-            self::STATUS_REJECTED,
-            self::STATUS_EXPIRED,
-            self::STATUS_CANCELLED,
-        ], true);
+        return in_array($this->status, self::closedCommercialStatuses(), true);
     }
 
     public function canTransitionTo(string $toStatus): bool
@@ -411,6 +448,42 @@ class Quote extends Model
     {
         $normalized = $this->normalizeNullableString($value);
         $this->attributes['email_last_sent_to'] = $normalized !== null ? strtolower($normalized) : null;
+    }
+
+    public function syncHeaderSnapshot(bool $force = false): void
+    {
+        if (! $force && $this->status !== self::STATUS_DRAFT) {
+            return;
+        }
+
+        $this->loadMissing([
+            'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
+            'customerContact:id,name,email,phone,job_title',
+            'priceTier:id,name',
+            'paymentTerm:id,name',
+            'paymentMethod:id,name',
+            'defaultVatRate:id,name',
+        ]);
+
+        $this->forceFill([
+            'customer_name' => $this->customer?->name ?? $this->customer_name,
+            'customer_nif' => $this->customer?->nif ?? $this->customer_nif,
+            'customer_email' => $this->customer?->email ?? $this->customer_email,
+            'customer_phone' => $this->customer?->phone ?? $this->customer_phone,
+            'customer_mobile' => $this->customer?->mobile ?? $this->customer_mobile,
+            'customer_address' => $this->customer?->address ?? $this->customer_address,
+            'customer_postal_code' => $this->customer?->postal_code ?? $this->customer_postal_code,
+            'customer_locality' => $this->customer?->locality ?? $this->customer_locality,
+            'customer_city' => $this->customer?->city ?? $this->customer_city,
+            'customer_contact_name' => $this->customerContact?->name ?? $this->customer_contact_name,
+            'customer_contact_email' => $this->customerContact?->email ?? $this->customer_contact_email,
+            'customer_contact_phone' => $this->customerContact?->phone ?? $this->customer_contact_phone,
+            'customer_contact_job_title' => $this->customerContact?->job_title ?? $this->customer_contact_job_title,
+            'price_tier_name' => $this->priceTier?->name ?? $this->price_tier_name,
+            'payment_term_name' => $this->paymentTerm?->name ?? $this->payment_term_name,
+            'payment_method_name' => $this->paymentMethod?->name ?? $this->payment_method_name,
+            'default_vat_rate_name' => $this->defaultVatRate?->name ?? $this->default_vat_rate_name,
+        ])->save();
     }
 
     private function normalizeNullableString(?string $value): ?string

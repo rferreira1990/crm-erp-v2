@@ -25,14 +25,22 @@ class QuoteItem extends Model
         'sort_order',
         'line_type',
         'article_id',
+        'article_code',
+        'article_designation',
         'description',
         'internal_description',
         'quantity',
         'unit_id',
+        'unit_code',
+        'unit_name',
         'unit_price',
         'discount_percent',
         'vat_rate_id',
+        'vat_rate_name',
+        'vat_rate_percentage',
         'vat_exemption_reason_id',
+        'vat_exemption_reason_code',
+        'vat_exemption_reason_name',
         'subtotal',
         'discount_amount',
         'tax_amount',
@@ -49,6 +57,7 @@ class QuoteItem extends Model
             'quantity' => 'decimal:3',
             'unit_price' => 'decimal:4',
             'discount_percent' => 'decimal:2',
+            'vat_rate_percentage' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
@@ -170,4 +179,3 @@ class QuoteItem extends Model
         return $normalized !== '' ? $normalized : null;
     }
 }
-

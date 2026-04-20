@@ -40,6 +40,20 @@
 @endsection
 
 @section('content')
+    @php
+        $isDraft = $quote->status === \App\Models\Quote::STATUS_DRAFT;
+        $customerName = $quote->customer_name ?? ($isDraft ? $quote->customer?->name : null);
+        $customerNif = $quote->customer_nif ?? ($isDraft ? $quote->customer?->nif : null);
+        $customerEmail = $quote->customer_email ?? ($isDraft ? $quote->customer?->email : null);
+        $customerPhone = $quote->customer_phone
+            ?? $quote->customer_mobile
+            ?? ($isDraft ? ($quote->customer?->phone ?? $quote->customer?->mobile) : null);
+        $contactName = $quote->customer_contact_name ?? ($isDraft ? $quote->customerContact?->name : null);
+        $contactEmail = $quote->customer_contact_email ?? ($isDraft ? $quote->customerContact?->email : null);
+        $contactPhone = $quote->customer_contact_phone ?? ($isDraft ? $quote->customerContact?->phone : null);
+        $contactJobTitle = $quote->customer_contact_job_title ?? ($isDraft ? $quote->customerContact?->job_title : null);
+    @endphp
+
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
     @endif
@@ -57,17 +71,17 @@
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <div class="text-body-tertiary fs-9">Cliente</div>
-                            <div class="fw-semibold">{{ $quote->customer?->name ?? '-' }}</div>
-                            <div>NIF: {{ $quote->customer?->nif ?? '-' }}</div>
-                            <div>Email: {{ $quote->customer?->email ?? '-' }}</div>
-                            <div>Telefone: {{ $quote->customer?->phone ?? $quote->customer?->mobile ?? '-' }}</div>
+                            <div class="fw-semibold">{{ $customerName ?? '-' }}</div>
+                            <div>NIF: {{ $customerNif ?? '-' }}</div>
+                            <div>Email: {{ $customerEmail ?? '-' }}</div>
+                            <div>Telefone: {{ $customerPhone ?? '-' }}</div>
                         </div>
                         <div class="col-12 col-md-6">
                             <div class="text-body-tertiary fs-9">Contacto</div>
-                            <div class="fw-semibold">{{ $quote->customerContact?->name ?? '-' }}</div>
-                            <div>{{ $quote->customerContact?->email ?? '-' }}</div>
-                            <div>{{ $quote->customerContact?->phone ?? '-' }}</div>
-                            <div>{{ $quote->customerContact?->job_title ?? '-' }}</div>
+                            <div class="fw-semibold">{{ $contactName ?? '-' }}</div>
+                            <div>{{ $contactEmail ?? '-' }}</div>
+                            <div>{{ $contactPhone ?? '-' }}</div>
+                            <div>{{ $contactJobTitle ?? '-' }}</div>
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-body-tertiary fs-9">Data emissao</div>
@@ -120,24 +134,31 @@
                                             <td class="fst-italic" colspan="7">{{ $item->description }}</td>
                                         </tr>
                                     @else
+                                        @php
+                                            $articleCode = $item->article_code ?? ($isDraft ? $item->article?->code : null);
+                                            $unitCode = $item->unit_code ?? ($isDraft ? $item->unit?->code : null);
+                                            $vatRateName = $item->vat_rate_name ?? ($isDraft ? $item->vatRate?->name : null);
+                                            $vatRatePercentage = $item->vat_rate_percentage ?? ($isDraft ? $item->vatRate?->rate : null);
+                                            $exemptionCode = $item->vat_exemption_reason_code ?? ($isDraft ? $item->vatExemptionReason?->code : null);
+                                        @endphp
                                         <tr>
                                             <td class="ps-3">{{ $item->sort_order }}</td>
                                             <td>{{ \App\Models\QuoteItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
                                             <td>
                                                 <div class="fw-semibold">{{ $item->description }}</div>
-                                                @if ($item->article)
-                                                    <div class="text-body-tertiary fs-10">{{ $item->article->code }}</div>
+                                                @if ($articleCode)
+                                                    <div class="text-body-tertiary fs-10">{{ $articleCode }}</div>
                                                 @endif
                                             </td>
                                             <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                                            <td>{{ $item->unit?->code ?? '-' }}</td>
+                                            <td>{{ $unitCode ?? '-' }}</td>
                                             <td>{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>
                                             <td>{{ number_format((float) ($item->discount_percent ?? 0), 2, ',', '.') }}%</td>
                                             <td>
-                                                @if ($item->vatRate)
-                                                    {{ $item->vatRate->name }} ({{ number_format((float) $item->vatRate->rate, 2, ',', '.') }}%)
-                                                    @if ($item->vatExemptionReason)
-                                                        <div class="text-body-tertiary fs-10">{{ $item->vatExemptionReason->code }}</div>
+                                                @if ($vatRateName)
+                                                    {{ $vatRateName }} ({{ number_format((float) ($vatRatePercentage ?? 0), 2, ',', '.') }}%)
+                                                    @if ($exemptionCode)
+                                                        <div class="text-body-tertiary fs-10">{{ $exemptionCode }}</div>
                                                     @endif
                                                 @else
                                                     -
@@ -206,7 +227,7 @@
                         @csrf
                         <div class="col-12">
                             <label for="to" class="form-label">Enviar para</label>
-                            <input type="email" id="to" name="to" value="{{ old('to', $quote->customerContact?->email ?? $quote->customer?->email ?? '') }}" class="form-control form-control-sm @error('to') is-invalid @enderror" required>
+                            <input type="email" id="to" name="to" value="{{ old('to', $contactEmail ?? $customerEmail ?? '') }}" class="form-control form-control-sm @error('to') is-invalid @enderror" required>
                             @error('to')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
