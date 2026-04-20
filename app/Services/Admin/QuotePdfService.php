@@ -13,7 +13,7 @@ class QuotePdfService
     public function generateAndStore(Quote $quote): string
     {
         $quote->loadMissing([
-            'company:id,name,nif,email,phone',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,bank_name,iban,bic_swift,logo_path',
             'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
             'customerContact:id,customer_id,name,email,phone,job_title',
             'paymentTerm:id,name',
@@ -28,8 +28,11 @@ class QuotePdfService
                 ->orderBy('id'),
         ]);
 
+        $companyLogoDataUri = $this->companyLogoDataUri($quote->company?->logo_path);
+
         $html = view('admin.quotes.pdf', [
             'quote' => $quote,
+            'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();
 
         $options = new Options();
@@ -60,5 +63,25 @@ class QuotePdfService
         }
 
         Storage::disk('local')->delete($path);
+    }
+
+    private function companyLogoDataUri(?string $logoPath): ?string
+    {
+        $path = trim((string) $logoPath);
+        if ($path === '' || ! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        $contents = Storage::disk('local')->get($path);
+        if ($contents === '') {
+            return null;
+        }
+
+        $mime = Storage::disk('local')->mimeType($path);
+        if (! is_string($mime) || ! str_starts_with($mime, 'image/')) {
+            $mime = 'image/png';
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }
