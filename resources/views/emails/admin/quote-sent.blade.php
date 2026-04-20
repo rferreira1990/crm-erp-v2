@@ -111,11 +111,23 @@
                                 @if (! empty($contact['phone']))
                                     Telefone: {{ $contact['phone'] }}<br />
                                 @endif
+                                @if (! empty($contact['mobile']))
+                                    Telemovel: {{ $contact['mobile'] }}<br />
+                                @endif
                                 @if (! empty($contact['email']))
                                     Email: <a href="mailto:{{ $contact['email'] }}" style="color:{{ $brandPrimaryColor }};text-decoration:none;">{{ $contact['email'] }}</a><br />
                                 @endif
                                 @if (! empty($contact['website']))
                                     Website: <a href="{{ $contact['website'] }}" style="color:{{ $brandPrimaryColor }};text-decoration:none;">{{ $contact['website'] }}</a><br />
+                                @endif
+                                @if (! empty($contact['nif']))
+                                    NIF: {{ $contact['nif'] }}<br />
+                                @endif
+                                @if (! empty($contact['address']))
+                                    Morada: {{ $contact['address'] }}<br />
+                                @endif
+                                @if (! empty($contact['location']))
+                                    {{ $contact['location'] }}<br />
                                 @endif
                                 <span style="display:inline-block;margin-top:6px;color:#9ca3af;">Mensagem automatica. Por favor, nao responda diretamente a este email sem confirmar o endereco de resposta indicado.</span>
                             </div>

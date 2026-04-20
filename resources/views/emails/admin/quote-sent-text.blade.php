@@ -25,9 +25,21 @@ Com os melhores cumprimentos,
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif
+@if (! empty($contact['mobile']))
+Telemovel: {{ $contact['mobile'] }}
+@endif
 @if (! empty($contact['email']))
 Email: {{ $contact['email'] }}
 @endif
 @if (! empty($contact['website']))
 Website: {{ $contact['website'] }}
+@endif
+@if (! empty($contact['nif']))
+NIF: {{ $contact['nif'] }}
+@endif
+@if (! empty($contact['address']))
+Morada: {{ $contact['address'] }}
+@endif
+@if (! empty($contact['location']))
+{{ $contact['location'] }}
 @endif
