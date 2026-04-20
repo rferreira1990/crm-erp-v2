@@ -5,6 +5,7 @@ use App\Http\Controllers\SuperAdmin\EmailSettingsController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\CompanyUserInvitationController;
+use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
@@ -71,6 +72,13 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/dashboard/version-old', function () {
             return view('admin.dashboard.version_old');
         })->name('dashboard.version_old');
+
+        Route::get('/company-settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit');
+        Route::put('/company-settings', [CompanySettingsController::class, 'update'])->name('company-settings.update');
+        Route::post('/company-settings/test-smtp', [CompanySettingsController::class, 'testSmtp'])
+            ->middleware('throttle:6,1')
+            ->name('company-settings.test-smtp');
+        Route::get('/company-settings/logo', [CompanySettingsController::class, 'showLogo'])->name('company-settings.logo.show');
 
         Route::get('/users', [CompanyUserController::class, 'index'])->name('users.index');
         Route::patch('/users/{companyUser}', [CompanyUserController::class, 'update'])

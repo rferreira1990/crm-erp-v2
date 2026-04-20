@@ -34,4 +34,27 @@ class CompanyPolicy
     {
         return $user->isSuperAdmin();
     }
+
+    public function viewSettings(User $user, Company $company): bool
+    {
+        return $this->canManageOwnCompanySettings($user, $company);
+    }
+
+    public function updateSettings(User $user, Company $company): bool
+    {
+        return $this->canManageOwnCompanySettings($user, $company);
+    }
+
+    public function testSmtp(User $user, Company $company): bool
+    {
+        return $this->canManageOwnCompanySettings($user, $company);
+    }
+
+    private function canManageOwnCompanySettings(User $user, Company $company): bool
+    {
+        return $user->is_active
+            && $user->isCompanyUser()
+            && (int) $user->company_id === (int) $company->id
+            && $user->can('company.settings.manage');
+    }
 }

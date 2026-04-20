@@ -17,9 +17,27 @@ class Company extends Model
     protected $fillable = [
         'name',
         'slug',
+        'address',
+        'locality',
+        'city',
+        'postal_code',
         'nif',
+        'mobile',
         'email',
         'phone',
+        'website',
+        'logo_path',
+        'bank_name',
+        'iban',
+        'bic_swift',
+        'mail_use_custom_settings',
+        'mail_from_name',
+        'mail_from_address',
+        'mail_host',
+        'mail_port',
+        'mail_username',
+        'mail_password',
+        'mail_encryption',
         'is_active',
     ];
 
@@ -30,6 +48,8 @@ class Company extends Model
     {
         return [
             'is_active' => 'boolean',
+            'mail_use_custom_settings' => 'boolean',
+            'mail_password' => 'encrypted',
         ];
     }
 

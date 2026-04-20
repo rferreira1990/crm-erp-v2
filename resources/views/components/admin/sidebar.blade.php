@@ -126,6 +126,16 @@
                         <p class="navbar-vertical-label">Definicoes</p>
                         <hr class="navbar-vertical-line" />
                     </li>
+                    @can('company.settings.manage')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.company-settings.*') ? 'active' : '' }}" href="{{ route('admin.company-settings.edit') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="building"></span></span>
+                                    <span class="nav-link-text">Empresa</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
                     <li class="nav-item">
                         <span class="nav-link text-body-tertiary">
                             <div class="d-flex align-items-center">

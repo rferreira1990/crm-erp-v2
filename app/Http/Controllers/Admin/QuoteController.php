@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use App\Services\Admin\QuoteItemsSyncService;
+use App\Services\Admin\CompanyMailSettingsService;
 use App\Services\Admin\QuotePdfService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +39,8 @@ class QuoteController extends Controller
 {
     public function __construct(
         private readonly QuoteItemsSyncService $quoteItemsSyncService,
-        private readonly QuotePdfService $quotePdfService
+        private readonly QuotePdfService $quotePdfService,
+        private readonly CompanyMailSettingsService $companyMailSettingsService
     ) {
     }
 
@@ -474,6 +476,9 @@ class QuoteController extends Controller
         $ccRecipients = $request->ccRecipients();
         $subject = $request->validated('subject');
         $message = $request->validated('message');
+
+        $quoteModel->loadMissing('company');
+        $this->companyMailSettingsService->applyRuntimeConfig($quoteModel->company);
 
         $mailer = Mail::to($to);
         if ($ccRecipients !== []) {

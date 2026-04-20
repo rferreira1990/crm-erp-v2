@@ -27,7 +27,7 @@ class QuoteSentMail extends Mailable
     public static function defaultSubjectForQuote(Quote $quote): string
     {
         $quote->loadMissing(['company:id,name']);
-        $companyName = trim((string) ($quote->company?->name ?? setting('mail.from_name', (string) config('mail.from.name'))));
+        $companyName = trim((string) ($quote->company?->name ?? config('mail.from.name')));
         $companyName = $companyName !== '' ? $companyName : 'A nossa empresa';
 
         return 'Proposta Comercial '.$quote->number.' - '.$companyName;
@@ -35,14 +35,15 @@ class QuoteSentMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $this->quote->loadMissing(['company:id,name,email']);
+        $this->quote->loadMissing(['company:id,name,email,website,mail_from_name,mail_from_address']);
 
-        $fromAddress = (string) setting('mail.from_address', (string) config('mail.from.address'));
-        $fromName = trim((string) ($this->quote->company?->name ?? setting('mail.from_name', (string) config('mail.from.name'))));
+        $fromAddress = $this->normalizeEmail((string) ($this->quote->company?->mail_from_address ?? ''))
+            ?? (string) config('mail.from.address');
+        $fromName = trim((string) ($this->quote->company?->mail_from_name ?: $this->quote->company?->name ?: config('mail.from.name')));
         $fromName = $fromName !== '' ? $fromName : (string) config('mail.from.name');
 
         $companyReplyTo = $this->normalizeEmail((string) ($this->quote->company?->email ?? ''));
-        $configuredReplyTo = $this->normalizeEmail((string) setting('mail.reply_to'));
+        $configuredReplyTo = $this->normalizeEmail((string) (data_get(config('mail.reply_to'), 'address') ?? ''));
         $replyToAddress = $companyReplyTo ?? $configuredReplyTo;
 
         $subject = trim($this->subjectLine) !== ''
@@ -59,13 +60,13 @@ class QuoteSentMail extends Mailable
     public function content(): Content
     {
         $this->quote->loadMissing([
-            'company:id,name,email,phone',
+            'company:id,name,email,phone,website,mail_from_name,mail_from_address',
             'customer:id,name',
             'assignedUser:id,name',
         ]);
 
         $company = $this->quote->company;
-        $companyName = trim((string) ($company?->name ?? setting('mail.from_name', (string) config('mail.from.name'))));
+        $companyName = trim((string) ($company?->name ?? config('mail.from.name')));
         $companyName = $companyName !== '' ? $companyName : (string) config('app.name', 'CRM/ERP');
 
         $customerName = trim((string) ($this->quote->customer_contact_name
@@ -78,9 +79,9 @@ class QuoteSentMail extends Mailable
             $logoUrl = $this->normalizeUrl((string) setting('mail.logo_url'));
         }
 
-        $website = $this->normalizeUrl((string) setting('company.'.$this->quote->company_id.'.website'));
+        $website = $this->normalizeUrl((string) ($company?->website ?? ''));
         if (! $website) {
-            $website = $this->normalizeUrl((string) setting('app.url', (string) config('app.url')));
+            $website = $this->normalizeUrl((string) config('app.url'));
         }
 
         $primaryColor = trim((string) setting('company.'.$this->quote->company_id.'.branding.primary_color'));
@@ -100,7 +101,7 @@ class QuoteSentMail extends Mailable
         ];
 
         $contact = [
-            'email' => $company?->email ?: setting('mail.from_address', (string) config('mail.from.address')),
+            'email' => $company?->email ?: (string) config('mail.from.address'),
             'phone' => $company?->phone,
             'website' => $website,
         ];
