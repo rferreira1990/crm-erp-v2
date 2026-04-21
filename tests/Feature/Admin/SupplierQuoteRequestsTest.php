@@ -148,6 +148,13 @@ class SupplierQuoteRequestsTest extends TestCase
             Storage::disk('local')->assertExists((string) $invite->pdf_path);
             $this->assertNotSame($rfq->pdf_path, $invite->pdf_path);
         }
+
+        $firstInvite = $invites->first();
+        $this->assertNotNull($firstInvite);
+
+        $downloadResponse = $this->actingAs($admin)->get(route('admin.rfqs.suppliers.pdf.download', [$rfq->id, $firstInvite->id]));
+        $downloadResponse->assertOk();
+        $downloadResponse->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_register_supplier_response_updates_supplier_and_rfq_status(): void
