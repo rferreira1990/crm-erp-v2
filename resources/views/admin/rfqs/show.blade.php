@@ -150,9 +150,6 @@
                                         <td>
                                             @if ($invite->supplierQuote)
                                                 <div>{{ number_format((float) $invite->supplierQuote->grand_total, 2, ',', '.') }} EUR</div>
-                                                @if ($invite->supplierQuote->supplier_document_number)
-                                                    <div class="text-body-tertiary fs-10">Doc: {{ $invite->supplierQuote->supplier_document_number }}</div>
-                                                @endif
                                             @else
                                                 -
                                             @endif
