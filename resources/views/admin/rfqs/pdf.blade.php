@@ -87,12 +87,11 @@
         <thead>
             <tr>
                 <th style="width:6%;">#</th>
-                <th style="width:12%;">Tipo</th>
-                <th style="width:14%;">Codigo</th>
-                <th style="width:38%;">Descricao</th>
+                <th style="width:16%;">Codigo</th>
+                <th style="width:46%;">Descricao</th>
                 <th style="width:10%;">Unidade</th>
                 <th style="width:10%;">Qtd.</th>
-                <th style="width:10%;">Notas</th>
+                <th style="width:12%;">Notas</th>
             </tr>
         </thead>
         <tbody>
@@ -104,7 +103,6 @@
                 @endphp
                 <tr class="{{ $rowClass }}">
                     <td>{{ $item->line_order }}</td>
-                    <td>{{ \App\Models\SupplierQuoteRequestItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
                     <td>{{ $item->article_code ?: '-' }}</td>
                     <td>{{ $item->description }}</td>
                     <td>{{ $item->unit_name ?: '-' }}</td>
@@ -113,7 +111,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" style="text-align:center;">Sem linhas no pedido.</td>
+                    <td colspan="6" style="text-align:center;">Sem linhas no pedido.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -131,4 +129,3 @@
     </div>
 </body>
 </html>
-
