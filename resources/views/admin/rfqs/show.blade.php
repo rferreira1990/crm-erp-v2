@@ -9,6 +9,9 @@
     @if ($rfq->isEditable() && auth()->user()->can('company.rfq.update'))
         <a href="{{ route('admin.rfqs.edit', $rfq->id) }}" class="btn btn-primary btn-sm">Editar</a>
     @endif
+    @can('company.rfq.compare')
+        <a href="{{ route('admin.rfqs.compare', $rfq->id) }}" class="btn btn-phoenix-secondary btn-sm">Comparar propostas</a>
+    @endcan
     <form method="POST" action="{{ route('admin.rfqs.pdf.generate', $rfq->id) }}" class="d-inline">
         @csrf
         <button type="submit" class="btn btn-phoenix-secondary btn-sm">Gerar PDF</button>
@@ -185,6 +188,48 @@
         </div>
 
         <div class="col-12 col-xxl-4">
+            @if ($rfq->latestAward)
+                <div class="card mb-4">
+                    <div class="card-header bg-body-tertiary">
+                        <h5 class="mb-0">Resumo da adjudicacao</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Modo</div>
+                            <div class="fw-semibold">{{ \App\Models\SupplierQuoteAward::modeLabels()[$rfq->latestAward->mode] ?? $rfq->latestAward->mode }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Data</div>
+                            <div class="fw-semibold">{{ optional($rfq->latestAward->awarded_at)->format('Y-m-d H:i') ?? '-' }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Total adjudicado</div>
+                            <div class="fw-semibold">{{ $rfq->latestAward->awarded_total !== null ? number_format((float) $rfq->latestAward->awarded_total, 2, ',', '.').' EUR' : '-' }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Fornecedor global</div>
+                            <div class="fw-semibold">{{ $rfq->latestAward->supplier?->name ?? '-' }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Linhas adjudicadas</div>
+                            <div class="fw-semibold">{{ $rfq->latestAward->items->count() }}</div>
+                        </div>
+                        @if ($rfq->latestAward->award_reason)
+                            <div class="mb-2">
+                                <div class="text-body-tertiary fs-9">Motivo</div>
+                                <div>{{ $rfq->latestAward->award_reason }}</div>
+                            </div>
+                        @endif
+                        @if ($rfq->latestAward->award_notes)
+                            <div class="mb-0">
+                                <div class="text-body-tertiary fs-9">Notas</div>
+                                <div>{{ $rfq->latestAward->award_notes }}</div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <div class="card mb-4">
                 <div class="card-header bg-body-tertiary">
                     <h5 class="mb-0">Enviar pedido por email</h5>

@@ -134,8 +134,7 @@ class SupplierQuoteRequestController extends Controller
             'creator:id,name',
             'assignedUser:id,name',
             'latestAward' => fn ($query) => $query
-                ->with(['supplier:id,name', 'awardedByUser:id,name'])
-                ->withCount('items'),
+                ->with(['supplier:id,name', 'awardedByUser:id,name', 'items:id,supplier_quote_award_id']),
             'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
             'invitedSuppliers' => fn ($query) => $query
                 ->with([

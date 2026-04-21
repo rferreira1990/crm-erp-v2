@@ -180,11 +180,12 @@ class SupplierQuoteAwardService
 
         $cheapestInviteId = (int) ($comparison['cheapest_total_invite_id'] ?? 0);
         $isCheapest = $cheapestInviteId > 0 && $cheapestInviteId === (int) $summary['invite']->id;
+        $requiresReason = $cheapestInviteId > 0 && ! $isCheapest;
 
         return [
             'awarded_supplier_id' => $supplierId,
             'awarded_total' => round((float) $summary['quote']->grand_total, 2),
-            'requires_reason' => ! $isCheapest,
+            'requires_reason' => $requiresReason,
             'items' => $this->buildAwardItemsFromSingleSupplierSummary($summary, $comparison['rfq']->items, $isCheapest),
         ];
     }
@@ -373,4 +374,3 @@ class SupplierQuoteAwardService
         ];
     }
 }
-

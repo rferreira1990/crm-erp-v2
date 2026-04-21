@@ -9,7 +9,10 @@ class SupplierQuoteRequestStatusService
 {
     public function syncFromSupplierResponses(SupplierQuoteRequest $rfq): void
     {
-        if ($rfq->status === SupplierQuoteRequest::STATUS_CANCELLED) {
+        if (in_array($rfq->status, [
+            SupplierQuoteRequest::STATUS_CANCELLED,
+            SupplierQuoteRequest::STATUS_AWARDED,
+        ], true)) {
             return;
         }
 
@@ -30,6 +33,10 @@ class SupplierQuoteRequestStatusService
             SupplierQuoteRequestSupplier::STATUS_NO_RESPONSE,
         ])->count();
 
+        if ($rfq->status === SupplierQuoteRequest::STATUS_COMPARED && $sentCount > 0) {
+            return;
+        }
+
         $status = SupplierQuoteRequest::STATUS_DRAFT;
         if ($respondedCount === $totalSuppliers) {
             $status = SupplierQuoteRequest::STATUS_RECEIVED;
@@ -44,4 +51,3 @@ class SupplierQuoteRequestStatusService
         }
     }
 }
-
