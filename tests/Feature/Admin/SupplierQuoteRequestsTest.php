@@ -11,6 +11,7 @@ use App\Models\SupplierQuoteRequestSupplier;
 use App\Models\User;
 use Database\Seeders\InitialSaasSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -159,6 +160,8 @@ class SupplierQuoteRequestsTest extends TestCase
 
     public function test_register_supplier_response_updates_supplier_and_rfq_status(): void
     {
+        Storage::fake('local');
+
         $company = $this->createCompany('Empresa RFQ Response');
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
         $supplierA = $this->createSupplier($company, 'Fornecedor Resp A', 'resp-a@example.test');
@@ -181,8 +184,12 @@ class SupplierQuoteRequestsTest extends TestCase
             'received_at' => now()->format('Y-m-d H:i:s'),
             'shipping_cost' => 15,
             'delivery_days' => 5,
+            'supplier_document_date' => '2026-04-22',
+            'supplier_document_number' => 'FP-2026-15',
+            'commercial_discount_text' => '3% pp',
             'payment_terms_text' => '30 dias',
             'notes' => 'Resposta recebida por email.',
+            'supplier_document_pdf' => UploadedFile::fake()->create('proposta-a.pdf', 320, 'application/pdf'),
             'items' => [
                 [
                     'supplier_quote_request_item_id' => $firstItem->id,
@@ -221,10 +228,98 @@ class SupplierQuoteRequestsTest extends TestCase
         $this->assertSame('125.00', (string) $quote->subtotal);
         $this->assertSame('28.75', (string) $quote->tax_total);
         $this->assertSame('168.75', (string) $quote->grand_total);
+        $this->assertSame('FP-2026-15', $quote->supplier_document_number);
+        $this->assertSame('3% pp', $quote->commercial_discount_text);
+        $this->assertSame('30 dias', $quote->payment_terms_text);
+        $this->assertNotNull($quote->supplier_document_date);
+        $this->assertNotNull($quote->supplier_document_pdf_path);
+        Storage::disk('local')->assertExists((string) $quote->supplier_document_pdf_path);
         $this->assertDatabaseCount('supplier_quote_items', 1);
+
+        $downloadResponse = $this->actingAs($admin)->get(route('admin.rfqs.responses.document.download', [$rfq->id, $inviteA->id]));
+        $downloadResponse->assertOk();
+        $downloadResponse->assertHeader('content-type', 'application/pdf');
 
         $rfq->refresh();
         $this->assertSame(SupplierQuoteRequest::STATUS_PARTIALLY_RECEIVED, $rfq->status);
+    }
+
+    public function test_supplier_response_can_be_edited_and_uploaded_pdf_is_replaced(): void
+    {
+        Storage::fake('local');
+
+        $company = $this->createCompany('Empresa RFQ Response Edit');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $supplier = $this->createSupplier($company, 'Fornecedor Editavel', 'editavel@example.test');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.store'), $this->rfqPayload($supplier->id, $supplier->id))
+            ->assertRedirect();
+
+        $rfq = SupplierQuoteRequest::query()->where('company_id', $company->id)->latest('id')->firstOrFail();
+        $rfq->load(['items', 'invitedSuppliers']);
+        $invite = $rfq->invitedSuppliers->first();
+        $this->assertNotNull($invite);
+        $firstItem = $rfq->items->first();
+        $this->assertNotNull($firstItem);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $invite->id]), [
+            'received_at' => now()->format('Y-m-d H:i:s'),
+            'shipping_cost' => 10,
+            'supplier_document_number' => 'DOC-001',
+            'supplier_document_pdf' => UploadedFile::fake()->create('doc-1.pdf', 200, 'application/pdf'),
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                    'discount_percent' => 0,
+                    'vat_percent' => 23,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id));
+
+        $quote = $invite->supplierQuote()->firstOrFail();
+        $firstQuoteId = (int) $quote->id;
+        $firstPdfPath = (string) $quote->supplier_document_pdf_path;
+        Storage::disk('local')->assertExists($firstPdfPath);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $invite->id]), [
+            'received_at' => now()->addHour()->format('Y-m-d H:i:s'),
+            'shipping_cost' => 5,
+            'supplier_document_number' => 'DOC-002',
+            'commercial_discount_text' => '5% especial',
+            'supplier_document_pdf' => UploadedFile::fake()->create('doc-2.pdf', 210, 'application/pdf'),
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 2,
+                    'unit_price' => 90,
+                    'discount_percent' => 0,
+                    'vat_percent' => 23,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id));
+
+        $quote->refresh();
+        $this->assertSame($firstQuoteId, (int) $quote->id);
+        $this->assertSame('DOC-002', $quote->supplier_document_number);
+        $this->assertSame('5% especial', $quote->commercial_discount_text);
+        $this->assertSame('Pronto pagamento', $quote->payment_terms_text);
+        $this->assertNotSame($firstPdfPath, (string) $quote->supplier_document_pdf_path);
+        Storage::disk('local')->assertMissing($firstPdfPath);
+        Storage::disk('local')->assertExists((string) $quote->supplier_document_pdf_path);
     }
 
     /**
