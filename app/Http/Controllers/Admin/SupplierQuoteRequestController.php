@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\SupplierQuoteRequest;
 use App\Models\SupplierQuoteRequestItem;
 use App\Models\SupplierQuoteRequestSupplier;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\Admin\CompanyMailSettingsService;
 use App\Services\Admin\SupplierQuoteRequestItemsSyncService;
@@ -343,7 +344,8 @@ class SupplierQuoteRequestController extends Controller
      *   suppliers: Collection<int, Supplier>,
      *   assignedUserOptions: Collection<int, User>,
      *   lineTypeOptions: array<string, string>,
-     *   articleOptions: Collection<int, Article>
+     *   articleOptions: Collection<int, Article>,
+     *   unitOptions: Collection<int, Unit>
      * }
      */
     private function buildFormOptions(
@@ -386,6 +388,11 @@ class SupplierQuoteRequestController extends Controller
                 ->where('is_active', true)
                 ->orderBy('designation')
                 ->get(['id', 'code', 'designation']),
+            'unitOptions' => Unit::query()
+                ->visibleToCompany($companyId)
+                ->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$companyId])
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'company_id', 'is_system']),
         ];
     }
 
@@ -411,4 +418,3 @@ class SupplierQuoteRequestController extends Controller
         ];
     }
 }
-
