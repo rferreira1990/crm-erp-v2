@@ -159,9 +159,19 @@
                                         </td>
                                         <td class="text-end pe-3">
                                             <div class="d-inline-flex gap-2">
-                                                <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
-                                                    {{ $invite->supplierQuote ? 'Editar resposta' : 'Registar resposta' }}
-                                                </a>
+                                                @if ($rfq->status === \App\Models\SupplierQuoteRequest::STATUS_AWARDED)
+                                                    @if ($invite->supplierQuote)
+                                                        <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
+                                                            Ver resposta
+                                                        </a>
+                                                    @else
+                                                        <button type="button" class="btn btn-phoenix-secondary btn-sm" disabled>Resposta bloqueada</button>
+                                                    @endif
+                                                @else
+                                                    <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
+                                                        {{ $invite->supplierQuote ? 'Editar resposta' : 'Registar resposta' }}
+                                                    </a>
+                                                @endif
                                                 @if ($invite->pdf_path)
                                                     <a href="{{ route('admin.rfqs.suppliers.pdf.download', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
                                                         PDF fornecedor
@@ -203,6 +213,10 @@
                             <div class="fw-semibold">{{ optional($rfq->latestAward->awarded_at)->format('Y-m-d H:i') ?? '-' }}</div>
                         </div>
                         <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Adjudicado por</div>
+                            <div class="fw-semibold">{{ $rfq->latestAward->awardedByUser?->name ?? '-' }}</div>
+                        </div>
+                        <div class="mb-2">
                             <div class="text-body-tertiary fs-9">Total adjudicado</div>
                             <div class="fw-semibold">{{ $rfq->latestAward->awarded_total !== null ? number_format((float) $rfq->latestAward->awarded_total, 2, ',', '.').' EUR' : '-' }}</div>
                         </div>
@@ -214,6 +228,15 @@
                             <div class="text-body-tertiary fs-9">Linhas adjudicadas</div>
                             <div class="fw-semibold">{{ $rfq->latestAward->items->count() }}</div>
                         </div>
+                        <div class="mb-2">
+                            <div class="text-body-tertiary fs-9">Fornecedores envolvidos</div>
+                            <div class="fw-semibold">{{ $rfq->latestAward->items->pluck('supplier_id')->filter()->unique()->count() }}</div>
+                        </div>
+                        @if (in_array($rfq->latestAward->mode, [\App\Models\SupplierQuoteAward::MODE_CHEAPEST_ITEM, \App\Models\SupplierQuoteAward::MODE_MANUAL_ITEM], true))
+                            <div class="alert alert-warning py-2 px-3 mb-2">
+                                Total por item sem reparticao automatica de portes. Considere portes por fornecedor na validacao final.
+                            </div>
+                        @endif
                         @if ($rfq->latestAward->award_reason)
                             <div class="mb-2">
                                 <div class="text-body-tertiary fs-9">Motivo</div>
