@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('supplier_quote_request_number_sequences')) {
+            return;
+        }
+
         Schema::create('supplier_quote_request_number_sequences', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
@@ -30,4 +34,3 @@ return new class extends Migration
         Schema::dropIfExists('supplier_quote_request_number_sequences');
     }
 };
-
