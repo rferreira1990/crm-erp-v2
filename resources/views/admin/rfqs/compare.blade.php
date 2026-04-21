@@ -18,8 +18,25 @@
 @endsection
 
 @section('content')
+    @php
+        $latestAward = $rfq->latestAward;
+        $awardItemsByLineAndSupplier = collect();
+        if ($latestAward) {
+            $awardItemsByLineAndSupplier = $latestAward->items->keyBy(
+                fn ($item) => (int) $item->supplier_quote_request_item_id.'|'.(int) $item->supplier_id
+            );
+        }
+    @endphp
+
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
+    @endif
+
+    @if ($latestAward)
+        <div class="alert alert-warning">
+            Pedido adjudicado em {{ optional($latestAward->awarded_at)->format('Y-m-d H:i') }} por {{ $latestAward->awardedByUser?->name ?? '-' }}.
+            O comparador permanece em consulta e os dados comerciais estao bloqueados para mutacao.
+        </div>
     @endif
 
     <div class="card mb-4">
@@ -57,12 +74,12 @@
                                 <td class="ps-3">
                                     <div class="fw-semibold">{{ $invite->supplier_name }}</div>
                                     @if ($isCheapestTotal)
-                                        <span class="badge badge-phoenix badge-phoenix-success">Mais barato total</span>
+                                        <span class="badge badge-phoenix badge-phoenix-success">Mais barato total (portes incluidos)</span>
                                     @endif
                                     @if ($supplierSummary['is_complete'])
                                         <span class="badge badge-phoenix badge-phoenix-success">Completa</span>
                                     @else
-                                        <span class="badge badge-phoenix badge-phoenix-warning">Incompleta</span>
+                                        <span class="badge badge-phoenix badge-phoenix-danger">Incompleta (fora do total automatico)</span>
                                     @endif
                                     @if ($supplierSummary['has_comparability_warning'])
                                         <span class="badge badge-phoenix badge-phoenix-warning">Com alternativas</span>
@@ -129,9 +146,11 @@
                                 @foreach ($comparison['suppliers'] as $supplierSummary)
                                     @php
                                         $inviteId = (int) $supplierSummary['invite']->id;
+                                        $supplierId = (int) $supplierSummary['invite']->supplier_id;
                                         $cell = $row['cells_by_invite_id'][$inviteId] ?? null;
                                         $status = $cell['status'] ?? 'not_applicable';
                                         $quoteItem = $cell['quote_item'] ?? null;
+                                        $awardedItem = $awardItemsByLineAndSupplier->get((int) $rfqItem->id.'|'.$supplierId);
                                         $cellClass = '';
                                         if ($status === 'available_exact') {
                                             if ($bestExactInviteId !== null && $inviteId === (int) $bestExactInviteId) {
@@ -160,10 +179,20 @@
                                             <div>{{ number_format((float) $quoteItem->unit_price, 4, ',', '.') }} EUR</div>
                                             <div class="fw-semibold">{{ number_format((float) $quoteItem->line_total, 2, ',', '.') }} EUR</div>
                                             @if ($status === 'available_alternative')
-                                                <div class="text-warning">Alternativo</div>
+                                                <span class="badge badge-phoenix badge-phoenix-warning">Alternativa</span>
                                             @endif
                                             @if (! empty($cell['is_best_exact']))
                                                 <span class="badge badge-phoenix badge-phoenix-success">Melhor preco exato</span>
+                                            @endif
+                                            @if ($awardedItem)
+                                                @if ($awardedItem->is_alternative)
+                                                    <span class="badge badge-phoenix badge-phoenix-warning">Vencedor adjudicado: alternativa</span>
+                                                @else
+                                                    <span class="badge badge-phoenix badge-phoenix-info">Vencedor adjudicado: item exato</span>
+                                                @endif
+                                                @if (in_array($latestAward?->mode, [\App\Models\SupplierQuoteAward::MODE_MANUAL_TOTAL, \App\Models\SupplierQuoteAward::MODE_MANUAL_ITEM], true) && ! $awardedItem->is_cheapest_option)
+                                                    <span class="badge badge-phoenix badge-phoenix-warning">Escolha manual</span>
+                                                @endif
                                             @endif
                                             @if ($quoteItem->notes)
                                                 <div class="text-body-tertiary fs-10">{{ \Illuminate\Support\Str::limit($quoteItem->notes, 60) }}</div>
@@ -198,6 +227,9 @@
                         <div class="col-12 col-xl-6">
                             <div class="border rounded p-3 h-100">
                                 <h6 class="mb-3">Adjudicacao automatica</h6>
+                                <div class="alert alert-warning py-2 px-3 fs-10">
+                                    Na adjudicacao por item, o total mostrado soma apenas linhas adjudicadas (sem reparticao automatica de portes).
+                                </div>
 
                                 <form method="POST" action="{{ route('admin.rfqs.awards.store', $rfq->id) }}" class="mb-3">
                                     @csrf
@@ -267,6 +299,9 @@
                         <div class="col-12">
                             <div class="border rounded p-3">
                                 <h6 class="mb-3">Adjudicacao manual por item</h6>
+                                <div class="alert alert-warning py-2 px-3 fs-10">
+                                    Os portes mantem-se ao nivel da proposta global de cada fornecedor e devem ser validados manualmente quando dividir por item.
+                                </div>
                                 <form method="POST" action="{{ route('admin.rfqs.awards.store', $rfq->id) }}" class="row g-3">
                                     @csrf
                                     <input type="hidden" name="mode" value="manual_item">
