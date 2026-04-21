@@ -38,7 +38,8 @@ class SupplierQuoteRequestsTest extends TestCase
         $response = $this->actingAs($adminA)->get(route('admin.rfqs.index'));
         $response->assertOk();
         $response->assertSee($rfqA->number);
-        $response->assertDontSee($rfqB->number);
+        $response->assertSee('Pedido A');
+        $response->assertDontSee('Pedido B');
 
         $this->actingAs($adminA)->get(route('admin.rfqs.show', $rfqB->id))->assertNotFound();
         $this->actingAs($adminA)->get(route('admin.rfqs.edit', $rfqB->id))->assertNotFound();
@@ -81,6 +82,7 @@ class SupplierQuoteRequestsTest extends TestCase
         $this->actingAs($admin)->post(route('admin.rfqs.store'), [
             ...$payload,
             'issue_date' => '2026-11-10',
+            'response_deadline' => '2026-11-30',
             'title' => 'Pedido 2',
         ])->assertRedirect();
 
@@ -303,4 +305,3 @@ class SupplierQuoteRequestsTest extends TestCase
         return $rfq;
     }
 }
-
