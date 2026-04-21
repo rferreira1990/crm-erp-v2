@@ -64,6 +64,13 @@ class SupplierQuoteAward extends Model
             ->orderBy('id');
     }
 
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class, 'supplier_quote_award_id')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id');
+    }
+
     public function scopeForCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('company_id', $companyId);
@@ -112,4 +119,3 @@ class SupplierQuoteAward extends Model
         ];
     }
 }
-
