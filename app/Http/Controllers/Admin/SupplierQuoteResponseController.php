@@ -283,7 +283,7 @@ class SupplierQuoteResponseController extends Controller
         int $supplierQuoteId
     ): string {
         $extension = strtolower($file->getClientOriginalExtension() ?: 'pdf');
-        $filename = 'supplier-document-'.$supplierQuoteId.'-'.now()->format('YmdHis').'.'.$extension;
+        $filename = 'supplier-document-'.$supplierQuoteId.'-'.now()->format('YmdHis').'-'.Str::lower(Str::random(6)).'.'.$extension;
 
         return $file->storeAs(
             'rfqs/'.$companyId.'/'.$rfqId.'/suppliers/'.$rfqSupplierId.'/response',
