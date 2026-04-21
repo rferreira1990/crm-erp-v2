@@ -120,7 +120,7 @@ class SupplierQuoteRequestController extends Controller
         });
 
         return redirect()
-            ->route('admin.rfqs.edit', $rfq->id)
+            ->route('admin.rfqs.show', $rfq->id)
             ->with('status', 'Pedido de cotacao criado com sucesso.');
     }
 
@@ -206,7 +206,7 @@ class SupplierQuoteRequestController extends Controller
         });
 
         return redirect()
-            ->route('admin.rfqs.edit', $rfqModel->id)
+            ->route('admin.rfqs.show', $rfqModel->id)
             ->with('status', 'Pedido de cotacao atualizado com sucesso.');
     }
 
