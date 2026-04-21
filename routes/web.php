@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
+use App\Http\Controllers\Admin\SupplierQuoteAwardController;
+use App\Http\Controllers\Admin\SupplierQuoteComparisonController;
 use App\Http\Controllers\Admin\SupplierQuoteRequestController;
 use App\Http\Controllers\Admin\SupplierQuoteResponseController;
 use App\Http\Controllers\Admin\UnitController;
@@ -330,6 +332,12 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('rfq')
             ->whereNumber('rfqSupplier')
             ->name('rfqs.responses.document.download');
+        Route::get('/rfqs/{rfq}/compare', [SupplierQuoteComparisonController::class, 'show'])
+            ->whereNumber('rfq')
+            ->name('rfqs.compare');
+        Route::post('/rfqs/{rfq}/awards', [SupplierQuoteAwardController::class, 'store'])
+            ->whereNumber('rfq')
+            ->name('rfqs.awards.store');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
