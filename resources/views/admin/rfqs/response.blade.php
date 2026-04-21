@@ -200,6 +200,32 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header bg-body-tertiary">
+                <h5 class="mb-0">Resumo automatico da proposta</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <div class="text-body-tertiary fs-9">Subtotal linhas (s/IVA)</div>
+                        <div class="fw-semibold" id="proposal_subtotal_preview">0,00 EUR</div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <div class="text-body-tertiary fs-9">Descontos de linha</div>
+                        <div class="fw-semibold" id="proposal_line_discount_preview">0,00 EUR</div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <div class="text-body-tertiary fs-9">Desconto comercial</div>
+                        <div class="fw-semibold" id="proposal_commercial_discount_preview">0,00 EUR</div>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <div class="text-body-tertiary fs-9">Total proposta (s/IVA)</div>
+                        <div class="fw-bold" id="proposal_total_preview">0,00 EUR</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex gap-2 justify-content-end">
             <a href="{{ route('admin.rfqs.show', $rfq->id) }}" class="btn btn-phoenix-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary">Guardar resposta</button>
@@ -211,6 +237,75 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const rows = document.querySelectorAll('tr.response-row');
+            const shippingInput = document.getElementById('shipping_cost');
+            const commercialDiscountInput = document.getElementById('commercial_discount_text');
+            const subtotalPreview = document.getElementById('proposal_subtotal_preview');
+            const lineDiscountPreview = document.getElementById('proposal_line_discount_preview');
+            const commercialDiscountPreview = document.getElementById('proposal_commercial_discount_preview');
+            const totalPreview = document.getElementById('proposal_total_preview');
+
+            const parseNumber = (value) => {
+                if (value === null || value === undefined) return 0;
+                const normalized = String(value).replace(',', '.').trim();
+                const parsed = parseFloat(normalized);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+
+            const parseCommercialDiscountPercent = (value) => {
+                if (!value) return 0;
+                const match = String(value).match(/(\d+(?:[.,]\d+)?)/);
+                if (!match) return 0;
+                const percent = parseNumber(match[1]);
+                if (percent < 0) return 0;
+                if (percent > 100) return 100;
+                return percent;
+            };
+
+            const formatCurrency = (value) => {
+                return new Intl.NumberFormat('pt-PT', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(value) + ' EUR';
+            };
+
+            const updateTotals = () => {
+                let subtotal = 0;
+                let lineDiscountTotal = 0;
+                let linesNetTotal = 0;
+
+                rows.forEach((row) => {
+                    const isResponded = row.querySelector('.is-responded-input')?.checked ?? false;
+                    if (!isResponded) {
+                        return;
+                    }
+
+                    const quantityInput = row.querySelector('input[name$="[quantity]"]');
+                    const unitPriceInput = row.querySelector('input[name$="[unit_price]"]');
+                    const discountInput = row.querySelector('input[name$="[discount_percent]"]');
+
+                    const quantity = parseNumber(quantityInput?.value ?? 0);
+                    const unitPrice = parseNumber(unitPriceInput?.value ?? 0);
+                    const discountPercent = Math.min(100, Math.max(0, parseNumber(discountInput?.value ?? 0)));
+
+                    const lineSubtotal = quantity * unitPrice;
+                    const lineDiscount = lineSubtotal * (discountPercent / 100);
+                    const lineNet = lineSubtotal - lineDiscount;
+
+                    subtotal += lineSubtotal;
+                    lineDiscountTotal += lineDiscount;
+                    linesNetTotal += lineNet;
+                });
+
+                const commercialDiscountPercent = parseCommercialDiscountPercent(commercialDiscountInput?.value ?? '');
+                const commercialDiscountTotal = linesNetTotal * (commercialDiscountPercent / 100);
+                const shippingCost = parseNumber(shippingInput?.value ?? 0);
+                const total = Math.max(0, linesNetTotal - commercialDiscountTotal) + shippingCost;
+
+                if (subtotalPreview) subtotalPreview.textContent = formatCurrency(subtotal);
+                if (lineDiscountPreview) lineDiscountPreview.textContent = formatCurrency(lineDiscountTotal);
+                if (commercialDiscountPreview) commercialDiscountPreview.textContent = formatCurrency(commercialDiscountTotal);
+                if (totalPreview) totalPreview.textContent = formatCurrency(total);
+            };
 
             const syncRow = (row) => {
                 const isResponded = row.querySelector('.is-responded-input')?.checked ?? false;
@@ -229,13 +324,23 @@
 
                     field.disabled = false;
                 });
+
+                updateTotals();
             };
 
             rows.forEach((row) => {
                 const respondedInput = row.querySelector('.is-responded-input');
                 if (respondedInput) respondedInput.addEventListener('change', () => syncRow(row));
+
+                row.querySelectorAll('input[name$="[quantity]"], input[name$="[unit_price]"], input[name$="[discount_percent]"]')
+                    .forEach((input) => input.addEventListener('input', updateTotals));
+
                 syncRow(row);
             });
+
+            if (shippingInput) shippingInput.addEventListener('input', updateTotals);
+            if (commercialDiscountInput) commercialDiscountInput.addEventListener('input', updateTotals);
+            updateTotals();
         });
     </script>
 @endpush

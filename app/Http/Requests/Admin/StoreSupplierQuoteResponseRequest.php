@@ -10,12 +10,15 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        $commercialDiscountText = $this->normalizeNullableString($this->input('commercial_discount_text'));
+
         $this->merge([
             'shipping_cost' => $this->normalizeNullableNumeric($this->input('shipping_cost')),
             'delivery_days' => $this->normalizeNullableInteger($this->input('delivery_days')),
             'supplier_document_date' => $this->normalizeNullableString($this->input('supplier_document_date')),
             'supplier_document_number' => $this->normalizeNullableString($this->input('supplier_document_number')),
-            'commercial_discount_text' => $this->normalizeNullableString($this->input('commercial_discount_text')),
+            'commercial_discount_text' => $commercialDiscountText,
+            'commercial_discount_percent' => $this->extractCommercialDiscountPercent($commercialDiscountText),
             'payment_terms_text' => $this->normalizeNullableString($this->input('payment_terms_text')),
             'valid_until' => $this->normalizeNullableString($this->input('valid_until')),
             'notes' => $this->normalizeNullableString($this->input('notes')),
@@ -41,9 +44,10 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         return [
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'delivery_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
-            'supplier_document_date' => ['nullable', 'date'],
-            'supplier_document_number' => ['nullable', 'string', 'max:120'],
+            'supplier_document_date' => ['required', 'date'],
+            'supplier_document_number' => ['required', 'string', 'max:120'],
             'commercial_discount_text' => ['nullable', 'string', 'max:255'],
+            'commercial_discount_percent' => ['nullable', 'numeric', 'between:0,100'],
             'payment_terms_text' => ['nullable', 'string', 'max:255'],
             'valid_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -83,6 +87,10 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
                 if ($validUntilValue->lessThanOrEqualTo($proposalDateValue)) {
                     $validator->errors()->add('valid_until', 'A validade da proposta tem de ser superior a data da proposta.');
                 }
+            }
+
+            if ($this->filled('commercial_discount_text') && $this->input('commercial_discount_percent') === null) {
+                $validator->errors()->add('commercial_discount_text', 'Indique um desconto comercial em percentagem (ex.: 3% pp).');
             }
 
             $hasAnyRespondedItem = false;
@@ -133,6 +141,11 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
             ->filter(fn (array $item): bool => (bool) ($item['is_responded'] ?? false))
             ->values()
             ->all();
+    }
+
+    public function commercialDiscountPercent(): float
+    {
+        return (float) ($this->input('commercial_discount_percent') ?? 0);
     }
 
     /**
@@ -195,5 +208,18 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         $normalized = trim((string) $value);
 
         return $normalized !== '' ? $normalized : null;
+    }
+
+    private function extractCommercialDiscountPercent(?string $text): ?float
+    {
+        if ($text === null) {
+            return null;
+        }
+
+        if (! preg_match('/(\d+(?:[.,]\d+)?)/', $text, $matches)) {
+            return null;
+        }
+
+        return (float) str_replace(',', '.', (string) $matches[1]);
     }
 }

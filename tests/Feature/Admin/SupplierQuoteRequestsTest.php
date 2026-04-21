@@ -227,7 +227,7 @@ class SupplierQuoteRequestsTest extends TestCase
         $quote = $inviteA->supplierQuote()->firstOrFail();
         $this->assertSame('125.00', (string) $quote->subtotal);
         $this->assertSame('0.00', (string) $quote->tax_total);
-        $this->assertSame('140.00', (string) $quote->grand_total);
+        $this->assertSame('136.25', (string) $quote->grand_total);
         $this->assertSame('FP-2026-15', $quote->supplier_document_number);
         $this->assertSame('3% pp', $quote->commercial_discount_text);
         $this->assertSame('30 dias', $quote->payment_terms_text);
@@ -265,6 +265,7 @@ class SupplierQuoteRequestsTest extends TestCase
         $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $invite->id]), [
             'received_at' => now()->format('Y-m-d H:i:s'),
             'shipping_cost' => 10,
+            'supplier_document_date' => now()->toDateString(),
             'supplier_document_number' => 'DOC-001',
             'supplier_document_pdf' => UploadedFile::fake()->create('doc-1.pdf', 200, 'application/pdf'),
             'items' => [
@@ -292,6 +293,7 @@ class SupplierQuoteRequestsTest extends TestCase
         $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $invite->id]), [
             'received_at' => now()->subMinute()->format('Y-m-d H:i:s'),
             'shipping_cost' => 5,
+            'supplier_document_date' => now()->toDateString(),
             'supplier_document_number' => 'DOC-002',
             'commercial_discount_text' => '5% especial',
             'supplier_document_pdf' => UploadedFile::fake()->create('doc-2.pdf', 210, 'application/pdf'),
@@ -359,6 +361,42 @@ class SupplierQuoteRequestsTest extends TestCase
                 ],
             ],
         ])->assertSessionHasErrors(['supplier_document_date', 'valid_until']);
+    }
+
+    public function test_supplier_response_requires_document_number_and_proposal_date(): void
+    {
+        $company = $this->createCompany('Empresa RFQ Campos Obrigatorios');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $supplierA = $this->createSupplier($company, 'Fornecedor Obrigatorio A', 'obrigatorio-a@example.test');
+        $supplierB = $this->createSupplier($company, 'Fornecedor Obrigatorio B', 'obrigatorio-b@example.test');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.store'), $this->rfqPayload($supplierA->id, $supplierB->id))
+            ->assertRedirect();
+
+        $rfq = SupplierQuoteRequest::query()->where('company_id', $company->id)->firstOrFail();
+        $rfq->load(['items', 'invitedSuppliers']);
+        $inviteA = $rfq->invitedSuppliers->firstWhere('supplier_id', $supplierA->id);
+        $this->assertNotNull($inviteA);
+        $firstItem = $rfq->items->first();
+        $this->assertNotNull($firstItem);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $inviteA->id]), [
+            'received_at' => now()->format('Y-m-d H:i:s'),
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                    'discount_percent' => 0,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertSessionHasErrors(['supplier_document_number', 'supplier_document_date']);
     }
 
     /**

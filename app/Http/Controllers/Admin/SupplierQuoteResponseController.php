@@ -68,6 +68,7 @@ class SupplierQuoteResponseController extends Controller
 
         $validated = $request->validated();
         $respondedItems = $request->respondedItems();
+        $commercialDiscountPercent = $request->commercialDiscountPercent();
         $uploadedSupplierDocumentPdf = $request->file('supplier_document_pdf');
         $defaultPaymentTermText = $this->defaultPaymentTermText($companyId);
 
@@ -101,7 +102,8 @@ class SupplierQuoteResponseController extends Controller
             $rfqSupplierModel,
             $rfqModel,
             $uploadedSupplierDocumentPdf,
-            $defaultPaymentTermText
+            $defaultPaymentTermText,
+            $commercialDiscountPercent
         ): void {
             $supplierQuote = SupplierQuote::query()->firstOrNew([
                 'supplier_quote_request_supplier_id' => $rfqSupplierModel->id,
@@ -161,12 +163,14 @@ class SupplierQuoteResponseController extends Controller
             }
 
             $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
+            $commercialDiscountTotal = round($grandLines * ($commercialDiscountPercent / 100), 2);
+            $grandAfterCommercialDiscount = max(0, round($grandLines - $commercialDiscountTotal, 2));
 
             $supplierQuote->forceFill([
                 'subtotal' => round($subtotal, 2),
-                'discount_total' => round($discountTotal, 2),
+                'discount_total' => round($discountTotal + $commercialDiscountTotal, 2),
                 'tax_total' => 0,
-                'grand_total' => round($grandLines + $shippingCost, 2),
+                'grand_total' => round($grandAfterCommercialDiscount + $shippingCost, 2),
             ])->save();
 
             if ($uploadedSupplierDocumentPdf instanceof UploadedFile) {
