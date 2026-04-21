@@ -42,10 +42,21 @@ class SupplierQuoteRequestPolicy extends BaseCompanyPolicy
             && $user->can('company.rfq.send');
     }
 
+    public function compare(User $user, SupplierQuoteRequest $rfq): bool
+    {
+        return $this->canAccessCompanyResource($user, $rfq)
+            && $user->can('company.rfq.compare');
+    }
+
+    public function award(User $user, SupplierQuoteRequest $rfq): bool
+    {
+        return $this->canAccessCompanyResource($user, $rfq)
+            && $user->can('company.rfq.award');
+    }
+
     public function delete(User $user, SupplierQuoteRequest $rfq): bool
     {
         return $this->canAccessCompanyResource($user, $rfq)
             && $user->can('company.rfq.delete');
     }
 }
-

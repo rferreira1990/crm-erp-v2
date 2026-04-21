@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -87,6 +88,19 @@ class SupplierQuoteRequest extends Model
     {
         return $this->hasMany(SupplierQuoteRequestSupplier::class)
             ->orderBy('id');
+    }
+
+    public function awards(): HasMany
+    {
+        return $this->hasMany(SupplierQuoteAward::class)
+            ->orderByDesc('awarded_at')
+            ->orderByDesc('id');
+    }
+
+    public function latestAward(): HasOne
+    {
+        return $this->hasOne(SupplierQuoteAward::class)
+            ->latestOfMany('awarded_at');
     }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder
@@ -196,4 +210,3 @@ class SupplierQuoteRequest extends Model
         return ['status' => $normalized];
     }
 }
-
