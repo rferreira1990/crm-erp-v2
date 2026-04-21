@@ -143,7 +143,10 @@ class SupplierQuoteRequestsTest extends TestCase
             $this->assertSame(SupplierQuoteRequestSupplier::STATUS_SENT, $invite->status);
             $this->assertNotNull($invite->sent_at);
             $this->assertNotNull($invite->sent_to_email);
-            $this->assertSame($rfq->pdf_path, $invite->pdf_path);
+            $this->assertNotNull($invite->pdf_path);
+            $this->assertStringContainsString('/suppliers/'.$invite->id.'/', (string) $invite->pdf_path);
+            Storage::disk('local')->assertExists((string) $invite->pdf_path);
+            $this->assertNotSame($rfq->pdf_path, $invite->pdf_path);
         }
     }
 
