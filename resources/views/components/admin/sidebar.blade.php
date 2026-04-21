@@ -98,6 +98,16 @@
                             </div>
                         </a>
                     </li>
+                    @can('company.rfq.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.rfqs.*') ? 'active' : '' }}" href="{{ route('admin.rfqs.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="shopping-cart"></span></span>
+                                    <span class="nav-link-text">Pedidos de Cotacao</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
                     <li class="nav-item ms-4">
                         <a class="nav-link {{ request()->routeIs('admin.quotes.dashboard') ? 'active' : '' }}" href="{{ route('admin.quotes.dashboard') }}">
                             <div class="d-flex align-items-center">

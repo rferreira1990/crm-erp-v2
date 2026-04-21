@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
+use App\Http\Controllers\Admin\SupplierQuoteRequestController;
+use App\Http\Controllers\Admin\SupplierQuoteResponseController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
@@ -286,6 +288,40 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::post('/quotes/{quote}/email/send', [QuoteController::class, 'sendEmail'])
             ->whereNumber('quote')
             ->name('quotes.email.send');
+
+        Route::get('/rfqs', [SupplierQuoteRequestController::class, 'index'])->name('rfqs.index');
+        Route::get('/rfqs/create', [SupplierQuoteRequestController::class, 'create'])->name('rfqs.create');
+        Route::post('/rfqs', [SupplierQuoteRequestController::class, 'store'])->name('rfqs.store');
+        Route::get('/rfqs/{rfq}', [SupplierQuoteRequestController::class, 'show'])
+            ->whereNumber('rfq')
+            ->name('rfqs.show');
+        Route::get('/rfqs/{rfq}/edit', [SupplierQuoteRequestController::class, 'edit'])
+            ->whereNumber('rfq')
+            ->name('rfqs.edit');
+        Route::patch('/rfqs/{rfq}', [SupplierQuoteRequestController::class, 'update'])
+            ->whereNumber('rfq')
+            ->name('rfqs.update');
+        Route::delete('/rfqs/{rfq}', [SupplierQuoteRequestController::class, 'destroy'])
+            ->whereNumber('rfq')
+            ->name('rfqs.destroy');
+        Route::post('/rfqs/{rfq}/pdf/generate', [SupplierQuoteRequestController::class, 'generatePdf'])
+            ->whereNumber('rfq')
+            ->name('rfqs.pdf.generate');
+        Route::get('/rfqs/{rfq}/pdf/download', [SupplierQuoteRequestController::class, 'downloadPdf'])
+            ->whereNumber('rfq')
+            ->name('rfqs.pdf.download');
+        Route::post('/rfqs/{rfq}/email/send', [SupplierQuoteRequestController::class, 'sendEmail'])
+            ->whereNumber('rfq')
+            ->name('rfqs.email.send');
+
+        Route::get('/rfqs/{rfq}/suppliers/{rfqSupplier}/response/create', [SupplierQuoteResponseController::class, 'create'])
+            ->whereNumber('rfq')
+            ->whereNumber('rfqSupplier')
+            ->name('rfqs.responses.create');
+        Route::post('/rfqs/{rfq}/suppliers/{rfqSupplier}/response', [SupplierQuoteResponseController::class, 'store'])
+            ->whereNumber('rfq')
+            ->whereNumber('rfqSupplier')
+            ->name('rfqs.responses.store');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');
