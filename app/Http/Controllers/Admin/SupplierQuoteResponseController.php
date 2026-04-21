@@ -32,6 +32,7 @@ class SupplierQuoteResponseController extends Controller
         $companyId = (int) $request->user()->company_id;
         $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
         $this->authorize('update', $rfqModel);
+        $isReadOnly = $this->isAwardLocked($rfqModel);
 
         $rfqSupplierModel = $this->findRfqSupplierOrFail($rfqModel, $rfqSupplier);
         $rfqSupplierModel->loadMissing([
@@ -55,6 +56,7 @@ class SupplierQuoteResponseController extends Controller
             'existingItemsByRfqItem' => $existingItemsByRfqItem,
             'paymentTermOptions' => $paymentTermOptions,
             'defaultPaymentTermText' => $defaultPaymentTermText,
+            'isReadOnly' => $isReadOnly,
         ]);
     }
 
@@ -63,6 +65,14 @@ class SupplierQuoteResponseController extends Controller
         $companyId = (int) $request->user()->company_id;
         $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
         $this->authorize('update', $rfqModel);
+
+        if ($this->isAwardLocked($rfqModel)) {
+            return redirect()
+                ->route('admin.rfqs.show', $rfqModel->id)
+                ->withErrors([
+                    'rfq' => 'Este pedido ja foi adjudicado. As respostas dos fornecedores estao bloqueadas para edicao.',
+                ]);
+        }
 
         $rfqSupplierModel = $this->findRfqSupplierOrFail($rfqModel, $rfqSupplier);
 
@@ -312,5 +322,10 @@ class SupplierQuoteResponseController extends Controller
         }
 
         Storage::disk('local')->delete($path);
+    }
+
+    private function isAwardLocked(SupplierQuoteRequest $rfq): bool
+    {
+        return $rfq->status === SupplierQuoteRequest::STATUS_AWARDED;
     }
 }
