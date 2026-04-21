@@ -14,6 +14,15 @@
 @endsection
 
 @section('content')
+    @php
+        $responseEligibleLineTypes = [
+            \App\Models\SupplierQuoteRequestItem::TYPE_ARTICLE,
+            \App\Models\SupplierQuoteRequestItem::TYPE_TEXT,
+        ];
+        $responseItems = $rfq->items->filter(fn ($item) => in_array($item->line_type, $responseEligibleLineTypes, true))->values();
+        $informativeItems = $rfq->items->filter(fn ($item) => ! in_array($item->line_type, $responseEligibleLineTypes, true))->values();
+    @endphp
+
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
     @endif
@@ -33,7 +42,7 @@
                         @error('received_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-3">
-                        <label for="shipping_cost" class="form-label">Portes</label>
+                        <label for="shipping_cost" class="form-label">Portes (s/IVA)</label>
                         <input type="number" id="shipping_cost" name="shipping_cost" min="0" step="0.01" value="{{ old('shipping_cost', $existingQuote->shipping_cost ?? 0) }}" class="form-control @error('shipping_cost') is-invalid @enderror">
                         @error('shipping_cost')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
@@ -108,11 +117,12 @@
                             <tr>
                                 <th class="ps-3">Responder</th>
                                 <th>Linha</th>
+                                <th>Unidade</th>
+                                <th>Qtd. pedido</th>
                                 <th>Disponivel</th>
-                                <th>Qtd.</th>
-                                <th>P. unit.</th>
+                                <th>Qtd. proposta</th>
+                                <th>P. unit. (s/IVA)</th>
                                 <th>Desc %</th>
-                                <th>IVA %</th>
                                 <th>Alternativo</th>
                                 <th>Descricao alternativa</th>
                                 <th>Marca</th>
@@ -120,7 +130,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($rfq->items as $index => $rfqItem)
+                            @forelse ($responseItems as $index => $rfqItem)
                                 @php
                                     $existing = $existingItemsByRfqItem->get($rfqItem->id);
                                     $isResponded = old("items.$index.is_responded", $existing !== null);
@@ -135,7 +145,13 @@
                                     </td>
                                     <td>
                                         <div class="fw-semibold">{{ $rfqItem->description }}</div>
-                                        <div class="text-body-tertiary fs-10">{{ $rfqItem->article_code ?: '-' }} | {{ number_format((float) $rfqItem->quantity, 3, ',', '.') }} {{ $rfqItem->unit_name ?: '' }}</div>
+                                        <div class="text-body-tertiary fs-10">{{ $rfqItem->article_code ?: '-' }}</div>
+                                    </td>
+                                    <td>
+                                        {{ $rfqItem->unit_name ?: '-' }}
+                                    </td>
+                                    <td>
+                                        {{ number_format((float) $rfqItem->quantity, 3, ',', '.') }}
                                     </td>
                                     <td>
                                         <input type="hidden" name="items[{{ $index }}][is_available]" value="0">
@@ -154,10 +170,6 @@
                                         @error("items.$index.discount_percent")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td>
-                                        <input type="number" min="0" max="100" step="0.01" name="items[{{ $index }}][vat_percent]" value="{{ old("items.$index.vat_percent", $existing?->vat_percent ?? 0) }}" class="form-control form-control-sm response-field @error("items.$index.vat_percent") is-invalid @enderror">
-                                        @error("items.$index.vat_percent")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    </td>
-                                    <td>
                                         <input type="hidden" name="items[{{ $index }}][is_alternative]" value="0">
                                         <input class="form-check-input response-field" type="checkbox" name="items[{{ $index }}][is_alternative]" value="1" @checked($isAlternative)>
                                     </td>
@@ -174,12 +186,50 @@
                                         @error("items.$index.notes")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="11" class="text-center py-4 text-body-tertiary">Sem linhas elegiveis para resposta (apenas artigo/texto aceitam proposta).</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
+        @if ($informativeItems->isNotEmpty())
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary">
+                    <h5 class="mb-0">Linhas informativas (bloqueadas para resposta)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm fs-9 mb-0">
+                            <thead class="bg-body-tertiary">
+                                <tr>
+                                    <th class="ps-3">Tipo</th>
+                                    <th>Descricao</th>
+                                    <th>Unidade</th>
+                                    <th>Qtd.</th>
+                                    <th class="pe-3">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($informativeItems as $item)
+                                    <tr>
+                                        <td class="ps-3">{{ \App\Models\SupplierQuoteRequestItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
+                                        <td>{{ $item->description }}</td>
+                                        <td>{{ $item->unit_name ?: '-' }}</td>
+                                        <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
+                                        <td class="pe-3"><span class="badge badge-phoenix badge-phoenix-secondary">Sem resposta</span></td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="d-flex gap-2 justify-content-end">
             <a href="{{ route('admin.rfqs.show', $rfq->id) }}" class="btn btn-phoenix-secondary">Cancelar</a>
@@ -204,7 +254,7 @@
                         return;
                     }
 
-                    if (!isAvailable && ['quantity', 'unit_price', 'discount_percent', 'vat_percent'].some((name) => field.name.endsWith('[' + name + ']'))) {
+                    if (!isAvailable && ['quantity', 'unit_price', 'discount_percent'].some((name) => field.name.endsWith('[' + name + ']'))) {
                         field.disabled = true;
                         return;
                     }

@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreSupplierQuoteResponseRequest;
 use App\Models\PaymentTerm;
 use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteRequest;
+use App\Models\SupplierQuoteRequestItem;
 use App\Models\SupplierQuoteRequestSupplier;
 use App\Services\Admin\SupplierQuoteRequestStatusService;
 use Illuminate\Contracts\View\View;
@@ -70,13 +71,26 @@ class SupplierQuoteResponseController extends Controller
         $uploadedSupplierDocumentPdf = $request->file('supplier_document_pdf');
         $defaultPaymentTermText = $this->defaultPaymentTermText($companyId);
 
-        $rfqItemIds = $rfqModel->items()->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $validRfqItemLookup = array_flip($rfqItemIds);
-
+        $rfqItemsById = $rfqModel->items()
+            ->get(['id', 'line_type'])
+            ->keyBy('id');
+        $blockedLineTypes = [
+            SupplierQuoteRequestItem::TYPE_SECTION,
+            SupplierQuoteRequestItem::TYPE_NOTE,
+        ];
         foreach ($respondedItems as $item) {
             $rfqItemId = (int) ($item['supplier_quote_request_item_id'] ?? 0);
-            if (! isset($validRfqItemLookup[$rfqItemId])) {
+            $rfqItem = $rfqItemsById->get($rfqItemId);
+            if (! $rfqItem) {
                 throw new NotFoundHttpException();
+            }
+
+            if (in_array((string) $rfqItem->line_type, $blockedLineTypes, true)) {
+                return back()
+                    ->withErrors([
+                        'items' => 'Linhas de secao e nota sao informativas e nao aceitam resposta de fornecedor.',
+                    ])
+                    ->withInput();
             }
         }
 
@@ -111,7 +125,6 @@ class SupplierQuoteResponseController extends Controller
 
             $subtotal = 0.0;
             $discountTotal = 0.0;
-            $taxTotal = 0.0;
             $grandLines = 0.0;
 
             foreach ($respondedItems as $item) {
@@ -119,19 +132,15 @@ class SupplierQuoteResponseController extends Controller
                 $quantity = $isAvailable ? (float) ($item['quantity'] ?? 0) : null;
                 $unitPrice = $isAvailable ? (float) ($item['unit_price'] ?? 0) : null;
                 $discountPercent = $isAvailable ? (float) ($item['discount_percent'] ?? 0) : null;
-                $vatPercent = $isAvailable ? (float) ($item['vat_percent'] ?? 0) : null;
 
                 $lineTotal = null;
                 if ($isAvailable && $quantity !== null && $unitPrice !== null) {
                     $lineSubtotal = round($quantity * $unitPrice, 2);
                     $lineDiscount = round($lineSubtotal * (($discountPercent ?? 0) / 100), 2);
-                    $lineNet = round($lineSubtotal - $lineDiscount, 2);
-                    $lineTax = round($lineNet * (($vatPercent ?? 0) / 100), 2);
-                    $lineTotal = round($lineNet + $lineTax, 2);
+                    $lineTotal = round($lineSubtotal - $lineDiscount, 2);
 
                     $subtotal += $lineSubtotal;
                     $discountTotal += $lineDiscount;
-                    $taxTotal += $lineTax;
                     $grandLines += $lineTotal;
                 }
 
@@ -141,7 +150,7 @@ class SupplierQuoteResponseController extends Controller
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'discount_percent' => $discountPercent,
-                    'vat_percent' => $vatPercent,
+                    'vat_percent' => null,
                     'line_total' => $lineTotal,
                     'alternative_description' => $item['alternative_description'] ?? null,
                     'brand' => $item['brand'] ?? null,
@@ -156,7 +165,7 @@ class SupplierQuoteResponseController extends Controller
             $supplierQuote->forceFill([
                 'subtotal' => round($subtotal, 2),
                 'discount_total' => round($discountTotal, 2),
-                'tax_total' => round($taxTotal, 2),
+                'tax_total' => 0,
                 'grand_total' => round($grandLines + $shippingCost, 2),
             ])->save();
 

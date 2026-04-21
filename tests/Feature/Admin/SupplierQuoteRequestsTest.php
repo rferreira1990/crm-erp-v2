@@ -226,8 +226,8 @@ class SupplierQuoteRequestsTest extends TestCase
 
         $quote = $inviteA->supplierQuote()->firstOrFail();
         $this->assertSame('125.00', (string) $quote->subtotal);
-        $this->assertSame('28.75', (string) $quote->tax_total);
-        $this->assertSame('168.75', (string) $quote->grand_total);
+        $this->assertSame('0.00', (string) $quote->tax_total);
+        $this->assertSame('140.00', (string) $quote->grand_total);
         $this->assertSame('FP-2026-15', $quote->supplier_document_number);
         $this->assertSame('3% pp', $quote->commercial_discount_text);
         $this->assertSame('30 dias', $quote->payment_terms_text);
