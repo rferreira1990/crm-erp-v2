@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Registar resposta de fornecedor')
-@section('page_title', 'Registar resposta de fornecedor')
+@section('title', $existingQuote ? 'Editar resposta de fornecedor' : 'Registar resposta de fornecedor')
+@section('page_title', $existingQuote ? 'Editar resposta de fornecedor' : 'Registar resposta de fornecedor')
 @section('page_subtitle', $rfq->number.' - '.$rfqSupplier->supplier_name)
 
 @section('breadcrumbs')
@@ -18,7 +18,7 @@
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
     @endif
 
-    <form method="POST" action="{{ route('admin.rfqs.responses.store', [$rfq->id, $rfqSupplier->id]) }}">
+    <form method="POST" action="{{ route('admin.rfqs.responses.store', [$rfq->id, $rfqSupplier->id]) }}" enctype="multipart/form-data">
         @csrf
 
         <div class="card mb-4">
@@ -43,14 +43,50 @@
                         @error('delivery_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-3">
+                        <label for="supplier_document_date" class="form-label">Data documento fornecedor</label>
+                        <input type="date" id="supplier_document_date" name="supplier_document_date" value="{{ old('supplier_document_date', optional($existingQuote?->supplier_document_date)->format('Y-m-d')) }}" class="form-control @error('supplier_document_date') is-invalid @enderror">
+                        @error('supplier_document_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-12 col-md-3">
                         <label for="valid_until" class="form-label">Validade proposta</label>
                         <input type="date" id="valid_until" name="valid_until" value="{{ old('valid_until', optional($existingQuote?->valid_until)->format('Y-m-d')) }}" class="form-control @error('valid_until') is-invalid @enderror">
                         @error('valid_until')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-6">
-                        <label for="payment_terms_text" class="form-label">Condicoes de pagamento (texto)</label>
-                        <input type="text" id="payment_terms_text" name="payment_terms_text" value="{{ old('payment_terms_text', $existingQuote->payment_terms_text ?? '') }}" class="form-control @error('payment_terms_text') is-invalid @enderror" maxlength="255">
+                        <label for="supplier_document_number" class="form-label">Numero documento fornecedor</label>
+                        <input type="text" id="supplier_document_number" name="supplier_document_number" value="{{ old('supplier_document_number', $existingQuote->supplier_document_number ?? '') }}" class="form-control @error('supplier_document_number') is-invalid @enderror" maxlength="120">
+                        @error('supplier_document_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="commercial_discount_text" class="form-label">Desconto comercial (texto livre)</label>
+                        <input type="text" id="commercial_discount_text" name="commercial_discount_text" value="{{ old('commercial_discount_text', $existingQuote->commercial_discount_text ?? '') }}" class="form-control @error('commercial_discount_text') is-invalid @enderror" maxlength="255" placeholder="Ex.: 3% pp">
+                        @error('commercial_discount_text')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-12 col-md-6">
+                        @php
+                            $selectedPaymentTerm = old('payment_terms_text', $existingQuote->payment_terms_text ?? $defaultPaymentTermText);
+                            $hasSelectedInOptions = in_array($selectedPaymentTerm, $paymentTermOptions, true);
+                        @endphp
+                        <label for="payment_terms_text" class="form-label">Condicoes de pagamento</label>
+                        <select id="payment_terms_text" name="payment_terms_text" class="form-select @error('payment_terms_text') is-invalid @enderror">
+                            @if (! $hasSelectedInOptions && $selectedPaymentTerm)
+                                <option value="{{ $selectedPaymentTerm }}" selected>{{ $selectedPaymentTerm }}</option>
+                            @endif
+                            @foreach ($paymentTermOptions as $paymentTermOption)
+                                <option value="{{ $paymentTermOption }}" @selected($selectedPaymentTerm === $paymentTermOption)>{{ $paymentTermOption }}</option>
+                            @endforeach
+                        </select>
                         @error('payment_terms_text')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="supplier_document_pdf" class="form-label">PDF documento real do fornecedor</label>
+                        <input type="file" id="supplier_document_pdf" name="supplier_document_pdf" accept="application/pdf" class="form-control @error('supplier_document_pdf') is-invalid @enderror">
+                        @error('supplier_document_pdf')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @if ($existingQuote?->supplier_document_pdf_path)
+                            <div class="mt-2">
+                                <a href="{{ route('admin.rfqs.responses.document.download', [$rfq->id, $rfqSupplier->id]) }}" class="btn btn-phoenix-secondary btn-sm">Download documento atual</a>
+                            </div>
+                        @endif
                     </div>
                     <div class="col-12">
                         <label for="notes" class="form-label">Observacoes</label>
@@ -187,4 +223,3 @@
         });
     </script>
 @endpush
-
