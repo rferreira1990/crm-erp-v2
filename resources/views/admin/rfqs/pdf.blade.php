@@ -96,19 +96,26 @@
         </thead>
         <tbody>
             @forelse ($rfq->items as $item)
-                @php
-                    $rowClass = $item->line_type === \App\Models\SupplierQuoteRequestItem::TYPE_SECTION
-                        ? 'section'
-                        : ($item->line_type === \App\Models\SupplierQuoteRequestItem::TYPE_NOTE ? 'note' : '');
-                @endphp
-                <tr class="{{ $rowClass }}">
-                    <td>{{ $item->line_order }}</td>
-                    <td>{{ $item->article_code ?: '-' }}</td>
-                    <td>{{ $item->description }}</td>
-                    <td>{{ $item->unit_name ?: '-' }}</td>
-                    <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                    <td>{{ $item->internal_notes ?: '-' }}</td>
-                </tr>
+                @if ($item->line_type === \App\Models\SupplierQuoteRequestItem::TYPE_SECTION)
+                    <tr class="section">
+                        <td>{{ $item->line_order }}</td>
+                        <td colspan="5">{{ $item->description }}</td>
+                    </tr>
+                @elseif ($item->line_type === \App\Models\SupplierQuoteRequestItem::TYPE_NOTE)
+                    <tr class="note">
+                        <td>{{ $item->line_order }}</td>
+                        <td colspan="5">{{ $item->description }}</td>
+                    </tr>
+                @else
+                    <tr>
+                        <td>{{ $item->line_order }}</td>
+                        <td>{{ $item->article_code ?: '-' }}</td>
+                        <td>{{ $item->description }}</td>
+                        <td>{{ $item->unit_name ?: '-' }}</td>
+                        <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
+                        <td>{{ $item->internal_notes ?: '-' }}</td>
+                    </tr>
+                @endif
             @empty
                 <tr>
                     <td colspan="6" style="text-align:center;">Sem linhas no pedido.</td>
