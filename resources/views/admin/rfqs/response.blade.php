@@ -117,7 +117,6 @@
                                 <th>Linha</th>
                                 <th>Unidade</th>
                                 <th>Qtd. pedido</th>
-                                <th>Disponivel</th>
                                 <th>Qtd. proposta</th>
                                 <th>P. unit. (s/IVA)</th>
                                 <th>Desc %</th>
@@ -133,14 +132,18 @@
                                     $isLocked = in_array($rfqItem->line_type, $lockedLineTypes, true);
                                     $existing = $existingItemsByRfqItem->get($rfqItem->id);
                                     $isResponded = $isLocked ? false : old("items.$index.is_responded", $existing !== null);
-                                    $isAvailable = $isLocked ? false : old("items.$index.is_available", $existing?->is_available ?? true);
                                     $isAlternative = $isLocked ? false : old("items.$index.is_alternative", $existing?->is_alternative ?? false);
                                 @endphp
                                 <tr class="response-row">
                                     <td class="ps-3">
                                         <input type="hidden" name="items[{{ $index }}][supplier_quote_request_item_id]" value="{{ $rfqItem->id }}">
                                         <input type="hidden" name="items[{{ $index }}][is_responded]" value="0">
-                                        <input class="form-check-input is-responded-input" type="checkbox" name="items[{{ $index }}][is_responded]" value="1" @checked($isResponded) @disabled($isLocked)>
+                                        <input type="hidden" class="is-available-input" name="items[{{ $index }}][is_available]" value="{{ $isResponded ? 1 : 0 }}">
+                                        @if ($isLocked)
+                                            <span class="text-body-tertiary">-</span>
+                                        @else
+                                            <input class="form-check-input is-responded-input" type="checkbox" name="items[{{ $index }}][is_responded]" value="1" @checked($isResponded)>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="fw-semibold">{{ $rfqItem->description }}</div>
@@ -156,10 +159,6 @@
                                     </td>
                                     <td>
                                         {{ number_format((float) $rfqItem->quantity, 3, ',', '.') }}
-                                    </td>
-                                    <td>
-                                        <input type="hidden" name="items[{{ $index }}][is_available]" value="0">
-                                        <input class="form-check-input is-available-input" type="checkbox" name="items[{{ $index }}][is_available]" value="1" @checked($isAvailable) @disabled($isLocked)>
                                     </td>
                                     <td>
                                         <input type="number" min="0" step="0.001" name="items[{{ $index }}][quantity]" value="{{ old("items.$index.quantity", $existing?->quantity ?? $rfqItem->quantity) }}" class="form-control form-control-sm response-field @error("items.$index.quantity") is-invalid @enderror" @disabled($isLocked)>
@@ -215,16 +214,15 @@
 
             const syncRow = (row) => {
                 const isResponded = row.querySelector('.is-responded-input')?.checked ?? false;
-                const isAvailable = row.querySelector('.is-available-input')?.checked ?? true;
+                const isAvailableInput = row.querySelector('.is-available-input');
                 const fields = row.querySelectorAll('.response-field');
+
+                if (isAvailableInput) {
+                    isAvailableInput.value = isResponded ? '1' : '0';
+                }
 
                 fields.forEach((field) => {
                     if (!isResponded) {
-                        field.disabled = true;
-                        return;
-                    }
-
-                    if (!isAvailable && ['quantity', 'unit_price', 'discount_percent'].some((name) => field.name.endsWith('[' + name + ']'))) {
                         field.disabled = true;
                         return;
                     }
@@ -235,9 +233,7 @@
 
             rows.forEach((row) => {
                 const respondedInput = row.querySelector('.is-responded-input');
-                const availableInput = row.querySelector('.is-available-input');
                 if (respondedInput) respondedInput.addEventListener('change', () => syncRow(row));
-                if (availableInput) availableInput.addEventListener('change', () => syncRow(row));
                 syncRow(row);
             });
         });
