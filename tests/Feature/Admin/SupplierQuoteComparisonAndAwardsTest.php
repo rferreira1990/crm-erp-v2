@@ -189,6 +189,135 @@ class SupplierQuoteComparisonAndAwardsTest extends TestCase
         $this->assertSame($snapshotLineTotal, (string) $awardItem->line_total);
     }
 
+    public function test_cannot_create_new_award_after_rfq_is_already_awarded(): void
+    {
+        $company = $this->createCompany('Empresa Award Lock');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $rfq = $this->createBaseRfq($company, $admin);
+        [$supplier1, $supplier2] = [
+            $this->createSupplier($company, 'Fornecedor Lock 1', 'lock1@example.test'),
+            $this->createSupplier($company, 'Fornecedor Lock 2', 'lock2@example.test'),
+        ];
+        [$invite1, $invite2] = $this->attachSuppliersToRfq($rfq, [$supplier1, $supplier2]);
+        $this->createSupplierQuote($invite1, [1 => 30, 2 => 20], shipping: 0);
+        $this->createSupplierQuote($invite2, [1 => 40, 2 => 30], shipping: 0);
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_RECEIVED])->save();
+
+        $this->actingAs($admin)->post(route('admin.rfqs.awards.store', $rfq->id), [
+            'mode' => SupplierQuoteAward::MODE_CHEAPEST_TOTAL,
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id));
+
+        $this->actingAs($admin)->post(route('admin.rfqs.awards.store', $rfq->id), [
+            'mode' => SupplierQuoteAward::MODE_MANUAL_TOTAL,
+            'awarded_supplier_id' => $supplier2->id,
+            'award_reason' => 'Fornecedor habitual',
+        ])->assertSessionHasErrors(['mode']);
+
+        $this->assertDatabaseCount('supplier_quote_awards', 1);
+    }
+
+    public function test_cheapest_item_award_total_does_not_mix_shipping_costs(): void
+    {
+        $company = $this->createCompany('Empresa Award Portes');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $rfq = $this->createBaseRfq($company, $admin);
+        [$supplier1, $supplier2] = [
+            $this->createSupplier($company, 'Fornecedor Portes 1', 'portes1@example.test'),
+            $this->createSupplier($company, 'Fornecedor Portes 2', 'portes2@example.test'),
+        ];
+        [$invite1, $invite2] = $this->attachSuppliersToRfq($rfq, [$supplier1, $supplier2]);
+
+        $this->createSupplierQuote($invite1, [1 => 10, 2 => 50], shipping: 100);
+        $this->createSupplierQuote($invite2, [1 => 20, 2 => 5], shipping: 200);
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_RECEIVED])->save();
+
+        $this->actingAs($admin)->post(route('admin.rfqs.awards.store', $rfq->id), [
+            'mode' => SupplierQuoteAward::MODE_CHEAPEST_ITEM,
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id));
+
+        $award = SupplierQuoteAward::query()->where('supplier_quote_request_id', $rfq->id)->firstOrFail();
+        $rfq->refresh();
+
+        $this->assertSame(SupplierQuoteAward::MODE_CHEAPEST_ITEM, $award->mode);
+        $this->assertSame('15.00', (string) $award->awarded_total);
+        $this->assertSame('15.00', (string) $rfq->awarded_total);
+        $this->assertSame(2, $award->items()->count());
+        $this->assertSame(2, $award->items()->get()->pluck('supplier_id')->unique()->count());
+    }
+
+    public function test_manual_item_award_rejects_unavailable_selected_line(): void
+    {
+        $company = $this->createCompany('Empresa Award Unavailable');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $rfq = $this->createBaseRfq($company, $admin);
+        [$supplier1, $supplier2] = [
+            $this->createSupplier($company, 'Fornecedor Indisp 1', 'indisp1@example.test'),
+            $this->createSupplier($company, 'Fornecedor Indisp 2', 'indisp2@example.test'),
+        ];
+        [$invite1, $invite2] = $this->attachSuppliersToRfq($rfq, [$supplier1, $supplier2]);
+        $this->createSupplierQuote($invite1, [1 => 20, 2 => 0], shipping: 0, unavailableItemIds: [2]);
+        $this->createSupplierQuote($invite2, [1 => 25, 2 => 30], shipping: 0);
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_RECEIVED])->save();
+
+        $itemIdsByLine = $rfq->items->keyBy(fn (SupplierQuoteRequestItem $item): int => (int) $item->line_order)
+            ->map(fn (SupplierQuoteRequestItem $item): int => (int) $item->id);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.awards.store', $rfq->id), [
+            'mode' => SupplierQuoteAward::MODE_MANUAL_ITEM,
+            'item_supplier_ids' => [
+                (int) $itemIdsByLine[1] => (int) $supplier1->id,
+                (int) $itemIdsByLine[2] => (int) $supplier1->id,
+            ],
+            'award_reason' => 'Fornecedor habitual',
+        ])->assertSessionHasErrors(['item_supplier_ids.'.(int) $itemIdsByLine[2]]);
+    }
+
+    public function test_manual_item_award_requires_reason_when_selecting_alternative_line(): void
+    {
+        $company = $this->createCompany('Empresa Award Alternativa');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $rfq = $this->createBaseRfq($company, $admin);
+        [$supplier1, $supplier2] = [
+            $this->createSupplier($company, 'Fornecedor Exato', 'exato@example.test'),
+            $this->createSupplier($company, 'Fornecedor Alternativo', 'alternativo@example.test'),
+        ];
+        [$invite1, $invite2] = $this->attachSuppliersToRfq($rfq, [$supplier1, $supplier2]);
+        $this->createSupplierQuote($invite1, [1 => 50, 2 => 50], shipping: 0);
+        $this->createSupplierQuote($invite2, [1 => 40, 2 => 70], shipping: 0, alternativeItemIds: [1]);
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_RECEIVED])->save();
+
+        $itemIdsByLine = $rfq->items->keyBy(fn (SupplierQuoteRequestItem $item): int => (int) $item->line_order)
+            ->map(fn (SupplierQuoteRequestItem $item): int => (int) $item->id);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.awards.store', $rfq->id), [
+            'mode' => SupplierQuoteAward::MODE_MANUAL_ITEM,
+            'item_supplier_ids' => [
+                (int) $itemIdsByLine[1] => (int) $supplier2->id,
+                (int) $itemIdsByLine[2] => (int) $supplier1->id,
+            ],
+        ])->assertSessionHasErrors(['award_reason']);
+    }
+
+    public function test_compare_page_shows_item_award_shipping_note(): void
+    {
+        $company = $this->createCompany('Empresa Compare Nota Portes');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $rfq = $this->createBaseRfq($company, $admin);
+        [$supplier1, $supplier2] = [
+            $this->createSupplier($company, 'Fornecedor Nota 1', 'nota1@example.test'),
+            $this->createSupplier($company, 'Fornecedor Nota 2', 'nota2@example.test'),
+        ];
+        [$invite1, $invite2] = $this->attachSuppliersToRfq($rfq, [$supplier1, $supplier2]);
+        $this->createSupplierQuote($invite1, [1 => 70, 2 => 60], shipping: 10);
+        $this->createSupplierQuote($invite2, [1 => 80, 2 => 50], shipping: 12);
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_RECEIVED])->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.rfqs.compare', $rfq->id))
+            ->assertOk()
+            ->assertSee('sem reparticao automatica de portes');
+    }
+
     public function test_award_fails_when_rfq_state_is_invalid(): void
     {
         $company = $this->createCompany('Empresa Award Estado');
@@ -351,4 +480,3 @@ class SupplierQuoteComparisonAndAwardsTest extends TestCase
         ]);
     }
 }
-

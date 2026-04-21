@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -65,16 +66,23 @@ class SupplierQuoteResponseController extends Controller
         $companyId = (int) $request->user()->company_id;
         $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
         $this->authorize('update', $rfqModel);
+        $rfqSupplierModel = $this->findRfqSupplierOrFail($rfqModel, $rfqSupplier);
 
         if ($this->isAwardLocked($rfqModel)) {
+            Log::warning('Blocked supplier response mutation on awarded RFQ', [
+                'context' => 'rfq_response_lock',
+                'company_id' => $companyId,
+                'rfq_id' => (int) $rfqModel->id,
+                'rfq_supplier_id' => (int) $rfqSupplierModel->id,
+                'user_id' => (int) $request->user()->id,
+            ]);
+
             return redirect()
                 ->route('admin.rfqs.show', $rfqModel->id)
                 ->withErrors([
                     'rfq' => 'Este pedido ja foi adjudicado. As respostas dos fornecedores estao bloqueadas para edicao.',
                 ]);
         }
-
-        $rfqSupplierModel = $this->findRfqSupplierOrFail($rfqModel, $rfqSupplier);
 
         $validated = $request->validated();
         $respondedItems = $request->respondedItems();

@@ -7,6 +7,7 @@ use App\Models\SupplierQuoteRequest;
 use App\Models\SupplierQuoteRequestItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class SupplierQuoteAwardService
@@ -38,6 +39,7 @@ class SupplierQuoteAwardService
             };
 
             $requiresReason = (bool) ($awardResult['requires_reason'] ?? false);
+            $reasonRequiredMessage = (string) ($awardResult['reason_required_message'] ?? 'Ao escolher uma opcao mais cara, o motivo e obrigatorio.');
             $reason = isset($payload['award_reason']) ? trim((string) $payload['award_reason']) : null;
             $notes = isset($payload['award_notes']) ? trim((string) $payload['award_notes']) : null;
             $reason = $reason !== '' ? $reason : null;
@@ -45,7 +47,7 @@ class SupplierQuoteAwardService
 
             if ($requiresReason && $reason === null) {
                 throw ValidationException::withMessages([
-                    'award_reason' => 'Ao escolher uma opcao mais cara, o motivo e obrigatorio.',
+                    'award_reason' => $reasonRequiredMessage,
                 ]);
             }
 
@@ -69,6 +71,21 @@ class SupplierQuoteAwardService
                 'awarded_total' => $awardResult['awarded_total'],
                 'awarded_at' => now(),
             ])->save();
+
+            Log::info('RFQ award registered', [
+                'context' => 'rfq_award',
+                'company_id' => (int) $rfq->company_id,
+                'rfq_id' => (int) $rfq->id,
+                'rfq_number' => $rfq->number,
+                'award_id' => (int) $award->id,
+                'mode' => $mode,
+                'awarded_supplier_id' => $award->awarded_supplier_id,
+                'awarded_total' => (float) $award->awarded_total,
+                'awarded_by' => $awardedBy,
+                'awarded_at' => optional($award->awarded_at)->toDateTimeString(),
+                'award_reason' => $award->award_reason,
+                'items_count' => count((array) $awardResult['items']),
+            ]);
 
             return $award;
         });
@@ -177,6 +194,11 @@ class SupplierQuoteAwardService
                 'awarded_supplier_id' => 'O fornecedor selecionado nao tem proposta valida para adjudicacao global.',
             ]);
         }
+        if (! (bool) ($summary['is_complete'] ?? false)) {
+            throw ValidationException::withMessages([
+                'awarded_supplier_id' => 'A proposta selecionada esta incompleta e nao pode ser usada em adjudicacao manual global.',
+            ]);
+        }
 
         $cheapestInviteId = (int) ($comparison['cheapest_total_invite_id'] ?? 0);
         $isCheapest = $cheapestInviteId > 0 && $cheapestInviteId === (int) $summary['invite']->id;
@@ -204,6 +226,7 @@ class SupplierQuoteAwardService
         $requiresReason = false;
         $awardedTotal = 0.0;
         $itemsPayload = [];
+        $selectedAlternativeItemIds = [];
 
         /** @var SupplierQuoteRequestItem $rfqItem */
         foreach ($comparison['rfq']->items as $rfqItem) {
@@ -232,6 +255,10 @@ class SupplierQuoteAwardService
                     "item_supplier_ids.$rfqItemId" => 'A linha selecionada nao esta disponivel nesse fornecedor.',
                 ]);
             }
+            if ((bool) $quoteItem->is_alternative) {
+                $selectedAlternativeItemIds[] = $rfqItemId;
+                $requiresReason = true;
+            }
 
             $cheapestSelection = $comparison['cheapest_item_selections'][$rfqItemId] ?? null;
             $isCheapest = $cheapestSelection !== null
@@ -252,10 +279,22 @@ class SupplierQuoteAwardService
             );
         }
 
+        if ($itemsPayload === []) {
+            throw ValidationException::withMessages([
+                'mode' => 'Nao existem linhas comparaveis para adjudicar por item.',
+            ]);
+        }
+
+        $reasonMessage = 'Ao escolher uma opcao mais cara, o motivo e obrigatorio.';
+        if ($selectedAlternativeItemIds !== []) {
+            $reasonMessage = 'Ao adjudicar linhas alternativas, o motivo e obrigatorio.';
+        }
+
         return [
             'awarded_supplier_id' => null,
             'awarded_total' => round($awardedTotal, 2),
             'requires_reason' => $requiresReason,
+            'reason_required_message' => $reasonMessage,
             'items' => $itemsPayload,
         ];
     }

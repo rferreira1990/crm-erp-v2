@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Mail\Admin\SupplierQuoteRequestSentMail;
 use App\Models\Company;
 use App\Models\Supplier;
+use App\Models\SupplierQuote;
 use App\Models\SupplierQuoteRequest;
 use App\Models\SupplierQuoteRequestItem;
 use App\Models\SupplierQuoteRequestSupplier;
@@ -398,6 +399,125 @@ class SupplierQuoteRequestsTest extends TestCase
                 ],
             ],
         ])->assertSessionHasErrors(['supplier_document_number', 'supplier_document_date']);
+    }
+
+    public function test_awarded_rfq_blocks_supplier_response_mutation_but_keeps_read_only_access(): void
+    {
+        $company = $this->createCompany('Empresa RFQ Bloqueio Resposta');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $supplierA = $this->createSupplier($company, 'Fornecedor Lock A', 'lock-a@example.test');
+        $supplierB = $this->createSupplier($company, 'Fornecedor Lock B', 'lock-b@example.test');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.store'), $this->rfqPayload($supplierA->id, $supplierB->id))
+            ->assertRedirect();
+
+        $rfq = SupplierQuoteRequest::query()->where('company_id', $company->id)->firstOrFail();
+        $rfq->load(['items', 'invitedSuppliers']);
+        $inviteA = $rfq->invitedSuppliers->firstWhere('supplier_id', $supplierA->id);
+        $firstItem = $rfq->items->first();
+        $this->assertNotNull($inviteA);
+        $this->assertNotNull($firstItem);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $inviteA->id]), [
+            'received_at' => now()->format('Y-m-d H:i:s'),
+            'shipping_cost' => 0,
+            'supplier_document_date' => now()->toDateString(),
+            'supplier_document_number' => 'LOCK-001',
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                    'discount_percent' => 0,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id));
+
+        $quote = SupplierQuote::query()
+            ->where('supplier_quote_request_supplier_id', $inviteA->id)
+            ->firstOrFail();
+        $originalGrandTotal = (string) $quote->grand_total;
+
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_AWARDED])->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.rfqs.responses.create', [$rfq->id, $inviteA->id]))
+            ->assertOk()
+            ->assertSee('modo leitura');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $inviteA->id]), [
+            'received_at' => now()->format('Y-m-d H:i:s'),
+            'shipping_cost' => 0,
+            'supplier_document_date' => now()->toDateString(),
+            'supplier_document_number' => 'LOCK-002',
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 1,
+                    'discount_percent' => 0,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id))
+            ->assertSessionHasErrors(['rfq']);
+
+        $quote->refresh();
+        $this->assertSame($originalGrandTotal, (string) $quote->grand_total);
+        $this->assertSame('LOCK-001', $quote->supplier_document_number);
+    }
+
+    public function test_awarded_rfq_blocks_update_of_request_header_and_lines(): void
+    {
+        $company = $this->createCompany('Empresa RFQ Bloqueio Update');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $supplierA = $this->createSupplier($company, 'Fornecedor Update A', 'update-a@example.test');
+        $supplierB = $this->createSupplier($company, 'Fornecedor Update B', 'update-b@example.test');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.store'), $this->rfqPayload($supplierA->id, $supplierB->id))
+            ->assertRedirect();
+
+        $rfq = SupplierQuoteRequest::query()->where('company_id', $company->id)->firstOrFail();
+        $rfq->load(['items', 'invitedSuppliers']);
+        $line = $rfq->items->first();
+        $invite = $rfq->invitedSuppliers->first();
+        $this->assertNotNull($line);
+        $this->assertNotNull($invite);
+
+        $rfq->forceFill(['status' => SupplierQuoteRequest::STATUS_AWARDED])->save();
+
+        $this->actingAs($admin)->patch(route('admin.rfqs.update', $rfq->id), [
+            'title' => 'Tentativa alteracao apos adjudicacao',
+            'issue_date' => now()->toDateString(),
+            'response_deadline' => now()->addDays(5)->toDateString(),
+            'supplier_ids' => [$invite->supplier_id],
+            'items' => [
+                [
+                    'line_order' => 1,
+                    'line_type' => SupplierQuoteRequestItem::TYPE_TEXT,
+                    'description' => 'Linha alterada',
+                    'unit_name' => 'UN',
+                    'quantity' => 2,
+                ],
+            ],
+            'is_active' => 1,
+        ])->assertRedirect(route('admin.rfqs.show', $rfq->id))
+            ->assertSessionHasErrors(['rfq']);
+
+        $rfq->refresh();
+        $this->assertNotSame('Tentativa alteracao apos adjudicacao', $rfq->title);
+        $this->assertSame(SupplierQuoteRequest::STATUS_AWARDED, $rfq->status);
     }
 
     /**
