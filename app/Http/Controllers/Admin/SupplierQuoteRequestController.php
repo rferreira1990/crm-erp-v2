@@ -133,6 +133,9 @@ class SupplierQuoteRequestController extends Controller
         $rfqModel->load([
             'creator:id,name',
             'assignedUser:id,name',
+            'latestAward' => fn ($query) => $query
+                ->with(['supplier:id,name', 'awardedByUser:id,name'])
+                ->withCount('items'),
             'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
             'invitedSuppliers' => fn ($query) => $query
                 ->with([
