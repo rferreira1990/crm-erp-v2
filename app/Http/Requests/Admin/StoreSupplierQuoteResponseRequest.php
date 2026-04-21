@@ -133,6 +133,88 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'received_at.required' => 'A data de rececao e obrigatoria.',
+            'received_at.date' => 'A data de rececao deve ser uma data valida.',
+            'received_at.before_or_equal' => 'A data de rececao nao pode ser futura.',
+
+            'supplier_document_date.required' => 'A data da proposta e obrigatoria.',
+            'supplier_document_date.date' => 'A data da proposta deve ser uma data valida.',
+
+            'supplier_document_number.required' => 'O numero do documento do fornecedor e obrigatorio.',
+            'supplier_document_number.max' => 'O numero do documento do fornecedor nao pode exceder 120 caracteres.',
+
+            'shipping_cost.numeric' => 'O valor de portes deve ser numerico.',
+            'shipping_cost.min' => 'O valor de portes nao pode ser negativo.',
+
+            'delivery_days.integer' => 'O prazo de entrega deve ser um numero inteiro.',
+            'delivery_days.min' => 'O prazo de entrega nao pode ser negativo.',
+            'delivery_days.max' => 'O prazo de entrega excede o limite permitido.',
+
+            'commercial_discount_text.max' => 'O desconto comercial nao pode exceder 255 caracteres.',
+            'commercial_discount_percent.numeric' => 'O desconto comercial deve ser numerico.',
+            'commercial_discount_percent.between' => 'O desconto comercial deve estar entre 0% e 100%.',
+
+            'payment_terms_text.max' => 'As condicoes de pagamento nao podem exceder 255 caracteres.',
+
+            'valid_until.date' => 'A validade da proposta deve ser uma data valida.',
+            'notes.max' => 'As observacoes nao podem exceder 5000 caracteres.',
+
+            'supplier_document_pdf.file' => 'O documento do fornecedor tem de ser um ficheiro valido.',
+            'supplier_document_pdf.mimetypes' => 'O documento do fornecedor deve estar em formato PDF.',
+            'supplier_document_pdf.max' => 'O documento do fornecedor nao pode exceder 12MB.',
+
+            'items.required' => 'Tem de indicar pelo menos uma linha para resposta.',
+            'items.array' => 'As linhas de resposta sao invalidas.',
+            'items.min' => 'Tem de indicar pelo menos uma linha para resposta.',
+            'items.max' => 'Excedeu o numero maximo de linhas permitido.',
+
+            'items.*.supplier_quote_request_item_id.required' => 'A referencia da linha do pedido e obrigatoria.',
+            'items.*.supplier_quote_request_item_id.integer' => 'A referencia da linha do pedido e invalida.',
+            'items.*.is_responded.required' => 'Indique se a linha foi respondida.',
+            'items.*.is_responded.boolean' => 'O estado de resposta da linha e invalido.',
+            'items.*.is_available.required' => 'Indique a disponibilidade da linha.',
+            'items.*.is_available.boolean' => 'A disponibilidade da linha e invalida.',
+            'items.*.quantity.numeric' => 'A quantidade proposta deve ser numerica.',
+            'items.*.quantity.min' => 'A quantidade proposta nao pode ser negativa.',
+            'items.*.unit_price.numeric' => 'O preco unitario deve ser numerico.',
+            'items.*.unit_price.min' => 'O preco unitario nao pode ser negativo.',
+            'items.*.discount_percent.numeric' => 'O desconto de linha deve ser numerico.',
+            'items.*.discount_percent.between' => 'O desconto de linha deve estar entre 0% e 100%.',
+            'items.*.is_alternative.required' => 'Indique se a linha e alternativa.',
+            'items.*.is_alternative.boolean' => 'O estado de alternativa da linha e invalido.',
+            'items.*.alternative_description.max' => 'A descricao alternativa nao pode exceder 5000 caracteres.',
+            'items.*.brand.max' => 'A marca nao pode exceder 120 caracteres.',
+            'items.*.notes.max' => 'As notas da linha nao podem exceder 2000 caracteres.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'received_at' => 'data de rececao',
+            'supplier_document_date' => 'data da proposta',
+            'supplier_document_number' => 'numero do documento do fornecedor',
+            'shipping_cost' => 'portes',
+            'delivery_days' => 'prazo de entrega',
+            'commercial_discount_text' => 'desconto comercial',
+            'commercial_discount_percent' => 'percentagem do desconto comercial',
+            'payment_terms_text' => 'condicoes de pagamento',
+            'valid_until' => 'validade da proposta',
+            'notes' => 'observacoes',
+            'supplier_document_pdf' => 'documento do fornecedor',
+            'items' => 'linhas da resposta',
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function respondedItems(): array
