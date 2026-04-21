@@ -149,9 +149,16 @@
                                             @endif
                                         </td>
                                         <td class="text-end pe-3">
-                                            <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
-                                                Registar resposta
-                                            </a>
+                                            <div class="d-inline-flex gap-2">
+                                                <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
+                                                    Registar resposta
+                                                </a>
+                                                @if ($invite->pdf_path)
+                                                    <a href="{{ route('admin.rfqs.suppliers.pdf.download', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
+                                                        PDF fornecedor
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

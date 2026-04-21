@@ -313,6 +313,10 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::post('/rfqs/{rfq}/email/send', [SupplierQuoteRequestController::class, 'sendEmail'])
             ->whereNumber('rfq')
             ->name('rfqs.email.send');
+        Route::get('/rfqs/{rfq}/suppliers/{rfqSupplier}/pdf/download', [SupplierQuoteRequestController::class, 'downloadSupplierPdf'])
+            ->whereNumber('rfq')
+            ->whereNumber('rfqSupplier')
+            ->name('rfqs.suppliers.pdf.download');
 
         Route::get('/rfqs/{rfq}/suppliers/{rfqSupplier}/response/create', [SupplierQuoteResponseController::class, 'create'])
             ->whereNumber('rfq')
