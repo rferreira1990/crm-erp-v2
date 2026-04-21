@@ -34,6 +34,14 @@ class SupplierQuoteComparisonController extends Controller
             $comparison['rfq']->status = SupplierQuoteRequest::STATUS_COMPARED;
         }
 
+        $comparison['rfq']->loadMissing([
+            'latestAward' => fn ($query) => $query->with([
+                'items:id,supplier_quote_award_id,supplier_quote_request_item_id,supplier_id,is_cheapest_option,is_alternative',
+                'supplier:id,name',
+                'awardedByUser:id,name',
+            ]),
+        ]);
+
         return view('admin.rfqs.compare', [
             'rfq' => $comparison['rfq'],
             'comparison' => $comparison,
@@ -51,4 +59,3 @@ class SupplierQuoteComparisonController extends Controller
             ->firstOrFail();
     }
 }
-
