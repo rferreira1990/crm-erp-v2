@@ -184,7 +184,7 @@ class SupplierQuoteRequestsTest extends TestCase
             'received_at' => now()->format('Y-m-d H:i:s'),
             'shipping_cost' => 15,
             'delivery_days' => 5,
-            'supplier_document_date' => '2026-04-22',
+            'supplier_document_date' => now()->toDateString(),
             'supplier_document_number' => 'FP-2026-15',
             'commercial_discount_text' => '3% pp',
             'payment_terms_text' => '30 dias',
@@ -290,7 +290,7 @@ class SupplierQuoteRequestsTest extends TestCase
         Storage::disk('local')->assertExists($firstPdfPath);
 
         $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $invite->id]), [
-            'received_at' => now()->addHour()->format('Y-m-d H:i:s'),
+            'received_at' => now()->subMinute()->format('Y-m-d H:i:s'),
             'shipping_cost' => 5,
             'supplier_document_number' => 'DOC-002',
             'commercial_discount_text' => '5% especial',
@@ -320,6 +320,45 @@ class SupplierQuoteRequestsTest extends TestCase
         $this->assertNotSame($firstPdfPath, (string) $quote->supplier_document_pdf_path);
         Storage::disk('local')->assertMissing($firstPdfPath);
         Storage::disk('local')->assertExists((string) $quote->supplier_document_pdf_path);
+    }
+
+    public function test_supplier_response_validates_proposal_date_and_validity_date_rules(): void
+    {
+        $company = $this->createCompany('Empresa RFQ Datas');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $supplierA = $this->createSupplier($company, 'Fornecedor Data A', 'data-a@example.test');
+        $supplierB = $this->createSupplier($company, 'Fornecedor Data B', 'data-b@example.test');
+
+        $this->actingAs($admin)->post(route('admin.rfqs.store'), $this->rfqPayload($supplierA->id, $supplierB->id))
+            ->assertRedirect();
+
+        $rfq = SupplierQuoteRequest::query()->where('company_id', $company->id)->firstOrFail();
+        $rfq->load(['items', 'invitedSuppliers']);
+        $inviteA = $rfq->invitedSuppliers->firstWhere('supplier_id', $supplierA->id);
+        $this->assertNotNull($inviteA);
+
+        $firstItem = $rfq->items->first();
+        $this->assertNotNull($firstItem);
+
+        $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $inviteA->id]), [
+            'received_at' => now()->format('Y-m-d H:i:s'),
+            'supplier_document_date' => now()->addDay()->toDateString(),
+            'valid_until' => now()->toDateString(),
+            'items' => [
+                [
+                    'supplier_quote_request_item_id' => $firstItem->id,
+                    'is_responded' => 1,
+                    'is_available' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                    'discount_percent' => 0,
+                    'is_alternative' => 0,
+                    'alternative_description' => null,
+                    'brand' => null,
+                    'notes' => null,
+                ],
+            ],
+        ])->assertSessionHasErrors(['supplier_document_date', 'valid_until']);
     }
 
     /**
