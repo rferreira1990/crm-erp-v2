@@ -43,10 +43,19 @@ class SupplierQuoteRequestsTest extends TestCase
 
         $this->actingAs($adminA)->get(route('admin.rfqs.show', $rfqB->id))->assertNotFound();
         $this->actingAs($adminA)->get(route('admin.rfqs.edit', $rfqB->id))->assertNotFound();
+        $supplierForA = $rfqA->invitedSuppliers()->firstOrFail();
         $this->actingAs($adminA)->patch(route('admin.rfqs.update', $rfqB->id), [
             'issue_date' => now()->toDateString(),
-            'supplier_ids' => [],
-            'items' => [],
+            'response_deadline' => now()->addDays(7)->toDateString(),
+            'supplier_ids' => [$supplierForA->supplier_id],
+            'items' => [
+                [
+                    'line_order' => 1,
+                    'line_type' => SupplierQuoteRequestItem::TYPE_TEXT,
+                    'description' => 'Linha valida',
+                    'quantity' => 1,
+                ],
+            ],
             'is_active' => 1,
         ])->assertNotFound();
     }
