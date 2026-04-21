@@ -110,6 +110,16 @@
                         @forelse ($comparison['item_matrix'] as $row)
                             @php
                                 $rfqItem = $row['rfq_item'];
+                                $exactOffers = collect($row['cells_by_invite_id'])
+                                    ->filter(function (array $cell): bool {
+                                        return ($cell['status'] ?? null) === 'available_exact'
+                                            && isset($cell['quote_item'])
+                                            && $cell['quote_item']?->line_total !== null;
+                                    })
+                                    ->sortBy(fn (array $cell): float => (float) $cell['quote_item']->line_total);
+                                $bestExactInviteId = $exactOffers->keys()->map(fn ($key): int => (int) $key)->first();
+                                $worstExactInviteId = $exactOffers->keys()->map(fn ($key): int => (int) $key)->last();
+                                $hasMultipleExactOffers = $exactOffers->count() > 1;
                             @endphp
                             <tr>
                                 <td class="ps-3 align-top">
@@ -122,13 +132,22 @@
                                         $cell = $row['cells_by_invite_id'][$inviteId] ?? null;
                                         $status = $cell['status'] ?? 'not_applicable';
                                         $quoteItem = $cell['quote_item'] ?? null;
-                                        $cellClass = match ($status) {
-                                            'available_exact' => 'table-success',
-                                            'available_alternative' => 'table-warning',
-                                            'unavailable' => 'table-danger',
-                                            'no_response' => 'table-secondary',
-                                            default => '',
-                                        };
+                                        $cellClass = '';
+                                        if ($status === 'available_exact') {
+                                            if ($bestExactInviteId !== null && $inviteId === (int) $bestExactInviteId) {
+                                                $cellClass = 'table-success';
+                                            } elseif ($hasMultipleExactOffers && $worstExactInviteId !== null && $inviteId === (int) $worstExactInviteId) {
+                                                $cellClass = 'table-danger';
+                                            } else {
+                                                $cellClass = 'table-warning';
+                                            }
+                                        } elseif ($status === 'available_alternative') {
+                                            $cellClass = 'table-warning';
+                                        } elseif ($status === 'unavailable') {
+                                            $cellClass = 'table-danger';
+                                        } elseif ($status === 'no_response') {
+                                            $cellClass = 'table-secondary';
+                                        }
                                     @endphp
                                     <td class="align-top {{ $cellClass }}">
                                         @if (! $row['is_comparable'])
@@ -305,4 +324,3 @@
         </div>
     @endif
 @endsection
-
