@@ -28,9 +28,13 @@ class SupplierQuote extends Model
         'tax_total',
         'grand_total',
         'delivery_days',
+        'supplier_document_date',
+        'supplier_document_number',
+        'commercial_discount_text',
         'payment_terms_text',
         'valid_until',
         'notes',
+        'supplier_document_pdf_path',
         'received_at',
     ];
 
@@ -46,6 +50,7 @@ class SupplierQuote extends Model
             'tax_total' => 'decimal:2',
             'grand_total' => 'decimal:2',
             'delivery_days' => 'integer',
+            'supplier_document_date' => 'date',
             'valid_until' => 'date',
             'received_at' => 'datetime',
         ];
@@ -67,4 +72,3 @@ class SupplierQuote extends Model
         return $query->where('company_id', $companyId);
     }
 }
-

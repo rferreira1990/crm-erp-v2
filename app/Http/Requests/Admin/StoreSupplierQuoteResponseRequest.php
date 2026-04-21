@@ -12,6 +12,9 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         $this->merge([
             'shipping_cost' => $this->normalizeNullableNumeric($this->input('shipping_cost')),
             'delivery_days' => $this->normalizeNullableInteger($this->input('delivery_days')),
+            'supplier_document_date' => $this->normalizeNullableString($this->input('supplier_document_date')),
+            'supplier_document_number' => $this->normalizeNullableString($this->input('supplier_document_number')),
+            'commercial_discount_text' => $this->normalizeNullableString($this->input('commercial_discount_text')),
             'payment_terms_text' => $this->normalizeNullableString($this->input('payment_terms_text')),
             'valid_until' => $this->normalizeNullableString($this->input('valid_until')),
             'notes' => $this->normalizeNullableString($this->input('notes')),
@@ -37,9 +40,13 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         return [
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'delivery_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'supplier_document_date' => ['nullable', 'date'],
+            'supplier_document_number' => ['nullable', 'string', 'max:120'],
+            'commercial_discount_text' => ['nullable', 'string', 'max:255'],
             'payment_terms_text' => ['nullable', 'string', 'max:255'],
             'valid_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'supplier_document_pdf' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:12288'],
             'received_at' => ['required', 'date'],
             'items' => ['required', 'array', 'min:1', 'max:400'],
             'items.*.supplier_quote_request_item_id' => ['required', 'integer'],
@@ -176,4 +183,3 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         return $normalized !== '' ? $normalized : null;
     }
 }
-
