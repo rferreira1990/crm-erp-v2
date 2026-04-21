@@ -85,21 +85,7 @@
             <td style="width:2%;"></td>
             <td style="width:49%;vertical-align:top;">
                 <div class="card">
-                    <p class="card-title">Pedido</p>
-                    <div><strong>{{ $rfq->title ?: 'Consulta de precos' }}</strong></div>
-                    <div>Responsavel: {{ $rfq->assignedUser?->name ?? '-' }}</div>
-                    <div>Criado por: {{ $rfq->creator?->name ?? '-' }}</div>
-                    <div>Total estimado: {{ $rfq->estimated_total !== null ? number_format((float) $rfq->estimated_total, 2, ',', '.').' EUR' : '-' }}</div>
-                </div>
-            </td>
-        </tr>
-    </table>
-
-    @if ($rfqSupplier && $targetSupplierName !== '')
-        <table class="cards" style="margin-top: 8px;">
-            <tr>
-                <td style="vertical-align:top;">
-                    <div class="card">
+                    @if ($rfqSupplier && $targetSupplierName !== '')
                         <p class="card-title">Fornecedor destinatario</p>
                         <div><strong>{{ $targetSupplierName }}</strong></div>
                         @if ($targetSupplierNif !== '')
@@ -119,11 +105,17 @@
                         @if ($targetSupplierLocation !== '')
                             <div>{{ $targetSupplierLocation }}</div>
                         @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
-    @endif
+                    @else
+                        <p class="card-title">Pedido</p>
+                        <div><strong>{{ $rfq->title ?: 'Consulta de precos' }}</strong></div>
+                        <div>Responsavel: {{ $rfq->assignedUser?->name ?? '-' }}</div>
+                        <div>Criado por: {{ $rfq->creator?->name ?? '-' }}</div>
+                        <div>Total estimado: {{ $rfq->estimated_total !== null ? number_format((float) $rfq->estimated_total, 2, ',', '.').' EUR' : '-' }}</div>
+                    @endif
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <table class="lines">
         <thead>
