@@ -143,7 +143,10 @@
                                         <td>{{ optional($invite->responded_at)->format('Y-m-d H:i') ?? '-' }}</td>
                                         <td>
                                             @if ($invite->supplierQuote)
-                                                {{ number_format((float) $invite->supplierQuote->grand_total, 2, ',', '.') }} EUR
+                                                <div>{{ number_format((float) $invite->supplierQuote->grand_total, 2, ',', '.') }} EUR</div>
+                                                @if ($invite->supplierQuote->supplier_document_number)
+                                                    <div class="text-body-tertiary fs-10">Doc: {{ $invite->supplierQuote->supplier_document_number }}</div>
+                                                @endif
                                             @else
                                                 -
                                             @endif
@@ -151,11 +154,16 @@
                                         <td class="text-end pe-3">
                                             <div class="d-inline-flex gap-2">
                                                 <a href="{{ route('admin.rfqs.responses.create', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
-                                                    Registar resposta
+                                                    {{ $invite->supplierQuote ? 'Editar resposta' : 'Registar resposta' }}
                                                 </a>
                                                 @if ($invite->pdf_path)
                                                     <a href="{{ route('admin.rfqs.suppliers.pdf.download', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
                                                         PDF fornecedor
+                                                    </a>
+                                                @endif
+                                                @if ($invite->supplierQuote?->supplier_document_pdf_path)
+                                                    <a href="{{ route('admin.rfqs.responses.document.download', [$rfq->id, $invite->id]) }}" class="btn btn-phoenix-secondary btn-sm">
+                                                        Doc real
                                                     </a>
                                                 @endif
                                             </div>
