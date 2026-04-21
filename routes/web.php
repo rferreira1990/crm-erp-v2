@@ -326,6 +326,10 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('rfq')
             ->whereNumber('rfqSupplier')
             ->name('rfqs.responses.store');
+        Route::get('/rfqs/{rfq}/suppliers/{rfqSupplier}/response/document/download', [SupplierQuoteResponseController::class, 'downloadDocument'])
+            ->whereNumber('rfq')
+            ->whereNumber('rfqSupplier')
+            ->name('rfqs.responses.document.download');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');

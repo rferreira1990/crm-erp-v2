@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSupplierQuoteResponseRequest;
+use App\Models\PaymentTerm;
 use App\Models\SupplierQuote;
-use App\Models\SupplierQuoteItem;
 use App\Models\SupplierQuoteRequest;
 use App\Models\SupplierQuoteRequestSupplier;
 use App\Services\Admin\SupplierQuoteRequestStatusService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class SupplierQuoteResponseController extends Controller
@@ -41,12 +45,15 @@ class SupplierQuoteResponseController extends Controller
         $existingItemsByRfqItem = $existingQuote
             ? $existingQuote->items->keyBy('supplier_quote_request_item_id')
             : collect();
+        [$paymentTermOptions, $defaultPaymentTermText] = $this->paymentTermOptionsForCompany($companyId);
 
         return view('admin.rfqs.response', [
             'rfq' => $rfqModel,
             'rfqSupplier' => $rfqSupplierModel,
             'existingQuote' => $existingQuote,
             'existingItemsByRfqItem' => $existingItemsByRfqItem,
+            'paymentTermOptions' => $paymentTermOptions,
+            'defaultPaymentTermText' => $defaultPaymentTermText,
         ]);
     }
 
@@ -60,6 +67,8 @@ class SupplierQuoteResponseController extends Controller
 
         $validated = $request->validated();
         $respondedItems = $request->respondedItems();
+        $uploadedSupplierDocumentPdf = $request->file('supplier_document_pdf');
+        $defaultPaymentTermText = $this->defaultPaymentTermText($companyId);
 
         $rfqItemIds = $rfqModel->items()->pluck('id')->map(fn ($id) => (int) $id)->all();
         $validRfqItemLookup = array_flip($rfqItemIds);
@@ -71,7 +80,15 @@ class SupplierQuoteResponseController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $respondedItems, $companyId, $rfqSupplierModel, $rfqModel): void {
+        DB::transaction(function () use (
+            $validated,
+            $respondedItems,
+            $companyId,
+            $rfqSupplierModel,
+            $rfqModel,
+            $uploadedSupplierDocumentPdf,
+            $defaultPaymentTermText
+        ): void {
             $supplierQuote = SupplierQuote::query()->firstOrNew([
                 'supplier_quote_request_supplier_id' => $rfqSupplierModel->id,
             ]);
@@ -81,7 +98,10 @@ class SupplierQuoteResponseController extends Controller
                 'status' => SupplierQuote::STATUS_RECEIVED,
                 'shipping_cost' => (float) ($validated['shipping_cost'] ?? 0),
                 'delivery_days' => $validated['delivery_days'] ?? null,
-                'payment_terms_text' => $validated['payment_terms_text'] ?? null,
+                'supplier_document_date' => $validated['supplier_document_date'] ?? null,
+                'supplier_document_number' => $validated['supplier_document_number'] ?? null,
+                'commercial_discount_text' => $validated['commercial_discount_text'] ?? null,
+                'payment_terms_text' => $validated['payment_terms_text'] ?? $defaultPaymentTermText,
                 'valid_until' => $validated['valid_until'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'received_at' => $validated['received_at'],
@@ -140,6 +160,25 @@ class SupplierQuoteResponseController extends Controller
                 'grand_total' => round($grandLines + $shippingCost, 2),
             ])->save();
 
+            if ($uploadedSupplierDocumentPdf instanceof UploadedFile) {
+                $previousPdfPath = $supplierQuote->supplier_document_pdf_path;
+                $newPdfPath = $this->storeSupplierDocumentPdf(
+                    file: $uploadedSupplierDocumentPdf,
+                    companyId: $companyId,
+                    rfqId: (int) $rfqModel->id,
+                    rfqSupplierId: (int) $rfqSupplierModel->id,
+                    supplierQuoteId: (int) $supplierQuote->id
+                );
+
+                $supplierQuote->forceFill([
+                    'supplier_document_pdf_path' => $newPdfPath,
+                ])->save();
+
+                if ($previousPdfPath && $previousPdfPath !== $newPdfPath) {
+                    $this->deleteFromDisk($previousPdfPath);
+                }
+            }
+
             $rfqSupplierModel->forceFill([
                 'status' => SupplierQuoteRequestSupplier::STATUS_RESPONDED,
                 'responded_at' => now(),
@@ -151,6 +190,34 @@ class SupplierQuoteResponseController extends Controller
         return redirect()
             ->route('admin.rfqs.show', $rfqModel->id)
             ->with('status', 'Resposta do fornecedor registada com sucesso.');
+    }
+
+    public function downloadDocument(Request $request, int $rfq, int $rfqSupplier): StreamedResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
+        $this->authorize('view', $rfqModel);
+
+        $rfqSupplierModel = $this->findRfqSupplierOrFail($rfqModel, $rfqSupplier);
+        $supplierQuote = $rfqSupplierModel->supplierQuote()->first();
+
+        if (! $supplierQuote || ! $supplierQuote->supplier_document_pdf_path) {
+            abort(404);
+        }
+
+        if (! Storage::disk('local')->exists($supplierQuote->supplier_document_pdf_path)) {
+            abort(404);
+        }
+
+        $fileName = Str::slug($rfqModel->number.'-documento-'.$rfqSupplierModel->supplier_name).'.pdf';
+        if ($fileName === '.pdf') {
+            $fileName = Str::slug($rfqModel->number.'-documento-fornecedor').'.pdf';
+        }
+
+        return Storage::disk('local')->download(
+            $supplierQuote->supplier_document_pdf_path,
+            $fileName
+        );
     }
 
     private function findCompanyRfqOrFail(int $companyId, int $rfqId): SupplierQuoteRequest
@@ -173,5 +240,64 @@ class SupplierQuoteResponseController extends Controller
 
         return $rfqSupplier;
     }
-}
 
+    /**
+     * @return array{0: array<int, string>, 1: string}
+     */
+    private function paymentTermOptionsForCompany(int $companyId): array
+    {
+        $options = PaymentTerm::query()
+            ->visibleToCompany($companyId)
+            ->orderByRaw('CASE WHEN company_id IS NULL THEN 0 ELSE 1 END')
+            ->orderBy('name')
+            ->pluck('name')
+            ->filter(fn (?string $name): bool => is_string($name) && trim($name) !== '')
+            ->map(fn (string $name): string => trim($name))
+            ->unique()
+            ->values()
+            ->all();
+
+        $default = collect($options)->first(
+            fn (string $name): bool => Str::lower($name) === 'pronto pagamento'
+        ) ?? ($options[0] ?? 'Pronto pagamento');
+
+        if ($options === []) {
+            $options = [$default];
+        }
+
+        return [$options, $default];
+    }
+
+    private function defaultPaymentTermText(int $companyId): string
+    {
+        [, $default] = $this->paymentTermOptionsForCompany($companyId);
+
+        return $default;
+    }
+
+    private function storeSupplierDocumentPdf(
+        UploadedFile $file,
+        int $companyId,
+        int $rfqId,
+        int $rfqSupplierId,
+        int $supplierQuoteId
+    ): string {
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'pdf');
+        $filename = 'supplier-document-'.$supplierQuoteId.'-'.now()->format('YmdHis').'.'.$extension;
+
+        return $file->storeAs(
+            'rfqs/'.$companyId.'/'.$rfqId.'/suppliers/'.$rfqSupplierId.'/response',
+            $filename,
+            'local'
+        );
+    }
+
+    private function deleteFromDisk(string $path): void
+    {
+        if (trim($path) === '') {
+            return;
+        }
+
+        Storage::disk('local')->delete($path);
+    }
+}
