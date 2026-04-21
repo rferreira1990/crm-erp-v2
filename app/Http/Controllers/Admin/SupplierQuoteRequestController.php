@@ -259,6 +259,31 @@ class SupplierQuoteRequestController extends Controller
         );
     }
 
+    public function downloadSupplierPdf(Request $request, int $rfq, int $rfqSupplier): StreamedResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
+        $this->authorize('view', $rfqModel);
+
+        $invite = $rfqModel->invitedSuppliers()
+            ->whereKey($rfqSupplier)
+            ->firstOrFail();
+
+        if (! $invite->pdf_path || ! Storage::disk('local')->exists($invite->pdf_path)) {
+            abort(404);
+        }
+
+        $filename = Str::slug($rfqModel->number.'-'.$invite->supplier_name).'.pdf';
+        if ($filename === '.pdf') {
+            $filename = Str::slug($rfqModel->number.'-fornecedor').'.pdf';
+        }
+
+        return Storage::disk('local')->download(
+            $invite->pdf_path,
+            $filename
+        );
+    }
+
     public function sendEmail(SendSupplierQuoteRequestEmailRequest $request, int $rfq): RedirectResponse
     {
         $companyId = (int) $request->user()->company_id;
