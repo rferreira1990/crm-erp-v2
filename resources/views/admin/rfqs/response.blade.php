@@ -15,12 +15,10 @@
 
 @section('content')
     @php
-        $responseEligibleLineTypes = [
-            \App\Models\SupplierQuoteRequestItem::TYPE_ARTICLE,
-            \App\Models\SupplierQuoteRequestItem::TYPE_TEXT,
+        $lockedLineTypes = [
+            \App\Models\SupplierQuoteRequestItem::TYPE_SECTION,
+            \App\Models\SupplierQuoteRequestItem::TYPE_NOTE,
         ];
-        $responseItems = $rfq->items->filter(fn ($item) => in_array($item->line_type, $responseEligibleLineTypes, true))->values();
-        $informativeItems = $rfq->items->filter(fn ($item) => ! in_array($item->line_type, $responseEligibleLineTypes, true))->values();
     @endphp
 
     @if ($errors->any())
@@ -52,7 +50,7 @@
                         @error('delivery_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-3">
-                        <label for="supplier_document_date" class="form-label">Data documento fornecedor</label>
+                        <label for="supplier_document_date" class="form-label">Data proposta</label>
                         <input type="date" id="supplier_document_date" name="supplier_document_date" value="{{ old('supplier_document_date', optional($existingQuote?->supplier_document_date)->format('Y-m-d')) }}" class="form-control @error('supplier_document_date') is-invalid @enderror">
                         @error('supplier_document_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
@@ -67,7 +65,7 @@
                         @error('supplier_document_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12 col-md-6">
-                        <label for="commercial_discount_text" class="form-label">Desconto comercial (texto livre)</label>
+                        <label for="commercial_discount_text" class="form-label">Desconto comercial</label>
                         <input type="text" id="commercial_discount_text" name="commercial_discount_text" value="{{ old('commercial_discount_text', $existingQuote->commercial_discount_text ?? '') }}" class="form-control @error('commercial_discount_text') is-invalid @enderror" maxlength="255" placeholder="Ex.: 3% pp">
                         @error('commercial_discount_text')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
@@ -130,22 +128,28 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($responseItems as $index => $rfqItem)
+                            @forelse ($rfq->items as $index => $rfqItem)
                                 @php
+                                    $isLocked = in_array($rfqItem->line_type, $lockedLineTypes, true);
                                     $existing = $existingItemsByRfqItem->get($rfqItem->id);
-                                    $isResponded = old("items.$index.is_responded", $existing !== null);
-                                    $isAvailable = old("items.$index.is_available", $existing?->is_available ?? true);
-                                    $isAlternative = old("items.$index.is_alternative", $existing?->is_alternative ?? false);
+                                    $isResponded = $isLocked ? false : old("items.$index.is_responded", $existing !== null);
+                                    $isAvailable = $isLocked ? false : old("items.$index.is_available", $existing?->is_available ?? true);
+                                    $isAlternative = $isLocked ? false : old("items.$index.is_alternative", $existing?->is_alternative ?? false);
                                 @endphp
                                 <tr class="response-row">
                                     <td class="ps-3">
                                         <input type="hidden" name="items[{{ $index }}][supplier_quote_request_item_id]" value="{{ $rfqItem->id }}">
                                         <input type="hidden" name="items[{{ $index }}][is_responded]" value="0">
-                                        <input class="form-check-input is-responded-input" type="checkbox" name="items[{{ $index }}][is_responded]" value="1" @checked($isResponded)>
+                                        <input class="form-check-input is-responded-input" type="checkbox" name="items[{{ $index }}][is_responded]" value="1" @checked($isResponded) @disabled($isLocked)>
                                     </td>
                                     <td>
                                         <div class="fw-semibold">{{ $rfqItem->description }}</div>
-                                        <div class="text-body-tertiary fs-10">{{ $rfqItem->article_code ?: '-' }}</div>
+                                        <div class="text-body-tertiary fs-10">
+                                            {{ \App\Models\SupplierQuoteRequestItem::lineTypeLabels()[$rfqItem->line_type] ?? $rfqItem->line_type }} | {{ $rfqItem->article_code ?: '-' }}
+                                            @if ($isLocked)
+                                                | Bloqueado
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         {{ $rfqItem->unit_name ?: '-' }}
@@ -155,40 +159,40 @@
                                     </td>
                                     <td>
                                         <input type="hidden" name="items[{{ $index }}][is_available]" value="0">
-                                        <input class="form-check-input is-available-input" type="checkbox" name="items[{{ $index }}][is_available]" value="1" @checked($isAvailable)>
+                                        <input class="form-check-input is-available-input" type="checkbox" name="items[{{ $index }}][is_available]" value="1" @checked($isAvailable) @disabled($isLocked)>
                                     </td>
                                     <td>
-                                        <input type="number" min="0" step="0.001" name="items[{{ $index }}][quantity]" value="{{ old("items.$index.quantity", $existing?->quantity ?? $rfqItem->quantity) }}" class="form-control form-control-sm response-field @error("items.$index.quantity") is-invalid @enderror">
+                                        <input type="number" min="0" step="0.001" name="items[{{ $index }}][quantity]" value="{{ old("items.$index.quantity", $existing?->quantity ?? $rfqItem->quantity) }}" class="form-control form-control-sm response-field @error("items.$index.quantity") is-invalid @enderror" @disabled($isLocked)>
                                         @error("items.$index.quantity")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td>
-                                        <input type="number" min="0" step="0.0001" name="items[{{ $index }}][unit_price]" value="{{ old("items.$index.unit_price", $existing?->unit_price ?? '') }}" class="form-control form-control-sm response-field @error("items.$index.unit_price") is-invalid @enderror">
+                                        <input type="number" min="0" step="0.0001" name="items[{{ $index }}][unit_price]" value="{{ old("items.$index.unit_price", $existing?->unit_price ?? '') }}" class="form-control form-control-sm response-field @error("items.$index.unit_price") is-invalid @enderror" @disabled($isLocked)>
                                         @error("items.$index.unit_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td>
-                                        <input type="number" min="0" max="100" step="0.01" name="items[{{ $index }}][discount_percent]" value="{{ old("items.$index.discount_percent", $existing?->discount_percent ?? 0) }}" class="form-control form-control-sm response-field @error("items.$index.discount_percent") is-invalid @enderror">
+                                        <input type="number" min="0" max="100" step="0.01" name="items[{{ $index }}][discount_percent]" value="{{ old("items.$index.discount_percent", $existing?->discount_percent ?? 0) }}" class="form-control form-control-sm response-field @error("items.$index.discount_percent") is-invalid @enderror" @disabled($isLocked)>
                                         @error("items.$index.discount_percent")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td>
                                         <input type="hidden" name="items[{{ $index }}][is_alternative]" value="0">
-                                        <input class="form-check-input response-field" type="checkbox" name="items[{{ $index }}][is_alternative]" value="1" @checked($isAlternative)>
+                                        <input class="form-check-input response-field" type="checkbox" name="items[{{ $index }}][is_alternative]" value="1" @checked($isAlternative) @disabled($isLocked)>
                                     </td>
                                     <td>
-                                        <textarea rows="2" name="items[{{ $index }}][alternative_description]" class="form-control form-control-sm response-field @error("items.$index.alternative_description") is-invalid @enderror">{{ old("items.$index.alternative_description", $existing?->alternative_description ?? '') }}</textarea>
+                                        <textarea rows="2" name="items[{{ $index }}][alternative_description]" class="form-control form-control-sm response-field @error("items.$index.alternative_description") is-invalid @enderror" @disabled($isLocked)>{{ old("items.$index.alternative_description", $existing?->alternative_description ?? '') }}</textarea>
                                         @error("items.$index.alternative_description")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td>
-                                        <input type="text" maxlength="120" name="items[{{ $index }}][brand]" value="{{ old("items.$index.brand", $existing?->brand ?? '') }}" class="form-control form-control-sm response-field @error("items.$index.brand") is-invalid @enderror">
+                                        <input type="text" maxlength="120" name="items[{{ $index }}][brand]" value="{{ old("items.$index.brand", $existing?->brand ?? '') }}" class="form-control form-control-sm response-field @error("items.$index.brand") is-invalid @enderror" @disabled($isLocked)>
                                         @error("items.$index.brand")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                     <td class="pe-3">
-                                        <textarea rows="2" name="items[{{ $index }}][notes]" class="form-control form-control-sm response-field @error("items.$index.notes") is-invalid @enderror">{{ old("items.$index.notes", $existing?->notes ?? '') }}</textarea>
+                                        <textarea rows="2" name="items[{{ $index }}][notes]" class="form-control form-control-sm response-field @error("items.$index.notes") is-invalid @enderror" @disabled($isLocked)>{{ old("items.$index.notes", $existing?->notes ?? '') }}</textarea>
                                         @error("items.$index.notes")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="11" class="text-center py-4 text-body-tertiary">Sem linhas elegiveis para resposta (apenas artigo/texto aceitam proposta).</td>
+                                    <td colspan="11" class="text-center py-4 text-body-tertiary">Sem linhas.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -196,40 +200,6 @@
                 </div>
             </div>
         </div>
-
-        @if ($informativeItems->isNotEmpty())
-            <div class="card mb-4">
-                <div class="card-header bg-body-tertiary">
-                    <h5 class="mb-0">Linhas informativas (bloqueadas para resposta)</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm fs-9 mb-0">
-                            <thead class="bg-body-tertiary">
-                                <tr>
-                                    <th class="ps-3">Tipo</th>
-                                    <th>Descricao</th>
-                                    <th>Unidade</th>
-                                    <th>Qtd.</th>
-                                    <th class="pe-3">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($informativeItems as $item)
-                                    <tr>
-                                        <td class="ps-3">{{ \App\Models\SupplierQuoteRequestItem::lineTypeLabels()[$item->line_type] ?? $item->line_type }}</td>
-                                        <td>{{ $item->description }}</td>
-                                        <td>{{ $item->unit_name ?: '-' }}</td>
-                                        <td>{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
-                                        <td class="pe-3"><span class="badge badge-phoenix badge-phoenix-secondary">Sem resposta</span></td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        @endif
 
         <div class="d-flex gap-2 justify-content-end">
             <a href="{{ route('admin.rfqs.show', $rfq->id) }}" class="btn btn-phoenix-secondary">Cancelar</a>
