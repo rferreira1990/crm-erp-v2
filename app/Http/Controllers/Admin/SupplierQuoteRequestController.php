@@ -311,6 +311,8 @@ class SupplierQuoteRequestController extends Controller
 
         foreach ($invites as $invite) {
             $to = strtolower(trim((string) ($invite->supplier_email ?: $invite->supplier?->email)));
+            $supplierPdfPath = $this->rfqPdfService->generateAndStoreForSupplier($rfqModel, $invite);
+
             $mailer = Mail::to($to);
             if ($ccRecipients !== []) {
                 $mailer->cc($ccRecipients);
@@ -322,7 +324,7 @@ class SupplierQuoteRequestController extends Controller
                 'sent_at' => now(),
                 'email_subject' => $subject,
                 'email_message' => $messageBody,
-                'pdf_path' => $rfqModel->pdf_path,
+                'pdf_path' => $supplierPdfPath,
             ])->save();
 
             $mailer->send(new SupplierQuoteRequestSentMail($rfqModel, $invite, $subject, $messageBody));
