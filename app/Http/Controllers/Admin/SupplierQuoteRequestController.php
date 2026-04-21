@@ -135,7 +135,10 @@ class SupplierQuoteRequestController extends Controller
             'assignedUser:id,name',
             'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
             'invitedSuppliers' => fn ($query) => $query
-                ->with(['supplier:id,name,email', 'supplierQuote:id,supplier_quote_request_supplier_id,grand_total,status,received_at'])
+                ->with([
+                    'supplier:id,name,email',
+                    'supplierQuote:id,supplier_quote_request_supplier_id,grand_total,status,received_at,supplier_document_date,supplier_document_number,supplier_document_pdf_path',
+                ])
                 ->orderBy('id'),
         ]);
 
