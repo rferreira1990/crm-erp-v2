@@ -13,7 +13,6 @@
         .header-doc-cell { text-align: right; }
         .doc-title { margin: 0 0 4px 0; font-size: 22px; font-weight: bold; letter-spacing: 0.3px; }
         .doc-meta { font-size: 10px; color: #475569; }
-        .company-small { font-size: 10px; line-height: 1.35; color: #334155; }
         .row { width: 100%; margin-bottom: 12px; }
         .col-50 { width: 49%; display: inline-block; vertical-align: top; }
         .card { border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; min-height: 94px; }
@@ -76,28 +75,6 @@
                     @else
                         <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
                     @endif
-                </td>
-                <td>
-                    <div class="company-small">
-                        <div class="strong">{{ $quote->company?->name ?? '-' }}</div>
-                        @if ($companyAddress !== '')
-                            <div>{{ $companyAddress }}</div>
-                        @endif
-                        @if ($companyLocation !== '')
-                            <div>{{ $companyLocation }}</div>
-                        @endif
-                        <div>
-                            @if ($quote->company?->email)
-                                {{ $quote->company->email }}
-                            @endif
-                            @if ($quote->company?->phone || $quote->company?->mobile)
-                                @if ($quote->company?->email)
-                                    |
-                                @endif
-                                {{ $quote->company?->phone ?? $quote->company?->mobile }}
-                            @endif
-                        </div>
-                    </div>
                 </td>
                 <td class="header-doc-cell">
                     <p class="doc-title">Proposta Comercial</p>
