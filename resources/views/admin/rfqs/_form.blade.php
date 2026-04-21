@@ -35,6 +35,12 @@
             'internal_notes' => null,
         ];
     }
+
+    $unitCodeOptions = collect($unitOptions ?? [])
+        ->map(fn ($unit) => trim((string) $unit->code))
+        ->filter()
+        ->values()
+        ->all();
 @endphp
 
 <div class="card mb-4">
@@ -148,7 +154,21 @@
                                 @error("items.$rowIndex.description")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </td>
                             <td>
-                                <input type="text" name="items[{{ $rowIndex }}][unit_name]" value="{{ old("items.$rowIndex.unit_name", $item['unit_name'] ?? '') }}" class="form-control form-control-sm @error("items.$rowIndex.unit_name") is-invalid @enderror">
+                                @php
+                                    $rowUnitName = trim((string) old("items.$rowIndex.unit_name", $item['unit_name'] ?? ''));
+                                    $isCustomUnit = $rowUnitName !== '' && ! in_array($rowUnitName, $unitCodeOptions, true);
+                                @endphp
+                                <select name="items[{{ $rowIndex }}][unit_name]" class="form-select form-select-sm @error("items.$rowIndex.unit_name") is-invalid @enderror">
+                                    <option value="">Sem unidade</option>
+                                    @if ($isCustomUnit)
+                                        <option value="{{ $rowUnitName }}" selected>{{ $rowUnitName }} (personalizada)</option>
+                                    @endif
+                                    @foreach (($unitOptions ?? []) as $unitOption)
+                                        <option value="{{ $unitOption->code }}" @selected($rowUnitName === (string) $unitOption->code)>
+                                            {{ $unitOption->code }} - {{ $unitOption->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error("items.$rowIndex.unit_name")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </td>
                             <td>
@@ -246,7 +266,14 @@
             <input type="hidden" name="items[__INDEX__][article_code]" class="article-code-input">
         </td>
         <td><textarea name="items[__INDEX__][description]" rows="2" class="form-control form-control-sm description-input"></textarea></td>
-        <td><input type="text" name="items[__INDEX__][unit_name]" class="form-control form-control-sm"></td>
+        <td>
+            <select name="items[__INDEX__][unit_name]" class="form-select form-select-sm">
+                <option value="">Sem unidade</option>
+                @foreach (($unitOptions ?? []) as $unitOption)
+                    <option value="{{ $unitOption->code }}">{{ $unitOption->code }} - {{ $unitOption->name }}</option>
+                @endforeach
+            </select>
+        </td>
         <td><input type="number" min="0" step="0.001" name="items[__INDEX__][quantity]" value="1" class="form-control form-control-sm"></td>
         <td><textarea name="items[__INDEX__][internal_notes]" rows="2" class="form-control form-control-sm"></textarea></td>
         <td class="pe-3 text-end align-middle">
@@ -281,6 +308,7 @@
                     const typeSelect = row.querySelector('.line-type-select');
                     const articleSelect = row.querySelector('.article-select');
                     const quantityInput = row.querySelector('input[name$="[quantity]"]');
+                    const unitSelect = row.querySelector('select[name$="[unit_name]"]');
 
                     if (!typeSelect) {
                         return;
@@ -301,6 +329,13 @@
                         quantityInput.disabled = !isQuantified;
                         if (!isQuantified) {
                             quantityInput.value = 1;
+                        }
+                    }
+
+                    if (unitSelect) {
+                        unitSelect.disabled = !isQuantified;
+                        if (!isQuantified) {
+                            unitSelect.value = '';
                         }
                     }
 
@@ -376,4 +411,3 @@
         </script>
     @endpush
 @endonce
-
