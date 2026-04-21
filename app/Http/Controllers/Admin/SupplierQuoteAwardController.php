@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSupplierQuoteAwardRequest;
+use App\Models\SupplierQuoteAward;
 use App\Models\SupplierQuoteRequest;
 use App\Services\Admin\SupplierQuoteAwardService;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +30,7 @@ class SupplierQuoteAwardController extends Controller
 
         return redirect()
             ->route('admin.rfqs.show', $rfqModel->id)
-            ->with('status', 'Adjudicacao registada com sucesso ('.$award->modeLabels()[$award->mode].').');
+            ->with('status', 'Adjudicacao registada com sucesso ('.(SupplierQuoteAward::modeLabels()[$award->mode] ?? $award->mode).').');
     }
 
     private function findCompanyRfqOrFail(int $companyId, int $rfqId): SupplierQuoteRequest
@@ -40,4 +41,3 @@ class SupplierQuoteAwardController extends Controller
             ->firstOrFail();
     }
 }
-
