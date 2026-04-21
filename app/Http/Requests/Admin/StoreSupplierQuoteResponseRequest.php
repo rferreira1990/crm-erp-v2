@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Validator;
 
 class StoreSupplierQuoteResponseRequest extends FormRequest
@@ -47,7 +48,7 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
             'valid_until' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'supplier_document_pdf' => ['nullable', 'file', 'mimetypes:application/pdf', 'max:12288'],
-            'received_at' => ['required', 'date'],
+            'received_at' => ['required', 'date', 'before_or_equal:now'],
             'items' => ['required', 'array', 'min:1', 'max:400'],
             'items.*.supplier_quote_request_item_id' => ['required', 'integer'],
             'items.*.is_responded' => ['required', 'boolean'],
@@ -67,6 +68,21 @@ class StoreSupplierQuoteResponseRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+
+            $proposalDate = $this->input('supplier_document_date');
+            $validUntil = $this->input('valid_until');
+            if ($proposalDate !== null && Carbon::parse((string) $proposalDate)->isAfter(now()->endOfDay())) {
+                $validator->errors()->add('supplier_document_date', 'A data da proposta nao pode ser futura.');
+            }
+
+            if ($proposalDate !== null && $validUntil !== null) {
+                $proposalDateValue = Carbon::parse((string) $proposalDate)->startOfDay();
+                $validUntilValue = Carbon::parse((string) $validUntil)->startOfDay();
+
+                if ($validUntilValue->lessThanOrEqualTo($proposalDateValue)) {
+                    $validator->errors()->add('valid_until', 'A validade da proposta tem de ser superior a data da proposta.');
+                }
             }
 
             $hasAnyRespondedItem = false;
