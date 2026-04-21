@@ -344,6 +344,7 @@ class SupplierQuoteRequestsTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.rfqs.responses.store', [$rfq->id, $inviteA->id]), [
             'received_at' => now()->format('Y-m-d H:i:s'),
+            'supplier_document_number' => 'TMP-001',
             'supplier_document_date' => now()->addDay()->toDateString(),
             'valid_until' => now()->toDateString(),
             'items' => [
