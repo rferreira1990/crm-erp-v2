@@ -25,12 +25,24 @@
 </head>
 <body>
     @php
+        $rfqSupplier = $rfqSupplier ?? null;
         $companyAddress = trim((string) ($rfq->company?->address ?? ''));
         $companyLocation = trim(implode(' ', array_filter([
             $rfq->company?->postal_code,
             $rfq->company?->locality,
             $rfq->company?->city,
         ], fn ($value) => trim((string) $value) !== '')));
+
+        $targetSupplierName = trim((string) ($rfqSupplier?->supplier_name ?? $rfqSupplier?->supplier?->name ?? ''));
+        $targetSupplierEmail = trim((string) ($rfqSupplier?->sent_to_email ?? $rfqSupplier?->supplier_email ?? $rfqSupplier?->supplier?->email ?? ''));
+        $targetSupplierNif = trim((string) ($rfqSupplier?->supplier?->nif ?? ''));
+        $targetSupplierAddress = trim((string) ($rfqSupplier?->supplier?->address ?? ''));
+        $targetSupplierLocation = trim(implode(' ', array_filter([
+            $rfqSupplier?->supplier?->postal_code,
+            $rfqSupplier?->supplier?->locality,
+            $rfqSupplier?->supplier?->city,
+        ], fn ($value) => trim((string) $value) !== '')));
+        $targetSupplierPhone = trim((string) ($rfqSupplier?->supplier?->phone ?? $rfqSupplier?->supplier?->mobile ?? ''));
     @endphp
 
     <div class="header">
@@ -82,6 +94,36 @@
             </td>
         </tr>
     </table>
+
+    @if ($rfqSupplier && $targetSupplierName !== '')
+        <table class="cards" style="margin-top: 8px;">
+            <tr>
+                <td style="vertical-align:top;">
+                    <div class="card">
+                        <p class="card-title">Fornecedor destinatario</p>
+                        <div><strong>{{ $targetSupplierName }}</strong></div>
+                        @if ($targetSupplierNif !== '')
+                            <div>NIF: {{ $targetSupplierNif }}</div>
+                        @endif
+                        @if ($targetSupplierEmail !== '' || $targetSupplierPhone !== '')
+                            <div>
+                                {{ $targetSupplierEmail !== '' ? $targetSupplierEmail : '-' }}
+                                @if ($targetSupplierPhone !== '')
+                                    | {{ $targetSupplierPhone }}
+                                @endif
+                            </div>
+                        @endif
+                        @if ($targetSupplierAddress !== '')
+                            <div>{{ $targetSupplierAddress }}</div>
+                        @endif
+                        @if ($targetSupplierLocation !== '')
+                            <div>{{ $targetSupplierLocation }}</div>
+                        @endif
+                    </div>
+                </td>
+            </tr>
+        </table>
+    @endif
 
     <table class="lines">
         <thead>
