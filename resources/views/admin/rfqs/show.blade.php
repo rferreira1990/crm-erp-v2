@@ -140,7 +140,13 @@
                                         <td>{{ $invite->supplier_email ?: '-' }}</td>
                                         <td>{{ $supplierInviteStatusLabels[$invite->status] ?? $invite->status }}</td>
                                         <td>{{ optional($invite->sent_at)->format('Y-m-d H:i') ?? '-' }}</td>
-                                        <td>{{ optional($invite->responded_at)->format('Y-m-d H:i') ?? '-' }}</td>
+                                        <td>
+                                            @if ($invite->supplierQuote?->supplier_document_date)
+                                                {{ optional($invite->supplierQuote->supplier_document_date)->format('Y-m-d') }}
+                                            @else
+                                                {{ optional($invite->responded_at)->format('Y-m-d H:i') ?? '-' }}
+                                            @endif
+                                        </td>
                                         <td>
                                             @if ($invite->supplierQuote)
                                                 <div>{{ number_format((float) $invite->supplierQuote->grand_total, 2, ',', '.') }} EUR</div>
