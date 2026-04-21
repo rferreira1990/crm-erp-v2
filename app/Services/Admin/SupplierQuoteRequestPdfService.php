@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Models\SupplierQuoteRequest;
+use App\Models\SupplierQuoteRequestSupplier;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,16 @@ use Illuminate\Support\Str;
 class SupplierQuoteRequestPdfService
 {
     public function generateAndStore(SupplierQuoteRequest $rfq): string
+    {
+        return $this->generateAndStoreInternal($rfq, null);
+    }
+
+    public function generateAndStoreForSupplier(SupplierQuoteRequest $rfq, SupplierQuoteRequestSupplier $rfqSupplier): string
+    {
+        return $this->generateAndStoreInternal($rfq, $rfqSupplier);
+    }
+
+    private function generateAndStoreInternal(SupplierQuoteRequest $rfq, ?SupplierQuoteRequestSupplier $rfqSupplier): string
     {
         $rfq->loadMissing([
             'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path',
@@ -21,10 +32,17 @@ class SupplierQuoteRequestPdfService
                 ->orderBy('id'),
         ]);
 
+        if ($rfqSupplier !== null) {
+            $rfqSupplier->loadMissing([
+                'supplier:id,name,nif,address,postal_code,locality,city,email,phone,mobile',
+            ]);
+        }
+
         $companyLogoDataUri = $this->companyLogoDataUri($rfq->company?->logo_path);
 
         $html = view('admin.rfqs.pdf', [
             'rfq' => $rfq,
+            'rfqSupplier' => $rfqSupplier,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();
 
@@ -37,14 +55,22 @@ class SupplierQuoteRequestPdfService
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
-        $path = 'rfqs/'.$rfq->company_id.'/'.$rfq->id.'/pdf/'.Str::slug($rfq->number).'-'.now()->format('YmdHis').'.pdf';
+        $path = $rfqSupplier === null
+            ? 'rfqs/'.$rfq->company_id.'/'.$rfq->id.'/pdf/'.Str::slug($rfq->number).'-'.now()->format('YmdHis').'.pdf'
+            : 'rfqs/'.$rfq->company_id.'/'.$rfq->id.'/pdf/suppliers/'.$rfqSupplier->id.'/'.Str::slug($rfq->number).'-'.now()->format('YmdHis').'.pdf';
         Storage::disk('local')->put($path, $pdf->output());
 
-        if ($rfq->pdf_path && $rfq->pdf_path !== $path) {
-            $this->delete($rfq->pdf_path);
+        if ($rfqSupplier === null) {
+            if ($rfq->pdf_path && $rfq->pdf_path !== $path) {
+                $this->delete($rfq->pdf_path);
+            }
+            $rfq->forceFill(['pdf_path' => $path])->save();
+        } else {
+            if ($rfqSupplier->pdf_path && $rfqSupplier->pdf_path !== $path) {
+                $this->delete($rfqSupplier->pdf_path);
+            }
+            $rfqSupplier->forceFill(['pdf_path' => $path])->save();
         }
-
-        $rfq->forceFill(['pdf_path' => $path])->save();
 
         return $path;
     }
@@ -78,4 +104,3 @@ class SupplierQuoteRequestPdfService
         return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }
-
