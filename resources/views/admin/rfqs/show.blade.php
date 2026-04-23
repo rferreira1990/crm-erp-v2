@@ -12,6 +12,17 @@
     @can('company.rfq.compare')
         <a href="{{ route('admin.rfqs.compare', $rfq->id) }}" class="btn btn-phoenix-secondary btn-sm">Comparar propostas</a>
     @endcan
+    @if (
+        $rfq->status === \App\Models\SupplierQuoteRequest::STATUS_AWARDED
+        && $rfq->latestAward
+        && $rfq->purchaseOrders->isEmpty()
+        && auth()->user()->can('company.purchase_orders.create')
+    )
+        <form method="POST" action="{{ route('admin.rfqs.purchase-orders.generate', $rfq->id) }}" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-primary btn-sm">Gerar encomenda(s)</button>
+        </form>
+    @endif
     <form method="POST" action="{{ route('admin.rfqs.pdf.generate', $rfq->id) }}" class="d-inline">
         @csrf
         <button type="submit" class="btn btn-phoenix-secondary btn-sm">Gerar PDF</button>
@@ -249,6 +260,46 @@
                                 <div>{{ $rfq->latestAward->award_notes }}</div>
                             </div>
                         @endif
+                    </div>
+                </div>
+            @endif
+
+            @if ($rfq->purchaseOrders->isNotEmpty())
+                <div class="card mb-4">
+                    <div class="card-header bg-body-tertiary">
+                        <h5 class="mb-0">Encomendas geradas</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm fs-9 mb-0">
+                                <thead class="bg-body-tertiary">
+                                    <tr>
+                                        <th class="ps-3">Numero</th>
+                                        <th>Fornecedor</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                        <th class="text-end pe-3">Acoes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($rfq->purchaseOrders as $purchaseOrder)
+                                        <tr>
+                                            <td class="ps-3 fw-semibold">{{ $purchaseOrder->number }}</td>
+                                            <td>{{ $purchaseOrder->supplier_name_snapshot }}</td>
+                                            <td>{{ number_format((float) $purchaseOrder->grand_total, 2, ',', '.') }} {{ $purchaseOrder->currency }}</td>
+                                            <td>
+                                                <span class="badge badge-phoenix {{ $purchaseOrder->statusBadgeClass() }}">
+                                                    {{ \App\Models\PurchaseOrder::statusLabels()[$purchaseOrder->status] ?? $purchaseOrder->status }}
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-3">
+                                                <a href="{{ route('admin.purchase-orders.show', $purchaseOrder->id) }}" class="btn btn-phoenix-secondary btn-sm">Abrir</a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             @endif

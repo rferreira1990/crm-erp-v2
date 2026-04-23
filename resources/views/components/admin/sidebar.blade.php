@@ -108,6 +108,26 @@
                             </a>
                         </li>
                     @endcan
+                    @can('company.purchase_orders.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.purchase-orders.*') ? 'active' : '' }}" href="{{ route('admin.purchase-orders.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="clipboard"></span></span>
+                                    <span class="nav-link-text">Encomendas Fornecedor</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
+                    @can('company.purchase_order_receipts.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.purchase-order-receipts.*') ? 'active' : '' }}" href="{{ route('admin.purchase-order-receipts.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="inbox"></span></span>
+                                    <span class="nav-link-text">Rececoes de Material</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
                     <li class="nav-item ms-4">
                         <a class="nav-link {{ request()->routeIs('admin.quotes.dashboard') ? 'active' : '' }}" href="{{ route('admin.quotes.dashboard') }}">
                             <div class="d-flex align-items-center">

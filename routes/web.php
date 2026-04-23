@@ -15,6 +15,9 @@ use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
+use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\Admin\PurchaseOrderGenerationController;
+use App\Http\Controllers\Admin\PurchaseOrderReceiptController;
 use App\Http\Controllers\Admin\QuoteDashboardController;
 use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
@@ -159,6 +162,9 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
         Route::get('/articles/create', [ArticleController::class, 'create'])->name('articles.create');
         Route::post('/articles', [ArticleController::class, 'store'])->name('articles.store');
+        Route::get('/articles/{article}', [ArticleController::class, 'show'])
+            ->whereNumber('article')
+            ->name('articles.show');
         Route::get('/articles/{article}/edit', [ArticleController::class, 'edit'])
             ->whereNumber('article')
             ->name('articles.edit');
@@ -338,6 +344,60 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::post('/rfqs/{rfq}/awards', [SupplierQuoteAwardController::class, 'store'])
             ->whereNumber('rfq')
             ->name('rfqs.awards.store');
+        Route::post('/rfqs/{rfq}/purchase-orders/generate', [PurchaseOrderGenerationController::class, 'store'])
+            ->whereNumber('rfq')
+            ->name('rfqs.purchase-orders.generate');
+
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.show');
+        Route::post('/purchase-orders/{purchaseOrder}/pdf/generate', [PurchaseOrderController::class, 'generatePdf'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.pdf.generate');
+        Route::get('/purchase-orders/{purchaseOrder}/pdf/download', [PurchaseOrderController::class, 'downloadPdf'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.pdf.download');
+        Route::post('/purchase-orders/{purchaseOrder}/email/send', [PurchaseOrderController::class, 'sendEmail'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.email.send');
+        Route::post('/purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'changeStatus'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.status.change');
+
+        Route::get('/purchase-order-receipts', [PurchaseOrderReceiptController::class, 'index'])
+            ->name('purchase-order-receipts.index');
+        Route::get('/purchase-orders/{purchaseOrder}/receipts/create', [PurchaseOrderReceiptController::class, 'create'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-order-receipts.create');
+        Route::post('/purchase-orders/{purchaseOrder}/receipts', [PurchaseOrderReceiptController::class, 'store'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-order-receipts.store');
+        Route::get('/purchase-order-receipts/{purchaseOrderReceipt}', [PurchaseOrderReceiptController::class, 'show'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.show');
+        Route::post('/purchase-order-receipts/{purchaseOrderReceipt}/pdf/generate', [PurchaseOrderReceiptController::class, 'generatePdf'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.pdf.generate');
+        Route::get('/purchase-order-receipts/{purchaseOrderReceipt}/pdf/download', [PurchaseOrderReceiptController::class, 'downloadPdf'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.pdf.download');
+        Route::get('/purchase-order-receipts/{purchaseOrderReceipt}/edit', [PurchaseOrderReceiptController::class, 'edit'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.edit');
+        Route::patch('/purchase-order-receipts/{purchaseOrderReceipt}', [PurchaseOrderReceiptController::class, 'update'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.update');
+        Route::post('/purchase-order-receipts/{purchaseOrderReceipt}/post', [PurchaseOrderReceiptController::class, 'post'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.post');
+        Route::post('/purchase-order-receipts/{purchaseOrderReceipt}/cancel', [PurchaseOrderReceiptController::class, 'cancel'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->name('purchase-order-receipts.cancel');
+        Route::post('/purchase-order-receipts/{purchaseOrderReceipt}/lines/{receiptItem}/resolve', [PurchaseOrderReceiptController::class, 'resolveLine'])
+            ->whereNumber('purchaseOrderReceipt')
+            ->whereNumber('receiptItem')
+            ->name('purchase-order-receipts.lines.resolve');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');

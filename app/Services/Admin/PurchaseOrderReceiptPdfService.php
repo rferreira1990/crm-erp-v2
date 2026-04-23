@@ -2,34 +2,28 @@
 
 namespace App\Services\Admin;
 
-use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderReceipt;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class PurchaseOrderPdfService
+class PurchaseOrderReceiptPdfService
 {
-    public function generateAndStore(PurchaseOrder $purchaseOrder): string
+    public function generateAndStore(PurchaseOrderReceipt $receipt): string
     {
-        $purchaseOrder->loadMissing([
+        $receipt->loadMissing([
             'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path',
-            'rfq:id,number',
-            'creator:id,name',
-            'assignedUser:id,name',
-            'items' => fn ($query) => $query
-                ->with([
-                    'sourceSupplierQuoteItem:id,supplier_quote_id',
-                    'sourceSupplierQuoteItem.supplierQuote:id,supplier_document_number',
-                ])
-                ->orderBy('line_order')
-                ->orderBy('id'),
+            'receiver:id,name',
+            'purchaseOrder:id,number,status,currency,supplier_name_snapshot,supplier_email_snapshot,supplier_phone_snapshot,supplier_address_snapshot,supplier_quote_request_id',
+            'purchaseOrder.rfq:id,number',
+            'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
         ]);
 
-        $companyLogoDataUri = $this->companyLogoDataUri($purchaseOrder->company?->logo_path);
+        $companyLogoDataUri = $this->companyLogoDataUri($receipt->company?->logo_path);
 
-        $html = view('admin.purchase-orders.pdf', [
-            'purchaseOrder' => $purchaseOrder,
+        $html = view('admin.purchase-order-receipts.pdf', [
+            'receipt' => $receipt,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();
 
@@ -42,14 +36,14 @@ class PurchaseOrderPdfService
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
-        $path = 'purchase-orders/'.$purchaseOrder->company_id.'/'.$purchaseOrder->id.'/pdf/'.Str::slug($purchaseOrder->number).'-'.now()->format('YmdHis').'.pdf';
+        $path = 'purchase-order-receipts/'.$receipt->company_id.'/'.$receipt->id.'/pdf/'.Str::slug($receipt->number).'-'.now()->format('YmdHis').'.pdf';
         Storage::disk('local')->put($path, $pdf->output());
 
-        if ($purchaseOrder->pdf_path && $purchaseOrder->pdf_path !== $path) {
-            $this->delete($purchaseOrder->pdf_path);
+        if ($receipt->pdf_path && $receipt->pdf_path !== $path) {
+            $this->delete($receipt->pdf_path);
         }
 
-        $purchaseOrder->forceFill(['pdf_path' => $path])->save();
+        $receipt->forceFill(['pdf_path' => $path])->save();
 
         return $path;
     }

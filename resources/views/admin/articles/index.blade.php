@@ -104,6 +104,9 @@
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="d-inline-flex gap-2">
+                                        <a href="{{ route('admin.articles.show', $article->id) }}" class="btn btn-phoenix-secondary btn-sm">
+                                            Ficha
+                                        </a>
                                         <a href="{{ route('admin.articles.edit', $article->id) }}" class="btn btn-phoenix-secondary btn-sm">
                                             Editar
                                         </a>
@@ -136,4 +139,3 @@
         @endif
     </div>
 @endsection
-

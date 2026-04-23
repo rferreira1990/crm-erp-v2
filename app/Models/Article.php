@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class Article extends Model
 {
@@ -44,6 +45,7 @@ class Article extends Model
         'moves_stock',
         'stock_alert_enabled',
         'minimum_stock',
+        'stock_quantity',
         'is_active',
     ];
 
@@ -59,6 +61,7 @@ class Article extends Model
             'direct_discount' => 'decimal:2',
             'max_discount' => 'decimal:2',
             'minimum_stock' => 'decimal:3',
+            'stock_quantity' => 'decimal:3',
             'moves_stock' => 'boolean',
             'stock_alert_enabled' => 'boolean',
             'is_active' => 'boolean',
@@ -108,6 +111,13 @@ class Article extends Model
     public function files(): HasMany
     {
         return $this->hasMany(ArticleFile::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class)
+            ->orderByDesc('movement_date')
+            ->orderByDesc('id');
     }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder
@@ -232,5 +242,15 @@ class Article extends Model
         }
 
         return round((($sale - $cost) / $cost) * 100, 2);
+    }
+
+    public function increaseStock(float $quantity): void
+    {
+        if ($quantity < 0) {
+            throw new InvalidArgumentException('Stock increase quantity must be non-negative.');
+        }
+
+        $next = round((float) ($this->stock_quantity ?? 0) + $quantity, 3);
+        $this->forceFill(['stock_quantity' => $next])->save();
     }
 }

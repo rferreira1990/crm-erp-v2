@@ -11,6 +11,7 @@ use App\Models\ArticleImage;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\ProductFamily;
+use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
@@ -294,6 +295,76 @@ class ArticleController extends Controller
             'vatRateOptions' => $this->enabledVatRates($companyId, $includeVatRateId),
             'vatExemptionReasonOptions' => $this->enabledVatExemptionReasons($companyId, $includeReasonId),
         ];
+    }
+
+    public function show(Request $request, int $article): View
+    {
+        $companyId = (int) $request->user()->company_id;
+        $articleModel = $this->findCompanyArticleOrFail($companyId, $article);
+        $this->authorize('view', $articleModel);
+
+        $articleModel->load([
+            'productFamily:id,name,family_code',
+            'category:id,name',
+            'brand:id,name',
+            'unit:id,code,name',
+            'vatRate:id,name,rate,is_exempt',
+            'vatExemptionReason:id,code,name',
+            'images' => fn ($query) => $query->orderByDesc('is_primary')->orderBy('sort_order'),
+            'files' => fn ($query) => $query->latest(),
+        ]);
+
+        $movements = StockMovement::query()
+            ->forCompany($companyId)
+            ->where('article_id', (int) $articleModel->id)
+            ->with([
+                'performer:id,name',
+            ])
+            ->orderByDesc('movement_date')
+            ->orderByDesc('id')
+            ->paginate(15, ['*'], 'movements_page')
+            ->withQueryString();
+
+        $lastReceiptMovement = StockMovement::query()
+            ->forCompany($companyId)
+            ->where('article_id', (int) $articleModel->id)
+            ->where('type', StockMovement::TYPE_PURCHASE_RECEIPT)
+            ->where('direction', StockMovement::DIRECTION_IN)
+            ->orderByDesc('movement_date')
+            ->orderByDesc('id')
+            ->first();
+
+        $lastKnownCost = StockMovement::query()
+            ->forCompany($companyId)
+            ->where('article_id', (int) $articleModel->id)
+            ->where('direction', StockMovement::DIRECTION_IN)
+            ->whereNotNull('unit_cost')
+            ->orderByDesc('movement_date')
+            ->orderByDesc('id')
+            ->value('unit_cost');
+
+        $recentEntriesCount = StockMovement::query()
+            ->forCompany($companyId)
+            ->where('article_id', (int) $articleModel->id)
+            ->where('direction', StockMovement::DIRECTION_IN)
+            ->whereDate('movement_date', '>=', now()->subDays(30)->toDateString())
+            ->count();
+
+        $belowMinimum = $articleModel->moves_stock
+            && $articleModel->stock_alert_enabled
+            && $articleModel->minimum_stock !== null
+            && (float) $articleModel->stock_quantity < (float) $articleModel->minimum_stock;
+
+        return view('admin.articles.show', [
+            'article' => $articleModel,
+            'movements' => $movements,
+            'belowMinimum' => $belowMinimum,
+            'purchaseSummary' => [
+                'lastReceiptMovement' => $lastReceiptMovement,
+                'lastKnownCost' => $lastKnownCost,
+                'recentEntriesCount' => $recentEntriesCount,
+            ],
+        ]);
     }
 
     /**

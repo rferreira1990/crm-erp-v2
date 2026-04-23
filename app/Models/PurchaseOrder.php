@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -110,6 +112,25 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseOrderItem::class)->orderBy('line_order')->orderBy('id');
     }
 
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderReceipt::class)
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id');
+    }
+
+    public function receiptItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            PurchaseOrderReceiptItem::class,
+            PurchaseOrderReceipt::class,
+            'purchase_order_id',
+            'purchase_order_receipt_id',
+            'id',
+            'id'
+        );
+    }
+
     public function scopeForCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('company_id', $companyId);
@@ -166,6 +187,99 @@ class PurchaseOrder extends Model
         return ! $this->is_locked && $this->status === self::STATUS_DRAFT;
     }
 
+    public function canReceiveMaterial(): bool
+    {
+        return in_array($this->status, self::receivableStatuses(), true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function receivableStatuses(): array
+    {
+        return [
+            self::STATUS_SENT,
+            self::STATUS_CONFIRMED,
+            self::STATUS_PARTIALLY_RECEIVED,
+        ];
+    }
+
+    public function canTransitionTo(string $toStatus): bool
+    {
+        $normalizedTarget = strtolower(trim($toStatus));
+        if (! in_array($normalizedTarget, self::statuses(), true)) {
+            return false;
+        }
+
+        if ($normalizedTarget === $this->status) {
+            return false;
+        }
+
+        return in_array($normalizedTarget, $this->allowedTransitions()[$this->status] ?? [], true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function nextAllowedStatuses(): array
+    {
+        return $this->allowedTransitions()[$this->status] ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function applyStatusTransition(string $toStatus): array
+    {
+        $normalized = strtolower(trim($toStatus));
+        if (! $this->canTransitionTo($normalized)) {
+            throw new DomainException('Invalid purchase order status transition.');
+        }
+
+        $payload = [
+            'status' => $normalized,
+        ];
+
+        if ($normalized === self::STATUS_SENT && $this->sent_at === null) {
+            $payload['sent_at'] = now();
+        }
+
+        $payload['is_locked'] = $normalized !== self::STATUS_DRAFT;
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function allowedTransitions(): array
+    {
+        return [
+            self::STATUS_DRAFT => [
+                self::STATUS_SENT,
+                self::STATUS_CONFIRMED,
+                self::STATUS_CANCELLED,
+            ],
+            self::STATUS_SENT => [
+                self::STATUS_CONFIRMED,
+                self::STATUS_PARTIALLY_RECEIVED,
+                self::STATUS_RECEIVED,
+                self::STATUS_CANCELLED,
+            ],
+            self::STATUS_CONFIRMED => [
+                self::STATUS_PARTIALLY_RECEIVED,
+                self::STATUS_RECEIVED,
+                self::STATUS_CANCELLED,
+            ],
+            self::STATUS_PARTIALLY_RECEIVED => [
+                self::STATUS_RECEIVED,
+                self::STATUS_CANCELLED,
+            ],
+            self::STATUS_RECEIVED => [],
+            self::STATUS_CANCELLED => [],
+        ];
+    }
+
     public static function generateNextNumber(int $companyId, int $year): string
     {
         $sequence = PurchaseOrderNumberSequence::query()
@@ -202,4 +316,3 @@ class PurchaseOrder extends Model
         });
     }
 }
-

@@ -135,6 +135,21 @@ class SupplierQuoteRequestController extends Controller
             'assignedUser:id,name',
             'latestAward' => fn ($query) => $query
                 ->with(['supplier:id,name', 'awardedByUser:id,name', 'items:id,supplier_quote_award_id,supplier_id']),
+            'purchaseOrders' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'company_id',
+                    'number',
+                    'status',
+                    'supplier_quote_request_id',
+                    'supplier_quote_award_id',
+                    'supplier_name_snapshot',
+                    'issue_date',
+                    'grand_total',
+                    'currency',
+                ])
+                ->orderByDesc('issue_date')
+                ->orderByDesc('id'),
             'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
             'invitedSuppliers' => fn ($query) => $query
                 ->with([
