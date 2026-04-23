@@ -70,3 +70,36 @@
         transform: translateX(0);
     }
 }
+
+.navbar-vertical .sidebar-submenu-toggle {
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.navbar-vertical .sidebar-submenu-chevron {
+    display: inline-flex;
+    transition: transform 0.2s ease;
+}
+
+.navbar-vertical .sidebar-submenu-toggle[aria-expanded='true'] .sidebar-submenu-chevron {
+    transform: rotate(180deg);
+}
+
+.navbar-vertical .sidebar-submenu-list .nav-link {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--phoenix-gray-700, #4f5e71);
+    border-left: 2px solid transparent;
+    border-radius: 0.4rem;
+    padding-left: 0.75rem;
+}
+
+.navbar-vertical .sidebar-submenu-list .nav-link:hover {
+    background-color: rgba(15, 23, 42, 0.04);
+    color: var(--phoenix-body-color, #141824);
+}
+
+.navbar-vertical .sidebar-submenu-list .nav-link.active {
+    border-left-color: var(--phoenix-primary, #2c7be5);
+    background-color: rgba(44, 123, 229, 0.1);
+    color: var(--phoenix-primary, #2c7be5);
+}

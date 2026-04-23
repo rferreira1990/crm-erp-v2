@@ -10,6 +10,9 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\ArticleMediaController;
+use App\Http\Controllers\Admin\ConstructionSiteController;
+use App\Http\Controllers\Admin\ConstructionSiteLogController;
+use App\Http\Controllers\Admin\ConstructionSiteMaterialUsageController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
@@ -27,6 +30,7 @@ use App\Http\Controllers\Admin\SupplierQuoteAwardController;
 use App\Http\Controllers\Admin\SupplierQuoteComparisonController;
 use App\Http\Controllers\Admin\SupplierQuoteRequestController;
 use App\Http\Controllers\Admin\SupplierQuoteResponseController;
+use App\Http\Controllers\Admin\StockMovementController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
@@ -228,6 +232,114 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('contact')
             ->name('customers.contacts.destroy');
 
+        Route::get('/construction-sites', [ConstructionSiteController::class, 'index'])->name('construction-sites.index');
+        Route::get('/construction-sites/create', [ConstructionSiteController::class, 'create'])->name('construction-sites.create');
+        Route::post('/construction-sites', [ConstructionSiteController::class, 'store'])->name('construction-sites.store');
+        Route::get('/construction-sites/{constructionSite}', [ConstructionSiteController::class, 'show'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.show');
+        Route::get('/construction-sites/{constructionSite}/edit', [ConstructionSiteController::class, 'edit'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.edit');
+        Route::patch('/construction-sites/{constructionSite}', [ConstructionSiteController::class, 'update'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.update');
+        Route::delete('/construction-sites/{constructionSite}', [ConstructionSiteController::class, 'destroy'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.destroy');
+        Route::get('/construction-sites/{constructionSite}/images/{constructionSiteImage}', [ConstructionSiteController::class, 'showImage'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteImage')
+            ->name('construction-sites.images.show');
+        Route::delete('/construction-sites/{constructionSite}/images/{constructionSiteImage}', [ConstructionSiteController::class, 'destroyImage'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteImage')
+            ->name('construction-sites.images.destroy');
+        Route::get('/construction-sites/{constructionSite}/files/{constructionSiteFile}/download', [ConstructionSiteController::class, 'downloadFile'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteFile')
+            ->name('construction-sites.files.download');
+        Route::delete('/construction-sites/{constructionSite}/files/{constructionSiteFile}', [ConstructionSiteController::class, 'destroyFile'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteFile')
+            ->name('construction-sites.files.destroy');
+
+        Route::get('/construction-sites/{constructionSite}/logs', [ConstructionSiteLogController::class, 'index'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.logs.index');
+        Route::get('/construction-sites/{constructionSite}/logs/create', [ConstructionSiteLogController::class, 'create'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.logs.create');
+        Route::post('/construction-sites/{constructionSite}/logs', [ConstructionSiteLogController::class, 'store'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.logs.store');
+        Route::get('/construction-sites/{constructionSite}/logs/{constructionSiteLog}', [ConstructionSiteLogController::class, 'show'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->name('construction-sites.logs.show');
+        Route::get('/construction-sites/{constructionSite}/logs/{constructionSiteLog}/edit', [ConstructionSiteLogController::class, 'edit'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->name('construction-sites.logs.edit');
+        Route::patch('/construction-sites/{constructionSite}/logs/{constructionSiteLog}', [ConstructionSiteLogController::class, 'update'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->name('construction-sites.logs.update');
+        Route::delete('/construction-sites/{constructionSite}/logs/{constructionSiteLog}', [ConstructionSiteLogController::class, 'destroy'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->name('construction-sites.logs.destroy');
+        Route::get('/construction-sites/{constructionSite}/logs/{constructionSiteLog}/images/{constructionSiteLogImage}', [ConstructionSiteLogController::class, 'showImage'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->whereNumber('constructionSiteLogImage')
+            ->name('construction-sites.logs.images.show');
+        Route::delete('/construction-sites/{constructionSite}/logs/{constructionSiteLog}/images/{constructionSiteLogImage}', [ConstructionSiteLogController::class, 'destroyImage'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->whereNumber('constructionSiteLogImage')
+            ->name('construction-sites.logs.images.destroy');
+        Route::get('/construction-sites/{constructionSite}/logs/{constructionSiteLog}/files/{constructionSiteLogFile}/download', [ConstructionSiteLogController::class, 'downloadFile'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->whereNumber('constructionSiteLogFile')
+            ->name('construction-sites.logs.files.download');
+        Route::delete('/construction-sites/{constructionSite}/logs/{constructionSiteLog}/files/{constructionSiteLogFile}', [ConstructionSiteLogController::class, 'destroyFile'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteLog')
+            ->whereNumber('constructionSiteLogFile')
+            ->name('construction-sites.logs.files.destroy');
+
+        Route::get('/construction-sites/{constructionSite}/material-usages', [ConstructionSiteMaterialUsageController::class, 'index'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.material-usages.index');
+        Route::get('/construction-sites/{constructionSite}/material-usages/create', [ConstructionSiteMaterialUsageController::class, 'create'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.material-usages.create');
+        Route::post('/construction-sites/{constructionSite}/material-usages', [ConstructionSiteMaterialUsageController::class, 'store'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.material-usages.store');
+        Route::get('/construction-sites/{constructionSite}/material-usages/{constructionSiteMaterialUsage}', [ConstructionSiteMaterialUsageController::class, 'show'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteMaterialUsage')
+            ->name('construction-sites.material-usages.show');
+        Route::get('/construction-sites/{constructionSite}/material-usages/{constructionSiteMaterialUsage}/edit', [ConstructionSiteMaterialUsageController::class, 'edit'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteMaterialUsage')
+            ->name('construction-sites.material-usages.edit');
+        Route::patch('/construction-sites/{constructionSite}/material-usages/{constructionSiteMaterialUsage}', [ConstructionSiteMaterialUsageController::class, 'update'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteMaterialUsage')
+            ->name('construction-sites.material-usages.update');
+        Route::post('/construction-sites/{constructionSite}/material-usages/{constructionSiteMaterialUsage}/post', [ConstructionSiteMaterialUsageController::class, 'post'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteMaterialUsage')
+            ->name('construction-sites.material-usages.post');
+        Route::post('/construction-sites/{constructionSite}/material-usages/{constructionSiteMaterialUsage}/cancel', [ConstructionSiteMaterialUsageController::class, 'cancel'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteMaterialUsage')
+            ->name('construction-sites.material-usages.cancel');
+
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
         Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
         Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
@@ -398,6 +510,16 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('purchaseOrderReceipt')
             ->whereNumber('receiptItem')
             ->name('purchase-order-receipts.lines.resolve');
+
+        Route::get('/stock-movements', [StockMovementController::class, 'index'])
+            ->name('stock-movements.index');
+        Route::get('/stock-movements/create', [StockMovementController::class, 'create'])
+            ->name('stock-movements.create');
+        Route::post('/stock-movements', [StockMovementController::class, 'store'])
+            ->name('stock-movements.store');
+        Route::get('/stock-movements/{stockMovement}', [StockMovementController::class, 'show'])
+            ->whereNumber('stockMovement')
+            ->name('stock-movements.show');
 
         Route::get('/price-tiers', [PriceTierController::class, 'index'])->name('price-tiers.index');
         Route::get('/price-tiers/create', [PriceTierController::class, 'create'])->name('price-tiers.create');

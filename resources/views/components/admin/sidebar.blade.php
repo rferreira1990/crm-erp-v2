@@ -1,6 +1,44 @@
 @php
     $user = auth()->user();
     $isSuperAdmin = $user?->isSuperAdmin() === true;
+
+    $commercialOpen = request()->routeIs(
+        'admin.customers.*',
+        'admin.suppliers.*',
+        'admin.quotes.*'
+    );
+
+    $articlesOpen = request()->routeIs(
+        'admin.articles.*',
+        'admin.brands.*',
+        'admin.product-families.*'
+    );
+
+    $purchasesOpen = request()->routeIs(
+        'admin.rfqs.*',
+        'admin.purchase-orders.*',
+        'admin.purchase-order-receipts.*',
+        'admin.stock-movements.*'
+    );
+
+    $tablesOpen = request()->routeIs(
+        'admin.units.*',
+        'admin.categories.*',
+        'admin.payment-methods.*',
+        'admin.payment-terms.*',
+        'admin.price-tiers.*',
+        'admin.vat-rates.*',
+        'admin.vat-exemption-reasons.*'
+    );
+
+    $hasPurchasesMenu = $user?->can('company.rfq.view')
+        || $user?->can('company.purchase_orders.view')
+        || $user?->can('company.purchase_order_receipts.view')
+        || $user?->can('company.stock_movements.view');
+
+    $hasArticlesMenu = $user?->can('company.articles.view')
+        || $user?->can('company.brands.view')
+        || $user?->can('company.product_families.view');
 @endphp
 
 <nav class="navbar navbar-vertical navbar-expand-lg">
@@ -45,6 +83,7 @@
                         <p class="navbar-vertical-label">Administracao</p>
                         <hr class="navbar-vertical-line" />
                     </li>
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                             <div class="d-flex align-items-center">
@@ -58,83 +97,126 @@
                         <p class="navbar-vertical-label">Modulos</p>
                         <hr class="navbar-vertical-line" />
                     </li>
+
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="users"></span></span>
-                                <span class="nav-link-text">Clientes</span>
-                            </div>
-                        </a>
+                        <button
+                            type="button"
+                            class="nav-link sidebar-submenu-toggle w-100 border-0 bg-transparent d-flex align-items-center {{ $commercialOpen ? 'active' : '' }}"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#sidebarCommercialMenu"
+                            aria-expanded="{{ $commercialOpen ? 'true' : 'false' }}"
+                            aria-controls="sidebarCommercialMenu"
+                        >
+                            <span class="nav-link-icon"><span data-feather="briefcase"></span></span>
+                            <span class="nav-link-text">Comercial</span>
+                            <span class="ms-auto sidebar-submenu-chevron"><span data-feather="chevron-down"></span></span>
+                        </button>
+                        <div class="collapse sidebar-submenu {{ $commercialOpen ? 'show' : '' }}" id="sidebarCommercialMenu" data-bs-parent="#navbarVerticalNav">
+                            <ul class="nav flex-column ms-4 mt-1 sidebar-submenu-list">
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">Clientes</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.suppliers.*') ? 'active' : '' }}" href="{{ route('admin.suppliers.index') }}">Fornecedores</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.quotes.*') ? 'active' : '' }}" href="{{ route('admin.quotes.index') }}">Orcamentos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.quotes.dashboard') ? 'active' : '' }}" href="{{ route('admin.quotes.dashboard') }}">Dashboard Orcamentos</a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.suppliers.*') ? 'active' : '' }}" href="{{ route('admin.suppliers.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="truck"></span></span>
-                                <span class="nav-link-text">Fornecedores</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}" href="{{ route('admin.articles.index') }}">
-                            <div class="d-flex align-items-center">
+
+                    @if ($hasArticlesMenu)
+                        <li class="nav-item">
+                            <button
+                                type="button"
+                                class="nav-link sidebar-submenu-toggle w-100 border-0 bg-transparent d-flex align-items-center {{ $articlesOpen ? 'active' : '' }}"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#sidebarArticlesMenu"
+                                aria-expanded="{{ $articlesOpen ? 'true' : 'false' }}"
+                                aria-controls="sidebarArticlesMenu"
+                            >
                                 <span class="nav-link-icon"><span data-feather="package"></span></span>
-                                <span class="nav-link-text">Artigos / Produtos</span>
+                                <span class="nav-link-text">Artigos</span>
+                                <span class="ms-auto sidebar-submenu-chevron"><span data-feather="chevron-down"></span></span>
+                            </button>
+                            <div class="collapse sidebar-submenu {{ $articlesOpen ? 'show' : '' }}" id="sidebarArticlesMenu" data-bs-parent="#navbarVerticalNav">
+                                <ul class="nav flex-column ms-4 mt-1 sidebar-submenu-list">
+                                    @can('company.articles.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}" href="{{ route('admin.articles.index') }}">Artigos</a>
+                                        </li>
+                                    @endcan
+                                    @can('company.brands.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.brands.*') ? 'active' : '' }}" href="{{ route('admin.brands.index') }}">Marcas</a>
+                                        </li>
+                                    @endcan
+                                    @can('company.product_families.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.product-families.*') ? 'active' : '' }}" href="{{ route('admin.product-families.index') }}">Familias</a>
+                                        </li>
+                                    @endcan
+                                </ul>
                             </div>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.brands.*') ? 'active' : '' }}" href="{{ route('admin.brands.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="bookmark"></span></span>
-                                <span class="nav-link-text">Marcas</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.quotes.*') ? 'active' : '' }}" href="{{ route('admin.quotes.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="file-text"></span></span>
-                                <span class="nav-link-text">Orcamentos</span>
-                            </div>
-                        </a>
-                    </li>
-                    @can('company.rfq.view')
+                        </li>
+                    @endif
+
+                    @can('company.construction_sites.view')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.rfqs.*') ? 'active' : '' }}" href="{{ route('admin.rfqs.index') }}">
+                            <a class="nav-link {{ request()->routeIs('admin.construction-sites.*') ? 'active' : '' }}" href="{{ route('admin.construction-sites.index') }}">
                                 <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="shopping-cart"></span></span>
-                                    <span class="nav-link-text">Pedidos de Cotacao</span>
+                                    <span class="nav-link-icon"><span data-feather="tool"></span></span>
+                                    <span class="nav-link-text">Obras</span>
                                 </div>
                             </a>
                         </li>
                     @endcan
-                    @can('company.purchase_orders.view')
+
+                    @if ($hasPurchasesMenu)
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.purchase-orders.*') ? 'active' : '' }}" href="{{ route('admin.purchase-orders.index') }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="clipboard"></span></span>
-                                    <span class="nav-link-text">Encomendas Fornecedor</span>
-                                </div>
-                            </a>
-                        </li>
-                    @endcan
-                    @can('company.purchase_order_receipts.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.purchase-order-receipts.*') ? 'active' : '' }}" href="{{ route('admin.purchase-order-receipts.index') }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="inbox"></span></span>
-                                    <span class="nav-link-text">Rececoes de Material</span>
-                                </div>
-                            </a>
-                        </li>
-                    @endcan
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.quotes.dashboard') ? 'active' : '' }}" href="{{ route('admin.quotes.dashboard') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Dashboard Orcamentos</span>
+                            <button
+                                type="button"
+                                class="nav-link sidebar-submenu-toggle w-100 border-0 bg-transparent d-flex align-items-center {{ $purchasesOpen ? 'active' : '' }}"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#sidebarPurchasesMenu"
+                                aria-expanded="{{ $purchasesOpen ? 'true' : 'false' }}"
+                                aria-controls="sidebarPurchasesMenu"
+                            >
+                                <span class="nav-link-icon"><span data-feather="shopping-cart"></span></span>
+                                <span class="nav-link-text">Compras</span>
+                                <span class="ms-auto sidebar-submenu-chevron"><span data-feather="chevron-down"></span></span>
+                            </button>
+                            <div class="collapse sidebar-submenu {{ $purchasesOpen ? 'show' : '' }}" id="sidebarPurchasesMenu" data-bs-parent="#navbarVerticalNav">
+                                <ul class="nav flex-column ms-4 mt-1 sidebar-submenu-list">
+                                    @can('company.rfq.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.rfqs.*') ? 'active' : '' }}" href="{{ route('admin.rfqs.index') }}">Pedidos de Cotacao</a>
+                                        </li>
+                                    @endcan
+                                    @can('company.purchase_orders.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.purchase-orders.*') ? 'active' : '' }}" href="{{ route('admin.purchase-orders.index') }}">Encomendas Fornecedor</a>
+                                        </li>
+                                    @endcan
+                                    @can('company.purchase_order_receipts.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.purchase-order-receipts.*') ? 'active' : '' }}" href="{{ route('admin.purchase-order-receipts.index') }}">Rececoes de Material</a>
+                                        </li>
+                                    @endcan
+                                    @can('company.stock_movements.view')
+                                        <li class="nav-item">
+                                            <a class="nav-link py-1 {{ request()->routeIs('admin.stock-movements.*') ? 'active' : '' }}" href="{{ route('admin.stock-movements.index') }}">Movimentos de Stock</a>
+                                        </li>
+                                    @endcan
+                                </ul>
                             </div>
-                        </a>
-                    </li>
+                        </li>
+                    @endif
+
                     <li class="nav-item">
                         <a class="nav-link" href="#">
                             <div class="d-flex align-items-center">
@@ -143,19 +225,12 @@
                             </div>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="archive"></span></span>
-                                <span class="nav-link-text">Stocks</span>
-                            </div>
-                        </a>
-                    </li>
 
                     <li class="nav-item mt-3">
                         <p class="navbar-vertical-label">Definicoes</p>
                         <hr class="navbar-vertical-line" />
                     </li>
+
                     @can('company.settings.manage')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.company-settings.*') ? 'active' : '' }}" href="{{ route('admin.company-settings.edit') }}">
@@ -166,70 +241,47 @@
                             </a>
                         </li>
                     @endcan
+
                     <li class="nav-item">
-                        <span class="nav-link text-body-tertiary">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="table"></span></span>
-                                <span class="nav-link-text">Tabelas</span>
-                            </div>
-                        </span>
+                        <button
+                            type="button"
+                            class="nav-link sidebar-submenu-toggle w-100 border-0 bg-transparent d-flex align-items-center {{ $tablesOpen ? 'active' : '' }}"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#sidebarTablesMenu"
+                            aria-expanded="{{ $tablesOpen ? 'true' : 'false' }}"
+                            aria-controls="sidebarTablesMenu"
+                        >
+                            <span class="nav-link-icon"><span data-feather="table"></span></span>
+                            <span class="nav-link-text">Tabelas</span>
+                            <span class="ms-auto sidebar-submenu-chevron"><span data-feather="chevron-down"></span></span>
+                        </button>
+                        <div class="collapse sidebar-submenu {{ $tablesOpen ? 'show' : '' }}" id="sidebarTablesMenu" data-bs-parent="#navbarVerticalNav">
+                            <ul class="nav flex-column ms-4 mt-1 sidebar-submenu-list">
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.units.*') ? 'active' : '' }}" href="{{ route('admin.units.index') }}">Unidades</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Categorias de produtos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.payment-methods.*') ? 'active' : '' }}" href="{{ route('admin.payment-methods.index') }}">Modos de pagamento</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.payment-terms.*') ? 'active' : '' }}" href="{{ route('admin.payment-terms.index') }}">Condicoes de pagamento</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.price-tiers.*') ? 'active' : '' }}" href="{{ route('admin.price-tiers.index') }}">Escaloes de preco</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.vat-rates.*') ? 'active' : '' }}" href="{{ route('admin.vat-rates.index') }}">Taxas de IVA</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link py-1 {{ request()->routeIs('admin.vat-exemption-reasons.*') ? 'active' : '' }}" href="{{ route('admin.vat-exemption-reasons.index') }}">Motivos de isencao IVA</a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.units.*') ? 'active' : '' }}" href="{{ route('admin.units.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Unidades</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.product-families.*') ? 'active' : '' }}" href="{{ route('admin.product-families.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Familias de produtos</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Categorias de produtos</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.payment-methods.*') ? 'active' : '' }}" href="{{ route('admin.payment-methods.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Modos de pagamento</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.payment-terms.*') ? 'active' : '' }}" href="{{ route('admin.payment-terms.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Condições de pagamento</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.price-tiers.*') ? 'active' : '' }}" href="{{ route('admin.price-tiers.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Escaloes de preco</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.vat-rates.*') ? 'active' : '' }}" href="{{ route('admin.vat-rates.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Taxas de IVA</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="nav-item ms-4">
-                        <a class="nav-link {{ request()->routeIs('admin.vat-exemption-reasons.*') ? 'active' : '' }}" href="{{ route('admin.vat-exemption-reasons.index') }}">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-text">Motivos de isencao IVA</span>
-                            </div>
-                        </a>
-                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.users.*', 'admin.user-invitations.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                             <div class="d-flex align-items-center">

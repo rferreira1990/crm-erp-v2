@@ -253,4 +253,32 @@ class Article extends Model
         $next = round((float) ($this->stock_quantity ?? 0) + $quantity, 3);
         $this->forceFill(['stock_quantity' => $next])->save();
     }
+
+    public function decreaseStock(float $quantity): void
+    {
+        if ($quantity < 0) {
+            throw new InvalidArgumentException('Stock decrease quantity must be non-negative.');
+        }
+
+        if (! $this->hasSufficientStockFor($quantity)) {
+            throw new DomainException('Insufficient stock for requested movement.');
+        }
+
+        $next = round((float) ($this->stock_quantity ?? 0) - $quantity, 3);
+        $this->forceFill(['stock_quantity' => $next])->save();
+    }
+
+    public function canMoveStock(): bool
+    {
+        return (bool) $this->moves_stock;
+    }
+
+    public function hasSufficientStockFor(float $quantity): bool
+    {
+        if ($quantity < 0) {
+            return false;
+        }
+
+        return round((float) ($this->stock_quantity ?? 0) - $quantity, 3) >= 0;
+    }
 }
