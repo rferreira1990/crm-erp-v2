@@ -32,6 +32,7 @@ class User extends Authenticatable
         'password',
         'is_super_admin',
         'is_active',
+        'hourly_cost',
     ];
 
     /**
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
             'is_active' => 'boolean',
+            'hourly_cost' => 'decimal:2',
         ];
     }
 

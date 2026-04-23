@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\ArticleMediaController;
 use App\Http\Controllers\Admin\ConstructionSiteController;
 use App\Http\Controllers\Admin\ConstructionSiteLogController;
 use App\Http\Controllers\Admin\ConstructionSiteMaterialUsageController;
+use App\Http\Controllers\Admin\ConstructionSiteTimeEntryController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
@@ -339,6 +340,31 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('constructionSite')
             ->whereNumber('constructionSiteMaterialUsage')
             ->name('construction-sites.material-usages.cancel');
+
+        Route::get('/construction-site-time-entries', [ConstructionSiteTimeEntryController::class, 'index'])
+            ->name('construction-site-time-entries.index');
+        Route::get('/construction-sites/{constructionSite}/time-entries/create', [ConstructionSiteTimeEntryController::class, 'create'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.time-entries.create');
+        Route::post('/construction-sites/{constructionSite}/time-entries', [ConstructionSiteTimeEntryController::class, 'store'])
+            ->whereNumber('constructionSite')
+            ->name('construction-sites.time-entries.store');
+        Route::get('/construction-sites/{constructionSite}/time-entries/{constructionSiteTimeEntry}', [ConstructionSiteTimeEntryController::class, 'show'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteTimeEntry')
+            ->name('construction-sites.time-entries.show');
+        Route::get('/construction-sites/{constructionSite}/time-entries/{constructionSiteTimeEntry}/edit', [ConstructionSiteTimeEntryController::class, 'edit'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteTimeEntry')
+            ->name('construction-sites.time-entries.edit');
+        Route::patch('/construction-sites/{constructionSite}/time-entries/{constructionSiteTimeEntry}', [ConstructionSiteTimeEntryController::class, 'update'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteTimeEntry')
+            ->name('construction-sites.time-entries.update');
+        Route::delete('/construction-sites/{constructionSite}/time-entries/{constructionSiteTimeEntry}', [ConstructionSiteTimeEntryController::class, 'destroy'])
+            ->whereNumber('constructionSite')
+            ->whereNumber('constructionSiteTimeEntry')
+            ->name('construction-sites.time-entries.destroy');
 
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
         Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');

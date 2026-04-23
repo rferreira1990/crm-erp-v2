@@ -20,9 +20,6 @@
 @endsection
 
 @section('content')
-    @if (session('status'))
-        <div class="alert alert-success" role="alert">{{ session('status') }}</div>
-    @endif
 
     <div class="row g-4 mb-4">
         <div class="col-12 col-xxl-4">

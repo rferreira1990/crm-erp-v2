@@ -74,6 +74,7 @@
                     <tbody>
                         @forelse ($users as $companyUser)
                             @php($isSelf = auth()->id() === $companyUser->id)
+                            @php($currentRoleName = $assignableRoles->first(fn ($roleOption) => $companyUser->hasRole($roleOption->name))?->name ?? \App\Models\User::ROLE_COMPANY_USER)
                             <tr>
                                 <td class="ps-3">{{ $companyUser->name }}</td>
                                 <td>{{ $companyUser->email }}</td>
@@ -90,6 +91,9 @@
                                     <form method="POST" action="{{ route('admin.users.update', $companyUser) }}" class="d-flex gap-2 align-items-center">
                                         @csrf
                                         @method('PATCH')
+                                        @if ($isSelf)
+                                            <input type="hidden" name="role" value="{{ $currentRoleName }}">
+                                        @endif
                                         <select name="role" class="form-select form-select-sm" @disabled($isSelf)>
                                             @foreach ($assignableRoles as $role)
                                                 <option value="{{ $role->name }}" @selected($companyUser->hasRole($role->name))>
@@ -97,7 +101,16 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <button type="submit" class="btn btn-phoenix-secondary btn-sm" @disabled($isSelf)>
+                                        <input
+                                            type="number"
+                                            name="hourly_cost"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Custo/h"
+                                            value="{{ old('hourly_cost', $companyUser->hourly_cost !== null ? number_format((float) $companyUser->hourly_cost, 2, '.', '') : '') }}"
+                                            class="form-control form-control-sm"
+                                        >
+                                        <button type="submit" class="btn btn-phoenix-secondary btn-sm">
                                             Guardar
                                         </button>
                                     </form>

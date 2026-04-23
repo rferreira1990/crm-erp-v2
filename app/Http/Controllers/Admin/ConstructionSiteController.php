@@ -12,11 +12,13 @@ use App\Models\ConstructionSiteLogFile;
 use App\Models\ConstructionSiteLogImage;
 use App\Models\ConstructionSiteMaterialUsage;
 use App\Models\ConstructionSiteMaterialUsageItem;
+use App\Models\ConstructionSiteTimeEntry;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\CustomerContact;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Admin\ConstructionSiteEconomicSummaryService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ConstructionSiteController extends Controller
 {
+    public function __construct(
+        private readonly ConstructionSiteEconomicSummaryService $constructionSiteEconomicSummaryService
+    ) {
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', ConstructionSite::class);
@@ -143,6 +150,35 @@ class ConstructionSiteController extends Controller
         $canViewLogs = $request->user()->can('company.construction_site_logs.view');
         $canViewMaterialUsages = $request->user()->can('company.construction_site_material_usages.view');
         $canCreateMaterialUsages = $request->user()->can('company.construction_site_material_usages.create');
+        $canViewTimeEntries = $request->user()->can('company.construction_site_time_entries.view');
+        $canCreateTimeEntries = $request->user()->can('company.construction_site_time_entries.create');
+        $canViewEconomicMargins = $request->user()->hasRole(User::ROLE_COMPANY_ADMIN)
+            || $request->user()->hasRole('admin');
+
+        $economicSummary = $this->constructionSiteEconomicSummaryService->build($companyId, $site);
+
+        $timeEntrySummary = [
+            'total_entries' => 0,
+            'total_hours' => 0.0,
+            'total_cost' => 0.0,
+        ];
+        $recentTimeEntries = collect();
+
+        if ($canViewTimeEntries) {
+            $timeEntrySummary = [
+                'total_entries' => (int) $site->timeEntries()->count(),
+                'total_hours' => round((float) ($site->timeEntries()->sum('hours') ?? 0), 2),
+                'total_cost' => round((float) ($site->timeEntries()->sum('total_cost') ?? 0), 4),
+            ];
+
+            $recentTimeEntries = $site->timeEntries()
+                ->with([
+                    'worker:id,name',
+                    'creator:id,name',
+                ])
+                ->limit(5)
+                ->get();
+        }
 
         $materialUsageSummary = [
             'total_usages' => 0,
@@ -199,6 +235,13 @@ class ConstructionSiteController extends Controller
             'materialUsageSummary' => $materialUsageSummary,
             'recentMaterialUsages' => $recentMaterialUsages,
             'materialUsageStatusLabels' => ConstructionSiteMaterialUsage::statusLabels(),
+            'canViewTimeEntries' => $canViewTimeEntries,
+            'canCreateTimeEntries' => $canCreateTimeEntries,
+            'timeEntrySummary' => $timeEntrySummary,
+            'recentTimeEntries' => $recentTimeEntries,
+            'timeEntryTaskTypeLabels' => ConstructionSiteTimeEntry::taskTypeLabels(),
+            'economicSummary' => $economicSummary,
+            'canViewEconomicMargins' => $canViewEconomicMargins,
         ]);
     }
 

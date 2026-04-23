@@ -24,8 +24,11 @@
             </button>
             <a class="navbar-brand me-1 me-sm-3" href="{{ $homeRoute }}">
                 <div class="d-flex align-items-center">
-                    <img src="{{ asset('vendor/phoenix/img/icons/logo.png') }}" alt="phoenix" width="27" />
-                    <h5 class="logo-text ms-2 d-none d-sm-block">{{ config('app.name', 'CRM/ERP') }}</h5>
+                    <img
+                        src="{{ asset('assets/branding/platform-logo.png') }}"
+                        alt="SmokyTech"
+                        style="height: 40px; width: auto; max-width: 220px; object-fit: contain;"
+                    />
                 </div>
             </a>
         </div>

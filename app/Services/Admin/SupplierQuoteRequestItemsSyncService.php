@@ -53,6 +53,9 @@ class SupplierQuoteRequestItemsSyncService
             if ($unitName === '' && $article?->unit?->code) {
                 $unitName = (string) $article->unit->code;
             }
+            if ($unitName === '' && in_array($lineType, [SupplierQuoteRequestItem::TYPE_ARTICLE, SupplierQuoteRequestItem::TYPE_TEXT], true)) {
+                $unitName = Article::DEFAULT_UNIT_CODE;
+            }
 
             $rfq->items()->create([
                 'company_id' => $companyId,
@@ -146,4 +149,3 @@ class SupplierQuoteRequestItemsSyncService
         return $normalized !== '' ? $normalized : null;
     }
 }
-

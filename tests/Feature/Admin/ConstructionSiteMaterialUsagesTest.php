@@ -99,6 +99,56 @@ class ConstructionSiteMaterialUsagesTest extends TestCase
         ]);
     }
 
+    public function test_draft_prefers_last_purchase_price_when_unit_cost_is_not_provided(): void
+    {
+        $company = $this->createCompany('Empresa Consumo Ultimo Preco Compra');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $site = $this->createSite($company, $this->createCustomer($company, 'Cliente Ultimo Preco'), $admin, 'Obra Preco Compra');
+        $article = $this->createStockArticle($company, 'Perfil aluminio', true, 50);
+
+        StockMovement::query()->create([
+            'company_id' => $company->id,
+            'article_id' => $article->id,
+            'type' => StockMovement::TYPE_PURCHASE_RECEIPT,
+            'direction' => StockMovement::DIRECTION_IN,
+            'reason_code' => null,
+            'quantity' => 10,
+            'unit_cost' => 7.4567,
+            'reference_type' => StockMovement::REFERENCE_PURCHASE_ORDER_RECEIPT,
+            'reference_id' => 1001,
+            'reference_line_id' => 2001,
+            'movement_date' => now()->subDay()->toDateString(),
+            'performed_by' => $admin->id,
+        ]);
+
+        StockMovement::query()->create([
+            'company_id' => $company->id,
+            'article_id' => $article->id,
+            'type' => StockMovement::TYPE_PURCHASE_RECEIPT,
+            'direction' => StockMovement::DIRECTION_IN,
+            'reason_code' => null,
+            'quantity' => 5,
+            'unit_cost' => 8.1234,
+            'reference_type' => StockMovement::REFERENCE_PURCHASE_ORDER_RECEIPT,
+            'reference_id' => 1002,
+            'reference_line_id' => 2002,
+            'movement_date' => now()->toDateString(),
+            'performed_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.construction-sites.material-usages.store', $site->id), $this->usagePayload($article->id, 3))
+            ->assertRedirect();
+
+        $usage = ConstructionSiteMaterialUsage::query()
+            ->forCompany((int) $company->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $storedUnitCost = (float) $usage->items()->value('unit_cost');
+        $this->assertSame(8.1234, $storedUnitCost);
+    }
+
     public function test_post_fails_when_stock_is_insufficient(): void
     {
         $company = $this->createCompany('Empresa Consumo Stock Insuficiente');

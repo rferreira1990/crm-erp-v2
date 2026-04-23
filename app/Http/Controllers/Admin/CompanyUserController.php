@@ -79,7 +79,9 @@ class CompanyUserController extends Controller
     {
         $authUser = $request->user();
         $companyId = (int) $authUser->company_id;
-        $roleName = (string) $request->validated('role');
+        $validated = $request->validated();
+        $roleName = (string) ($validated['role'] ?? '');
+        $hourlyCost = array_key_exists('hourly_cost', $validated) ? $validated['hourly_cost'] : null;
 
         if (! in_array($roleName, User::companyRoleNames(), true)) {
             return back()->withErrors([
@@ -94,11 +96,13 @@ class CompanyUserController extends Controller
         }
 
         try {
-            $companyUserModel = DB::transaction(function () use ($authUser, $companyId, $companyUser, $roleName): User {
+            $companyUserModel = DB::transaction(function () use ($authUser, $companyId, $companyUser, $roleName, $hourlyCost): User {
                 $companyUserModel = $this->findCompanyUserForUpdateOrFail($companyId, $companyUser);
                 $this->authorize('update', $companyUserModel);
 
-                if ((int) $authUser->id === (int) $companyUserModel->id) {
+                $isSelf = (int) $authUser->id === (int) $companyUserModel->id;
+
+                if ($isSelf && ! $companyUserModel->hasRole($roleName)) {
                     throw ValidationException::withMessages([
                         'role' => 'Nao pode alterar a sua propria role.',
                     ]);
@@ -114,6 +118,10 @@ class CompanyUserController extends Controller
                         'role' => 'Nao e possivel remover a role de administrador ao ultimo admin ativo da empresa.',
                     ]);
                 }
+
+                $companyUserModel->forceFill([
+                    'hourly_cost' => $hourlyCost,
+                ])->save();
 
                 $companyUserModel->syncRoles([$roleName]);
 

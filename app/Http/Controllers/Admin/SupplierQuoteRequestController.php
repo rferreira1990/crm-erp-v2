@@ -433,6 +433,7 @@ class SupplierQuoteRequestController extends Controller
             'articleOptions' => Article::query()
                 ->forCompany($companyId)
                 ->where('is_active', true)
+                ->with('unit:id,code')
                 ->orderBy('designation')
                 ->get(['id', 'code', 'designation']),
             'unitOptions' => Unit::query()

@@ -167,10 +167,21 @@
 
                     @can('company.construction_sites.view')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.construction-sites.*') ? 'active' : '' }}" href="{{ route('admin.construction-sites.index') }}">
+                            <a class="nav-link {{ request()->routeIs('admin.construction-sites.*', 'admin.construction-site-time-entries.*') ? 'active' : '' }}" href="{{ route('admin.construction-sites.index') }}">
                                 <div class="d-flex align-items-center">
                                     <span class="nav-link-icon"><span data-feather="tool"></span></span>
                                     <span class="nav-link-text">Obras</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('company.construction_site_time_entries.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.construction-site-time-entries.*') ? 'active' : '' }}" href="{{ route('admin.construction-site-time-entries.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="clock"></span></span>
+                                    <span class="nav-link-text">Horas de Obra</span>
                                 </div>
                             </a>
                         </li>

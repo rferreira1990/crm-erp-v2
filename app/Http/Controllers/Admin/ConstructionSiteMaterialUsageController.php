@@ -9,10 +9,12 @@ use App\Http\Requests\Admin\UpdateConstructionSiteMaterialUsageRequest;
 use App\Models\Article;
 use App\Models\ConstructionSite;
 use App\Models\ConstructionSiteMaterialUsage;
+use App\Models\StockMovement;
 use App\Services\Admin\ConstructionSiteMaterialUsageService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ConstructionSiteMaterialUsageController extends Controller
 {
@@ -220,30 +222,61 @@ class ConstructionSiteMaterialUsageController extends Controller
      */
     private function buildFormOptions(int $companyId, array $includeArticleIds = []): array
     {
-        return [
-            'articleOptions' => Article::query()
-                ->forCompany($companyId)
-                ->where(function ($query) use ($includeArticleIds): void {
-                    $query->where(function ($activeQuery): void {
-                        $activeQuery->where('is_active', true)
-                            ->where('moves_stock', true);
-                    });
+        $articleOptions = Article::query()
+            ->forCompany($companyId)
+            ->where(function ($query) use ($includeArticleIds): void {
+                $query->where(function ($activeQuery): void {
+                    $activeQuery->where('is_active', true)
+                        ->where('moves_stock', true);
+                });
 
-                    if ($includeArticleIds !== []) {
-                        $query->orWhereIn('id', $includeArticleIds);
-                    }
-                })
-                ->with('unit:id,name')
-                ->orderBy('designation')
-                ->get([
-                    'id',
-                    'code',
-                    'designation',
-                    'unit_id',
-                    'stock_quantity',
-                    'cost_price',
-                    'moves_stock',
-                ]),
+                if ($includeArticleIds !== []) {
+                    $query->orWhereIn('id', $includeArticleIds);
+                }
+            })
+            ->with('unit:id,name')
+            ->orderBy('designation')
+            ->get([
+                'id',
+                'code',
+                'designation',
+                'unit_id',
+                'stock_quantity',
+                'cost_price',
+                'moves_stock',
+            ]);
+
+        $articleIds = $articleOptions->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $latestPurchaseCosts = collect();
+        if ($articleIds !== []) {
+            $latestPurchaseMovementIds = StockMovement::query()
+                ->forCompany($companyId)
+                ->whereIn('article_id', $articleIds)
+                ->where('type', StockMovement::TYPE_PURCHASE_RECEIPT)
+                ->whereNotNull('unit_cost')
+                ->groupBy('article_id')
+                ->select('article_id', DB::raw('MAX(id) as last_id'));
+
+            $latestPurchaseCosts = StockMovement::query()
+                ->forCompany($companyId)
+                ->whereIn('id', $latestPurchaseMovementIds->pluck('last_id')->all())
+                ->get(['article_id', 'unit_cost'])
+                ->keyBy(fn ($movement): int => (int) $movement->article_id);
+        }
+
+        $articleOptions = $articleOptions->map(function (Article $article) use ($latestPurchaseCosts): Article {
+            $lastPurchaseMovement = $latestPurchaseCosts->get((int) $article->id);
+            $lastPurchaseUnitCost = $lastPurchaseMovement?->unit_cost !== null
+                ? round((float) $lastPurchaseMovement->unit_cost, 4)
+                : null;
+
+            $article->setAttribute('last_purchase_unit_cost', $lastPurchaseUnitCost);
+
+            return $article;
+        });
+
+        return [
+            'articleOptions' => $articleOptions,
         ];
     }
 }

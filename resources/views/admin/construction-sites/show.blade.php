@@ -7,6 +7,9 @@
 @section('page_actions')
     <a href="{{ route('admin.construction-sites.index') }}" class="btn btn-phoenix-secondary btn-sm">Voltar</a>
     <a href="{{ route('admin.construction-sites.edit', $site->id) }}" class="btn btn-primary btn-sm">Editar obra</a>
+    @if (($canCreateTimeEntries ?? false) === true)
+        <a href="{{ route('admin.construction-sites.time-entries.create', $site->id) }}" class="btn btn-phoenix-secondary btn-sm">Registar horas</a>
+    @endif
     @if (($canCreateMaterialUsages ?? false) === true)
         <a href="{{ route('admin.construction-sites.material-usages.create', $site->id) }}" class="btn btn-phoenix-secondary btn-sm">Registar consumo de material</a>
     @endif
@@ -25,9 +28,6 @@
 @endsection
 
 @section('content')
-    @if (session('status'))
-        <div class="alert alert-success" role="alert">{{ session('status') }}</div>
-    @endif
 
     @if ($errors->any())
         <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
@@ -139,6 +139,185 @@
     </div>
 
     <div class="row g-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-body-tertiary">
+                    <h5 class="mb-0">Resumo economico</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="text-body-tertiary fs-9">Estado orcamental:</span>
+                        <span class="badge badge-phoenix {{ $economicSummary['budget_status_badge_class'] ?? 'badge-phoenix-secondary' }}">
+                            {{ $economicSummary['budget_status_label'] ?? 'Sem orcamento' }}
+                        </span>
+                        <span class="text-body-tertiary fs-9">Consumo do orcamento:</span>
+                        <span class="fw-semibold">
+                            @if (($economicSummary['budget_consumption_percent'] ?? null) !== null)
+                                {{ number_format((float) $economicSummary['budget_consumption_percent'], 2, ',', '.') }}%
+                            @else
+                                -
+                            @endif
+                        </span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-body-tertiary fs-9">Valor do orcamento</div>
+                                @if (($economicSummary['quote_value'] ?? null) !== null)
+                                    <div class="fw-semibold fs-8">{{ number_format((float) $economicSummary['quote_value'], 2, ',', '.') }} EUR</div>
+                                    @if (! empty($economicSummary['quote_status_label']))
+                                        <div class="small text-body-tertiary">{{ $economicSummary['quote_status_label'] }}</div>
+                                    @endif
+                                @else
+                                    <div class="fw-semibold fs-8">Sem orcamento associado</div>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-body-tertiary fs-9">Custo material (consumos fechados)</div>
+                                <div class="fw-semibold fs-8">{{ number_format((float) ($economicSummary['material_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-body-tertiary fs-9">Custo mao de obra</div>
+                                <div class="fw-semibold fs-8">{{ number_format((float) ($economicSummary['labor_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-body-tertiary fs-9">Custo total real</div>
+                                <div class="fw-semibold fs-8">{{ number_format((float) ($economicSummary['total_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                            </div>
+                        </div>
+                        @if (($canViewEconomicMargins ?? false) === true)
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Margem estimada</div>
+                                    <div class="fw-semibold fs-8">
+                                        @if (($economicSummary['estimated_margin'] ?? null) !== null)
+                                            {{ number_format((float) $economicSummary['estimated_margin'], 2, ',', '.') }} EUR
+                                        @else
+                                            -
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Desvio (real - orcamento)</div>
+                                    <div class="fw-semibold fs-8">
+                                        @if (($economicSummary['deviation_amount'] ?? null) !== null)
+                                            {{ number_format((float) $economicSummary['deviation_amount'], 2, ',', '.') }} EUR
+                                        @else
+                                            -
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Desvio (%)</div>
+                                    <div class="fw-semibold fs-8">
+                                        @if (($economicSummary['deviation_percent'] ?? null) !== null)
+                                            {{ number_format((float) $economicSummary['deviation_percent'], 2, ',', '.') }}%
+                                        @else
+                                            -
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if ($canViewTimeEntries ?? false)
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Mao de obra</h5>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('admin.construction-site-time-entries.index', ['construction_site_id' => $site->id]) }}" class="btn btn-phoenix-secondary btn-sm">Ver todos os lancamentos</a>
+                            @if (($canCreateTimeEntries ?? false) === true)
+                                <a href="{{ route('admin.construction-sites.time-entries.create', $site->id) }}" class="btn btn-primary btn-sm">Registar horas</a>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Lancamentos</div>
+                                    <div class="fw-semibold fs-8">{{ number_format((int) ($timeEntrySummary['total_entries'] ?? 0), 0, ',', '.') }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Total de horas</div>
+                                    <div class="fw-semibold fs-8">{{ number_format((float) ($timeEntrySummary['total_hours'] ?? 0), 2, ',', '.') }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-body-tertiary fs-9">Custo total</div>
+                                    <div class="fw-semibold fs-8">{{ number_format((float) ($timeEntrySummary['total_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm fs-9 mb-0">
+                                <thead class="bg-body-tertiary">
+                                    <tr>
+                                        <th class="ps-3">Data</th>
+                                        <th>Colaborador</th>
+                                        <th>Horas</th>
+                                        <th>Custo/h</th>
+                                        <th>Custo total</th>
+                                        <th>Tipo</th>
+                                        <th>Descricao</th>
+                                        <th class="text-end pe-3">Acoes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($recentTimeEntries as $timeEntry)
+                                        <tr>
+                                            <td class="ps-3">{{ optional($timeEntry->work_date)->format('Y-m-d') ?? '-' }}</td>
+                                            <td>{{ $timeEntry->worker?->name ?? '-' }}</td>
+                                            <td>{{ number_format((float) $timeEntry->hours, 2, ',', '.') }}</td>
+                                            <td>{{ number_format((float) $timeEntry->hourly_cost, 2, ',', '.') }}</td>
+                                            <td>{{ number_format((float) $timeEntry->total_cost, 2, ',', '.') }}</td>
+                                            <td>
+                                                @if ($timeEntry->task_type)
+                                                    <span class="badge badge-phoenix {{ $timeEntry->taskTypeBadgeClass() }}">
+                                                        {{ $timeEntryTaskTypeLabels[$timeEntry->task_type] ?? $timeEntry->task_type }}
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td>{{ \Illuminate\Support\Str::limit($timeEntry->description, 90) }}</td>
+                                            <td class="text-end pe-3">
+                                                <a href="{{ route('admin.construction-sites.time-entries.show', [$site->id, $timeEntry->id]) }}" class="btn btn-phoenix-secondary btn-sm">Ver</a>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center py-4 text-body-tertiary">Sem lancamentos de horas registados.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if ($canViewMaterialUsages ?? false)
             <div class="col-12">
                 <div class="card">

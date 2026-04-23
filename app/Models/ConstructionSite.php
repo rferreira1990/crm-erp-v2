@@ -124,6 +124,13 @@ class ConstructionSite extends Model
             ->orderByDesc('id');
     }
 
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(ConstructionSiteTimeEntry::class)
+            ->orderByDesc('work_date')
+            ->orderByDesc('id');
+    }
+
     public function scopeForCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('company_id', $companyId);

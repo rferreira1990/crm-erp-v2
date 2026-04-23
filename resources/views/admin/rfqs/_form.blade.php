@@ -41,6 +41,7 @@
         ->filter()
         ->values()
         ->all();
+    $defaultUnitCode = \App\Models\Article::DEFAULT_UNIT_CODE;
 @endphp
 
 <div class="card mb-4">
@@ -141,7 +142,13 @@
                                 <select name="items[{{ $rowIndex }}][article_id]" class="form-select form-select-sm article-select @error("items.$rowIndex.article_id") is-invalid @enderror">
                                     <option value="">Sem artigo</option>
                                     @foreach (($articleOptions ?? []) as $articleOption)
-                                        <option value="{{ $articleOption->id }}" data-code="{{ $articleOption->code }}" data-designation="{{ $articleOption->designation }}" @selected((string) old("items.$rowIndex.article_id", $item['article_id'] ?? '') === (string) $articleOption->id)>
+                                        <option
+                                            value="{{ $articleOption->id }}"
+                                            data-code="{{ $articleOption->code }}"
+                                            data-designation="{{ $articleOption->designation }}"
+                                            data-unit-code="{{ $articleOption->unit?->code }}"
+                                            @selected((string) old("items.$rowIndex.article_id", $item['article_id'] ?? '') === (string) $articleOption->id)
+                                        >
                                             {{ $articleOption->code }} - {{ $articleOption->designation }}
                                         </option>
                                     @endforeach
@@ -258,7 +265,12 @@
             <select name="items[__INDEX__][article_id]" class="form-select form-select-sm article-select">
                 <option value="">Sem artigo</option>
                 @foreach (($articleOptions ?? []) as $articleOption)
-                    <option value="{{ $articleOption->id }}" data-code="{{ $articleOption->code }}" data-designation="{{ $articleOption->designation }}">
+                    <option
+                        value="{{ $articleOption->id }}"
+                        data-code="{{ $articleOption->code }}"
+                        data-designation="{{ $articleOption->designation }}"
+                        data-unit-code="{{ $articleOption->unit?->code }}"
+                    >
                         {{ $articleOption->code }} - {{ $articleOption->designation }}
                     </option>
                 @endforeach
@@ -289,6 +301,7 @@
                 const tbody = document.getElementById('rfq-items-body');
                 const addButton = document.getElementById('add-rfq-item-row');
                 const template = document.getElementById('rfq-item-row-template');
+                const defaultUnitCode = @json($defaultUnitCode);
 
                 if (!tbody || !addButton || !template) {
                     return;
@@ -353,6 +366,7 @@
                     const selected = articleSelect.options[articleSelect.selectedIndex];
                     const descriptionInput = row.querySelector('.description-input');
                     const articleCodeInput = row.querySelector('.article-code-input');
+                    const unitSelect = row.querySelector('select[name$="[unit_name]"]');
 
                     if (selected && selected.value) {
                         if (descriptionInput && descriptionInput.value.trim() === '') {
@@ -360,6 +374,20 @@
                         }
                         if (articleCodeInput) {
                             articleCodeInput.value = selected.dataset.code || '';
+                        }
+                        if (unitSelect) {
+                            const articleUnitCode = (selected.dataset.unitCode || '').trim();
+                            const targetUnitCode = articleUnitCode !== '' ? articleUnitCode : defaultUnitCode;
+                            if (targetUnitCode !== '') {
+                                let option = Array.from(unitSelect.options).find((currentOption) => currentOption.value === targetUnitCode);
+                                if (!option) {
+                                    option = document.createElement('option');
+                                    option.value = targetUnitCode;
+                                    option.textContent = `${targetUnitCode} (personalizada)`;
+                                    unitSelect.appendChild(option);
+                                }
+                                unitSelect.value = targetUnitCode;
+                            }
                         }
                     } else if (articleCodeInput) {
                         articleCodeInput.value = '';
@@ -394,6 +422,7 @@
                     }
 
                     syncLineType(row);
+                    syncArticleData(row);
                 };
 
                 addButton.addEventListener('click', function () {

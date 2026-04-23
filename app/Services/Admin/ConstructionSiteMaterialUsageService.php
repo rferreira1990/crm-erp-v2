@@ -354,6 +354,19 @@ class ConstructionSiteMaterialUsageService
             return round(max(0.0, $explicitUnitCost), 4);
         }
 
+        $lastPurchaseUnitCost = StockMovement::query()
+            ->forCompany($companyId)
+            ->where('article_id', (int) $article->id)
+            ->where('type', StockMovement::TYPE_PURCHASE_RECEIPT)
+            ->whereNotNull('unit_cost')
+            ->orderByDesc('movement_date')
+            ->orderByDesc('id')
+            ->value('unit_cost');
+
+        if ($lastPurchaseUnitCost !== null) {
+            return round((float) $lastPurchaseUnitCost, 4);
+        }
+
         if ($article->cost_price !== null) {
             return round((float) $article->cost_price, 4);
         }

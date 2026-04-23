@@ -105,7 +105,7 @@
                                                     data-description="{{ $article->designation }}"
                                                     data-unit="{{ $article->unit?->name }}"
                                                     data-stock="{{ number_format((float) ($article->stock_quantity ?? 0), 3, '.', '') }}"
-                                                    data-cost="{{ $article->cost_price !== null ? number_format((float) $article->cost_price, 4, '.', '') : '' }}"
+                                                    data-cost="{{ $article->last_purchase_unit_cost !== null ? number_format((float) $article->last_purchase_unit_cost, 4, '.', '') : ($article->cost_price !== null ? number_format((float) $article->cost_price, 4, '.', '') : '') }}"
                                                     @selected($selectedArticleId === (int) $article->id)
                                                 >
                                                     {{ $article->code }} - {{ $article->designation }}
@@ -161,7 +161,7 @@
                         data-description="{{ $article->designation }}"
                         data-unit="{{ $article->unit?->name }}"
                         data-stock="{{ number_format((float) ($article->stock_quantity ?? 0), 3, '.', '') }}"
-                        data-cost="{{ $article->cost_price !== null ? number_format((float) $article->cost_price, 4, '.', '') : '' }}"
+                        data-cost="{{ $article->last_purchase_unit_cost !== null ? number_format((float) $article->last_purchase_unit_cost, 4, '.', '') : ($article->cost_price !== null ? number_format((float) $article->cost_price, 4, '.', '') : '') }}"
                     >
                         {{ $article->code }} - {{ $article->designation }}
                     </option>

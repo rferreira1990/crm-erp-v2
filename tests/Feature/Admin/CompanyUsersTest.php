@@ -85,6 +85,52 @@ class CompanyUsersTest extends TestCase
         $this->assertFalse($target->hasRole(User::ROLE_COMPANY_USER));
     }
 
+    public function test_company_admin_can_update_hourly_cost_with_role(): void
+    {
+        $company = $this->createCompany('Empresa Custo Hora');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $target = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
+
+        $response = $this->actingAs($admin)->patch(route('admin.users.update', $target->id), [
+            'role' => User::ROLE_COMPANY_USER,
+            'hourly_cost' => '27,50',
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertSame('27.50', $target->refresh()->hourly_cost);
+    }
+
+    public function test_company_admin_can_clear_hourly_cost(): void
+    {
+        $company = $this->createCompany('Empresa Custo Null');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $target = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
+        $target->forceFill(['hourly_cost' => 15.25])->save();
+
+        $response = $this->actingAs($admin)->patch(route('admin.users.update', $target->id), [
+            'role' => User::ROLE_COMPANY_USER,
+            'hourly_cost' => '',
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertNull($target->refresh()->hourly_cost);
+    }
+
+    public function test_company_admin_can_update_own_hourly_cost_without_changing_role(): void
+    {
+        $company = $this->createCompany('Empresa Custo Proprio');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $response = $this->actingAs($admin)->patch(route('admin.users.update', $admin->id), [
+            'role' => User::ROLE_COMPANY_ADMIN,
+            'hourly_cost' => '32,00',
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertSame('32.00', $admin->refresh()->hourly_cost);
+        $this->assertTrue($admin->hasRole(User::ROLE_COMPANY_ADMIN));
+    }
+
     public function test_role_update_rejects_role_outside_internal_context(): void
     {
         $company = $this->createCompany('Empresa Role Invalida');

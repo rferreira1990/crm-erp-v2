@@ -23,7 +23,11 @@
                 <div class="col-sm-10 col-md-8 col-lg-6 col-xl-5 col-xxl-4">
                     <a class="d-flex flex-center text-decoration-none mb-4" href="{{ url('/') }}">
                         <div class="d-flex align-items-center fw-bolder fs-3 d-inline-block">
-                            <img src="{{ asset('vendor/phoenix/img/icons/logo.png') }}" alt="logo" width="58">
+                            <img
+                                src="{{ asset('assets/branding/platform-logo.png') }}"
+                                alt="SmokyTech"
+                                style="width: min(340px, 82vw); height: auto;"
+                            >
                         </div>
                     </a>
 
