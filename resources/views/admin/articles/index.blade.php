@@ -5,6 +5,8 @@
 @section('page_subtitle', 'Gestao de artigos da sua empresa')
 
 @section('page_actions')
+    <a href="{{ route('admin.articles.export.csv', request()->only('q')) }}" class="btn btn-phoenix-secondary btn-sm">Exportar CSV</a>
+    <a href="{{ route('admin.articles.import') }}" class="btn btn-phoenix-secondary btn-sm">Importar CSV</a>
     <a href="{{ route('admin.articles.create') }}" class="btn btn-primary btn-sm">Novo artigo</a>
 @endsection
 

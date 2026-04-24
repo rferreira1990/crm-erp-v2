@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ImportArticlesRequest;
 use App\Http\Requests\Admin\StoreArticleRequest;
 use App\Http\Requests\Admin\UpdateArticleRequest;
 use App\Models\Article;
@@ -15,17 +16,29 @@ use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
+use App\Services\Admin\ArticleCsvExportService;
+use App\Services\Admin\ArticleCsvImportService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ArticleController extends Controller
 {
+    public function __construct(
+        private readonly ArticleCsvExportService $articleCsvExportService,
+        private readonly ArticleCsvImportService $articleCsvImportService
+    ) {
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Article::class);
@@ -33,23 +46,7 @@ class ArticleController extends Controller
         $companyId = (int) $request->user()->company_id;
         $search = trim((string) $request->query('q', ''));
 
-        $articles = Article::query()
-            ->where('company_id', $companyId)
-            ->with([
-                'productFamily:id,name,family_code',
-                'category:id,name',
-                'brand:id,name',
-                'unit:id,code',
-                'vatRate:id,name,rate,is_exempt',
-            ])
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($searchQuery) use ($search): void {
-                    $searchQuery->where('code', 'like', '%'.$search.'%')
-                        ->orWhere('designation', 'like', '%'.$search.'%')
-                        ->orWhere('ean', 'like', '%'.$search.'%');
-                });
-            })
-            ->orderBy('designation')
+        $articles = $this->buildArticleIndexQuery($companyId, $search)
             ->paginate(20)
             ->withQueryString();
 
@@ -59,6 +56,67 @@ class ArticleController extends Controller
                 'q' => $search,
             ],
         ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Article::class);
+
+        $companyId = (int) $request->user()->company_id;
+
+        return $this->articleCsvExportService->download($companyId, [
+            'q' => trim((string) $request->query('q', '')),
+        ]);
+    }
+
+    public function importForm(Request $request): View
+    {
+        $this->assertCanImportArticles($request);
+
+        return view('admin.articles.import');
+    }
+
+    public function downloadImportTemplate(Request $request): Response
+    {
+        $this->assertCanImportArticles($request);
+
+        $header = implode(';', ArticleCsvExportService::HEADERS);
+        $content = "\xEF\xBB\xBF".$header.PHP_EOL;
+
+        return response($content, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="articles-import-template.csv"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+        ]);
+    }
+
+    public function importCsv(ImportArticlesRequest $request): RedirectResponse
+    {
+        $this->assertCanImportArticles($request);
+
+        $csvFile = $request->file('csv_file');
+        if (! $csvFile instanceof UploadedFile) {
+            return redirect()
+                ->route('admin.articles.import')
+                ->withErrors(['csv_file' => 'Ficheiro CSV invalido.']);
+        }
+
+        try {
+            $summary = $this->articleCsvImportService->import(
+                (int) $request->user()->company_id,
+                $csvFile
+            );
+        } catch (ValidationException $exception) {
+            return redirect()
+                ->route('admin.articles.import')
+                ->withErrors($exception->errors());
+        }
+
+        return redirect()
+            ->route('admin.articles.import')
+            ->with('status', 'Importacao concluida.')
+            ->with('importSummary', $summary);
     }
 
     public function create(Request $request): View
@@ -236,6 +294,39 @@ class ArticleController extends Controller
             ->where('company_id', $companyId)
             ->whereKey($articleId)
             ->firstOrFail();
+    }
+
+    private function assertCanImportArticles(Request $request): void
+    {
+        $user = $request->user();
+        if ($user === null) {
+            abort(403);
+        }
+
+        if (! $user->can('company.articles.create') && ! $user->can('company.articles.update')) {
+            abort(403);
+        }
+    }
+
+    private function buildArticleIndexQuery(int $companyId, string $search): Builder
+    {
+        return Article::query()
+            ->where('company_id', $companyId)
+            ->with([
+                'productFamily:id,name,family_code',
+                'category:id,name',
+                'brand:id,name',
+                'unit:id,code',
+                'vatRate:id,name,rate,is_exempt',
+            ])
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $searchQuery) use ($search): void {
+                    $searchQuery->where('code', 'like', '%'.$search.'%')
+                        ->orWhere('designation', 'like', '%'.$search.'%')
+                        ->orWhere('ean', 'like', '%'.$search.'%');
+                });
+            })
+            ->orderBy('designation');
     }
 
     /**

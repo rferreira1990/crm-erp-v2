@@ -167,6 +167,13 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
         Route::get('/articles/create', [ArticleController::class, 'create'])->name('articles.create');
         Route::post('/articles', [ArticleController::class, 'store'])->name('articles.store');
+        Route::get('/articles/export/csv', [ArticleController::class, 'exportCsv'])->name('articles.export.csv');
+        Route::get('/articles/import', [ArticleController::class, 'importForm'])->name('articles.import');
+        Route::get('/articles/import/template/csv', [ArticleController::class, 'downloadImportTemplate'])
+            ->name('articles.import.template.csv');
+        Route::post('/articles/import/csv', [ArticleController::class, 'importCsv'])
+            ->middleware('throttle:10,1')
+            ->name('articles.import.csv');
         Route::get('/articles/{article}', [ArticleController::class, 'show'])
             ->whereNumber('article')
             ->name('articles.show');
