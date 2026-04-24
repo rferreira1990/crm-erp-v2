@@ -1,63 +1,361 @@
-<<<<<<< HEAD
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿# CRM/ERP v2 (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plataforma SaaS de gestao CRM/ERP multi-tenant para empresas, com isolamento por `company_id`, controlo de acesso por roles/permissoes (Spatie) e modulos de vendas, compras, stock e obra.
 
-## About Laravel
+## Indice
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- [Visao geral](#visao-geral)
+- [Stack tecnologica](#stack-tecnologica)
+- [Modulos implementados](#modulos-implementados)
+- [Arquitetura e padroes](#arquitetura-e-padroes)
+- [Regras multi-tenant](#regras-multi-tenant)
+- [Instalacao local](#instalacao-local)
+- [Configuracao .env](#configuracao-env)
+- [Migrations e seeders](#migrations-e-seeders)
+- [Comandos uteis](#comandos-uteis)
+- [Execucao de testes](#execucao-de-testes)
+- [Permissoes e roles](#permissoes-e-roles)
+- [Fluxos principais](#fluxos-principais)
+- [Importacao/Exportacao CSV de artigos](#importacaoexportacao-csv-de-artigos)
+- [Notas de seguranca](#notas-de-seguranca)
+- [Guia rapido para novos developers](#guia-rapido-para-novos-developers)
+- [Roadmap tecnico recomendado](#roadmap-tecnico-recomendado)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Visao geral
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Este projeto implementa um CRM/ERP empresarial com foco em:
 
-## Learning Laravel
+- Multi-tenant por empresa (`company_id`)
+- Seguranca e segregacao de dados entre tenants
+- Processos de negocio completos (quotes, RFQ, compras, rececoes, stock, obra)
+- Interface admin consistente em Blade
+- Base para operacao em producao com testes feature
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Stack tecnologica
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- PHP `^8.2`
+- Laravel `^12`
+- Spatie Laravel Permission `^6`
+- Dompdf `3.1` (PDFs)
+- Vite + Tailwind + Alpine.js
+- PHPUnit `^11`
 
-## Laravel Sponsors
+## Modulos implementados
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Gestao de empresas (super admin)
+- Utilizadores e convites
+- Configuracoes da empresa (inclui SMTP por empresa)
+- Unidades, categorias, familias, marcas
+- Artigos/produtos (ficha, anexos, stock, custos)
+- Clientes e contactos
+- Fornecedores e contactos
+- Orcamentos (quotes) e dashboard
+- RFQ (pedido de cotacao), comparacao e adjudicacao
+- Encomendas a fornecedor (Purchase Orders)
+- Rececoes de encomenda e integracao com stock
+- Movimentos manuais de stock
+- Obras (construction sites), diarios, consumos e horas
+- Metodos de pagamento, condicoes de pagamento, tabelas de preco
+- Taxas de IVA e motivos de isencao (com disponibilidade por empresa)
 
-### Premium Partners
+## Arquitetura e padroes
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Padrao principal do backend:
 
-## Contributing
+1. `routes/web.php` define endpoints e middleware
+2. `Controller` coordena fluxo HTTP
+3. `FormRequest` valida e normaliza input
+4. `Service` implementa logica de negocio
+5. `Model` representa dados e scopes
+6. `Policy` garante autorizacao por recurso
+7. `Blade` apresenta UI
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Praticas usadas no projeto:
 
-## Code of Conduct
+- Queries sempre com scope de empresa
+- `firstOrFail()` para recurso fora de tenant (resultado esperado: 404)
+- Permissoes finas por acao com Spatie
+- Regras de negocio em services (evita fat controllers)
+- Testes feature por modulo
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Regras multi-tenant
 
-## Security Vulnerabilities
+O isolamento de tenant e obrigatorio em todo o projeto.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Middleware `company.context` resolve empresa atual do utilizador
+- Utilizadores de empresa so acedem a dados da propria `company_id`
+- Recursos cross-tenant devem devolver `404` (nao `403`) quando aplicavel
+- Policies validam ownership por `company_id`
+- Scopes tipo `forCompany()` sao usados em consultas de dominio
 
-## License
+Exemplo de rota admin protegida:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-=======
-# crm-erp-v2
->>>>>>> 0759cac34adee57998e81e70d5cabe527474fe3f
+- Middleware: `auth`, `company.context`, `not.superadmin`
+- Prefixo: `/admin`
+
+## Instalacao local
+
+### Requisitos
+
+- PHP 8.2+
+- Composer 2+
+- Node.js 20+ e npm
+- Base de dados (SQLite para dev rapido ou MySQL/MariaDB)
+
+### Setup rapido
+
+```bash
+cd c:/xampp/htdocs/crm-erp-v2
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+npm install
+npm run build
+```
+
+Opcional (atalho de setup existente no `composer.json`):
+
+```bash
+composer run setup
+```
+
+> Nota: `composer run setup` nao inclui `php artisan db:seed` por defeito.
+
+## Configuracao .env
+
+Configuracoes minimas recomendadas para dev local:
+
+```env
+APP_NAME="CRM ERP"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=crm_erp_v2
+DB_USERNAME=root
+DB_PASSWORD=
+
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+SESSION_DRIVER=database
+
+MAIL_MAILER=log
+```
+
+Para SMTP real por empresa, usar o ecran de configuracoes da empresa no admin.
+
+## Migrations e seeders
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+Reset completo em ambiente local:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+Seeder principal:
+
+- `Database\\Seeders\\InitialSaasSeeder`
+
+Dados demo criados:
+
+- Role `super_admin`
+- Role `company_admin`
+- Role `company_user`
+- Empresa demo
+- Utilizador super admin e admin de empresa
+
+## Comandos uteis
+
+Ambiente de desenvolvimento completo:
+
+```bash
+composer run dev
+```
+
+Apenas backend:
+
+```bash
+php artisan serve
+```
+
+Apenas frontend:
+
+```bash
+npm run dev
+```
+
+Filas:
+
+```bash
+php artisan queue:listen --tries=1 --timeout=0
+```
+
+Logs (Laravel Pail):
+
+```bash
+php artisan pail --timeout=0
+```
+
+Limpeza de cache/config:
+
+```bash
+php artisan optimize:clear
+php artisan config:clear
+```
+
+## Execucao de testes
+
+Suite completa:
+
+```bash
+php artisan test
+```
+
+Teste por modulo (exemplos):
+
+```bash
+php artisan test --filter=ArticlesTest
+php artisan test --filter=ArticlesImportExportTest
+php artisan test --filter=PurchaseOrdersTest
+php artisan test --filter=PurchaseOrderReceiptsTest
+```
+
+## Permissoes e roles
+
+Sistema baseado em Spatie (`spatie/laravel-permission`):
+
+- `super_admin`: gestao de plataforma
+- `company_admin`: gestao total do tenant
+- `company_user`: sem permissoes por defeito (atribuir conforme necessidade)
+
+Permissoes seguem naming consistente, por exemplo:
+
+- `company.articles.view`
+- `company.articles.create`
+- `company.articles.update`
+- `company.articles.delete`
+
+## Fluxos principais
+
+### Vendas
+
+1. Criacao de cliente
+2. Criacao de quote
+3. Geracao/download PDF
+4. Envio por email
+
+### Compras
+
+1. Criacao de RFQ
+2. Recolha/resposta de fornecedores
+3. Comparacao e adjudicacao
+4. Geracao de Purchase Order
+5. Envio de PO e controlo de estado
+
+### Rececao e stock
+
+1. Criacao de rececao para PO
+2. Resolucao de linhas pendentes (artigo existente ou novo)
+3. Post da rececao
+4. Geracao de movimentos de stock
+5. Atualizacao de stock e custo do artigo
+
+### Obras
+
+1. Criacao de obra
+2. Registo de diario/fotos/anexos
+3. Registo de consumos de material
+4. Registo de horas
+5. Consolidacao economica
+
+## Importacao/Exportacao CSV de artigos
+
+Disponivel no modulo de artigos:
+
+- Exportacao CSV (download direto)
+- Importacao CSV com resumo final
+
+Detalhes de exportacao:
+
+- UTF-8
+- Delimitador `;`
+- Headers estaveis
+- Scope por `company_id`
+- Sanitizacao anti CSV formula injection (`=`, `+`, `-`, `@`)
+
+Detalhes de importacao:
+
+- Matching por `reference` (codigo do artigo)
+- Atualiza artigo existente ou cria novo
+- Cria familia/marca em falta no tenant atual
+- Validacao linha a linha com continuacao em caso de erro
+- Normalizacao decimal PT (ex: `12,50` -> `12.50`)
+
+Headers suportados:
+
+```text
+reference;name;description;family;brand;unit;cost_price;sale_price;is_active;stock_current;stock_ordered_pending
+```
+
+## Notas de seguranca
+
+- Nunca usar queries globais sem `company_id` em modulos de tenant
+- Preferir `findCompany...OrFail` / `forCompany(...)->whereKey(...)->firstOrFail()`
+- Validar autorizacao com Policy antes de operacoes sensiveis
+- Uploads sempre validados por tipo/tamanho
+- Registar eventos sensiveis com logging estruturado
+- Para producao:
+  - `APP_ENV=production`
+  - `APP_DEBUG=false`
+  - HTTPS obrigatorio
+  - Rotacao de backups e auditoria de logs
+
+## Guia rapido para novos developers
+
+1. Fazer setup local e correr `php artisan migrate --seed`
+2. Entrar com utilizador de empresa demo
+3. Validar modulo de artigos e fluxo de stock
+4. Executar testes feature do modulo alterado
+5. Garantir regras multi-tenant em qualquer novo endpoint
+
+Checklist para novos endpoints:
+
+- Rota com middleware correto
+- Policy aplicada
+- Query scoped por `company_id`
+- Cross-tenant devolve `404`
+- Teste feature de autorizacao e isolamento
+
+## Roadmap tecnico recomendado
+
+Curto prazo:
+
+- Cobertura adicional de testes para cenarios negativos e concorrencia
+- Endurecimento de validacoes de importacao massiva
+- Melhoria de observabilidade (metricas de jobs/importacoes)
+
+Medio prazo:
+
+- Paginacao e filtros avancados em modulos com maior volume
+- Refactor incremental para query objects em relatorios complexos
+- Hardening de politicas de ficheiros (retencao, limpeza e quotas)
+
+Longo prazo:
+
+- Audit trail funcional por entidade critica
+- Jobs assincros para processos pesados (importacoes/exports maiores)
+- Dashboards operacionais de KPI por tenant
+
+---
+
+Se precisares, posso tambem gerar uma versao `README-PT.md` (detalhada) e manter um `README.md` mais curto para visao executiva.
