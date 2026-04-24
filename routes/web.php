@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\PurchaseOrderReceiptController;
 use App\Http\Controllers\Admin\QuoteDashboardController;
 use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
+use App\Http\Controllers\Admin\SalesDocumentController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
 use App\Http\Controllers\Admin\SupplierQuoteAwardController;
@@ -442,6 +443,37 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('quote')
             ->name('quotes.email.send');
 
+        Route::get('/sales-documents', [SalesDocumentController::class, 'index'])
+            ->name('sales-documents.index');
+        Route::get('/sales-documents/create', [SalesDocumentController::class, 'create'])
+            ->name('sales-documents.create');
+        Route::post('/sales-documents', [SalesDocumentController::class, 'store'])
+            ->name('sales-documents.store');
+        Route::get('/sales-documents/{salesDocument}', [SalesDocumentController::class, 'show'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.show');
+        Route::get('/sales-documents/{salesDocument}/edit', [SalesDocumentController::class, 'edit'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.edit');
+        Route::patch('/sales-documents/{salesDocument}', [SalesDocumentController::class, 'update'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.update');
+        Route::post('/sales-documents/{salesDocument}/issue', [SalesDocumentController::class, 'issue'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.issue');
+        Route::post('/sales-documents/{salesDocument}/cancel', [SalesDocumentController::class, 'cancel'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.cancel');
+        Route::post('/sales-documents/{salesDocument}/pdf/generate', [SalesDocumentController::class, 'generatePdf'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.pdf.generate');
+        Route::get('/sales-documents/{salesDocument}/pdf/download', [SalesDocumentController::class, 'downloadPdf'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.pdf.download');
+        Route::post('/sales-documents/{salesDocument}/email/send', [SalesDocumentController::class, 'sendEmail'])
+            ->whereNumber('salesDocument')
+            ->name('sales-documents.email.send');
+
         Route::get('/rfqs', [SupplierQuoteRequestController::class, 'index'])->name('rfqs.index');
         Route::get('/rfqs/create', [SupplierQuoteRequestController::class, 'create'])->name('rfqs.create');
         Route::post('/rfqs', [SupplierQuoteRequestController::class, 'store'])->name('rfqs.store');
@@ -494,6 +526,16 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->name('rfqs.purchase-orders.generate');
 
         Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])
+            ->name('purchase-orders.create');
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])
+            ->name('purchase-orders.store');
+        Route::get('/purchase-orders/{purchaseOrder}/edit', [PurchaseOrderController::class, 'edit'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.edit');
+        Route::patch('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])
+            ->whereNumber('purchaseOrder')
+            ->name('purchase-orders.update');
         Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
             ->whereNumber('purchaseOrder')
             ->name('purchase-orders.show');

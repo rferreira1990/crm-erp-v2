@@ -5,7 +5,8 @@
     $commercialOpen = request()->routeIs(
         'admin.customers.*',
         'admin.suppliers.*',
-        'admin.quotes.*'
+        'admin.quotes.*',
+        'admin.sales-documents.*'
     );
 
     $articlesOpen = request()->routeIs(
@@ -228,14 +229,16 @@
                         </li>
                     @endif
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <div class="d-flex align-items-center">
-                                <span class="nav-link-icon"><span data-feather="credit-card"></span></span>
-                                <span class="nav-link-text">Faturas</span>
-                            </div>
-                        </a>
-                    </li>
+                    @can('company.sales_documents.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.sales-documents.*') ? 'active' : '' }}" href="{{ route('admin.sales-documents.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="credit-card"></span></span>
+                                    <span class="nav-link-text">Documentos de Venda</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
 
                     <li class="nav-item mt-3">
                         <p class="navbar-vertical-label">Definicoes</p>
