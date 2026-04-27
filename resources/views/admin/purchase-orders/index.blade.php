@@ -2,7 +2,13 @@
 
 @section('title', 'Encomendas a fornecedor')
 @section('page_title', 'Encomendas a fornecedor')
-@section('page_subtitle', 'Gestao de encomendas geradas por adjudicacao')
+@section('page_subtitle', 'Gestao de encomendas manuais e geradas por RFQ')
+
+@section('page_actions')
+    @can('company.purchase_orders.create')
+        <a href="{{ route('admin.purchase-orders.create') }}" class="btn btn-primary btn-sm">Nova encomenda</a>
+    @endcan
+@endsection
 
 @section('breadcrumbs')
     <ol class="breadcrumb mb-0">
@@ -14,12 +20,12 @@
 @section('content')
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.purchase-orders.index') }}" class="row g-3 align-items-end">
-                <div class="col-12 col-md-6 col-xl-5">
+            <form method="GET" action="{{ route('admin.purchase-orders.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#purchase-orders-live-table">
+                <div class="col-12 col-md-6 col-xl-4">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input type="text" id="q" name="q" class="form-control" value="{{ $filters['q'] }}" placeholder="Numero ou fornecedor">
                 </div>
-                <div class="col-12 col-md-4 col-xl-3">
+                <div class="col-12 col-md-3 col-xl-2">
                     <label for="status" class="form-label">Estado</label>
                     <select id="status" name="status" class="form-select">
                         <option value="">Todos</option>
@@ -28,7 +34,33 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-2 col-xl-4 d-flex gap-2">
+                <div class="col-12 col-md-3 col-xl-2">
+                    <label for="source_type" class="form-label">Origem</label>
+                    <select id="source_type" name="source_type" class="form-select">
+                        <option value="">Todas</option>
+                        @foreach ($sourceTypeLabels as $value => $label)
+                            <option value="{{ $value }}" @selected($filters['source_type'] === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <label for="supplier_id" class="form-label">Fornecedor</label>
+                    <select id="supplier_id" name="supplier_id" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach ($suppliers as $supplier)
+                            <option value="{{ $supplier->id }}" @selected((string) $filters['supplier_id'] === (string) $supplier->id)>{{ $supplier->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 col-xl-2">
+                    <label for="issue_date_from" class="form-label">Data de</label>
+                    <input type="date" id="issue_date_from" name="issue_date_from" value="{{ $filters['issue_date_from'] }}" class="form-control">
+                </div>
+                <div class="col-12 col-md-3 col-xl-2">
+                    <label for="issue_date_to" class="form-label">Data ate</label>
+                    <input type="date" id="issue_date_to" name="issue_date_to" value="{{ $filters['issue_date_to'] }}" class="form-control">
+                </div>
+                <div class="col-12 col-md-6 col-xl-4 d-flex gap-2">
                     <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
                     <a href="{{ route('admin.purchase-orders.index') }}" class="btn btn-phoenix-secondary flex-fill">Limpar</a>
                 </div>
@@ -36,7 +68,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="purchase-orders-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">
@@ -45,7 +77,8 @@
                             <th class="ps-3">Numero</th>
                             <th>Data</th>
                             <th>Fornecedor</th>
-                            <th>Origem RFQ</th>
+                            <th>Origem</th>
+                            <th>RFQ origem</th>
                             <th>Linhas</th>
                             <th>Total</th>
                             <th>Estado</th>
@@ -58,6 +91,11 @@
                                 <td class="ps-3 fw-semibold">{{ $purchaseOrder->number }}</td>
                                 <td>{{ optional($purchaseOrder->issue_date)->format('Y-m-d') ?? '-' }}</td>
                                 <td>{{ $purchaseOrder->supplier_name_snapshot }}</td>
+                                <td>
+                                    <span class="badge badge-phoenix {{ $purchaseOrder->isManualOrigin() ? 'badge-phoenix-info' : 'badge-phoenix-secondary' }}">
+                                        {{ $purchaseOrder->originLabel() }}
+                                    </span>
+                                </td>
                                 <td>
                                     @if ($purchaseOrder->rfq)
                                         <a href="{{ route('admin.rfqs.show', $purchaseOrder->rfq->id) }}">{{ $purchaseOrder->rfq->number }}</a>
@@ -73,12 +111,17 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-3">
+                                    @can('company.purchase_orders.update')
+                                        @if ($purchaseOrder->isEditableManualDraft())
+                                            <a href="{{ route('admin.purchase-orders.edit', $purchaseOrder->id) }}" class="btn btn-phoenix-secondary btn-sm">Editar</a>
+                                        @endif
+                                    @endcan
                                     <a href="{{ route('admin.purchase-orders.show', $purchaseOrder->id) }}" class="btn btn-phoenix-secondary btn-sm">Ficha</a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-body-tertiary">Sem encomendas registadas.</td>
+                                <td colspan="9" class="text-center py-4 text-body-tertiary">Sem encomendas registadas.</td>
                             </tr>
                         @endforelse
                     </tbody>

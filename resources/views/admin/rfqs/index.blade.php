@@ -25,7 +25,7 @@
             <h5 class="mb-0">Lista de pedidos</h5>
         </div>
         <div class="card-body border-bottom border-translucent">
-            <form method="GET" action="{{ route('admin.rfqs.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.rfqs.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#rfqs-live-table">
                 <div class="col-12 col-md-5">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input
@@ -52,9 +52,10 @@
                 </div>
             </form>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm fs-9 mb-0">
+        <div id="rfqs-live-table">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm fs-9 mb-0">
                     <thead class="bg-body-tertiary">
                         <tr>
                             <th class="ps-3">Numero</th>
@@ -102,12 +103,12 @@
                             </tr>
                         @endforelse
                     </tbody>
-                </table>
+                    </table>
+                </div>
             </div>
+            @if ($rfqs->hasPages())
+                <div class="card-footer">{{ $rfqs->links() }}</div>
+            @endif
         </div>
-        @if ($rfqs->hasPages())
-            <div class="card-footer">{{ $rfqs->links() }}</div>
-        @endif
     </div>
 @endsection
-

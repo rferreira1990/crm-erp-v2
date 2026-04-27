@@ -68,12 +68,14 @@ class PurchaseOrderReceiptStockService
             ->keyBy('id');
 
         $stockDeltaByArticleId = [];
+        $latestUnitCostByArticleId = [];
         foreach ($lockedReceipt->items as $item) {
             $this->createMovementForReceiptItem(
                 receipt: $lockedReceipt,
                 receiptItem: $item,
                 articlesById: $articlesById,
-                stockDeltaByArticleId: $stockDeltaByArticleId
+                stockDeltaByArticleId: $stockDeltaByArticleId,
+                latestUnitCostByArticleId: $latestUnitCostByArticleId
             );
         }
 
@@ -81,6 +83,13 @@ class PurchaseOrderReceiptStockService
             $article = $articlesById->get((int) $articleId);
             if (! $article) {
                 continue;
+            }
+
+            $latestUnitCost = $latestUnitCostByArticleId[(int) $articleId] ?? null;
+            if ($latestUnitCost !== null) {
+                $article->forceFill([
+                    'cost_price' => round((float) $latestUnitCost, 4),
+                ])->save();
             }
 
             $article->increaseStock((float) $delta);
@@ -94,12 +103,14 @@ class PurchaseOrderReceiptStockService
     /**
      * @param Collection<int, Article> $articlesById
      * @param array<int, float> $stockDeltaByArticleId
+     * @param array<int, float> $latestUnitCostByArticleId
      */
     private function createMovementForReceiptItem(
         PurchaseOrderReceipt $receipt,
         PurchaseOrderReceiptItem $receiptItem,
         Collection $articlesById,
-        array &$stockDeltaByArticleId
+        array &$stockDeltaByArticleId,
+        array &$latestUnitCostByArticleId
     ): void {
         $receivedQuantity = round((float) ($receiptItem->received_quantity ?? 0), 3);
         if ($receivedQuantity <= self::EPSILON) {
@@ -146,5 +157,9 @@ class PurchaseOrderReceiptStockService
             (float) ($stockDeltaByArticleId[$articleId] ?? 0) + $receivedQuantity,
             3
         );
+
+        if ($unitCost !== null) {
+            $latestUnitCostByArticleId[$articleId] = $unitCost;
+        }
     }
 }

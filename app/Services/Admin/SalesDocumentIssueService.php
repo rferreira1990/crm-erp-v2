@@ -10,7 +10,8 @@ use Illuminate\Validation\ValidationException;
 class SalesDocumentIssueService
 {
     public function __construct(
-        private readonly SalesDocumentStockService $salesDocumentStockService
+        private readonly SalesDocumentStockService $salesDocumentStockService,
+        private readonly SalesDocumentPaymentStatusService $paymentStatusService
     ) {
     }
 
@@ -68,6 +69,12 @@ class SalesDocumentIssueService
                 'updated_by' => $performedBy,
             ])->save();
 
+            $this->paymentStatusService->recalculateForDocument(
+                companyId: $companyId,
+                salesDocumentId: (int) $document->id,
+                updatedBy: $performedBy
+            );
+
             return $document->fresh([
                 'customer:id,name',
                 'quote:id,number',
@@ -109,4 +116,3 @@ class SalesDocumentIssueService
         });
     }
 }
-

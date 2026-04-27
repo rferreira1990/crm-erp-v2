@@ -14,7 +14,7 @@
 @section('content')
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.purchase-order-receipts.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.purchase-order-receipts.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#purchase-order-receipts-live-table">
                 <div class="col-12 col-md-6 col-xl-5">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input type="text" id="q" name="q" class="form-control" value="{{ $filters['q'] }}" placeholder="Numero, encomenda ou fornecedor">
@@ -36,7 +36,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="purchase-order-receipts-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">

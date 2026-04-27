@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
 use App\Models\VatRate;
+use App\Services\Admin\CustomerShowDataService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomerController extends Controller
 {
+    public function __construct(
+        private readonly CustomerShowDataService $customerShowDataService
+    ) {
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Customer::class);
@@ -129,20 +135,24 @@ class CustomerController extends Controller
         $customerModel = $this->findCompanyCustomerOrFail($companyId, $customer);
         $this->authorize('view', $customerModel);
 
-        $customerModel->load([
-            'country:id,name,iso_code',
-            'priceTier:id,name,percentage_adjustment',
-            'paymentTerm:id,name',
-            'defaultVatRate:id,name,rate',
-            'contacts' => fn ($query) => $query
-                ->orderByDesc('is_primary')
-                ->orderBy('name')
-                ->orderBy('id'),
-        ]);
+        $showData = $this->customerShowDataService->build($companyId, $customerModel);
 
         return view('admin.customers.show', [
-            'customer' => $customerModel,
+            'customer' => $showData['customer'],
+            'contacts' => $showData['contacts'],
+            'recentQuotes' => $showData['recentQuotes'],
+            'recentSalesDocuments' => $showData['recentSalesDocuments'],
+            'recentReceipts' => $showData['recentReceipts'],
+            'kpis' => $showData['kpis'],
+            'statementSummary' => $showData['statementSummary'],
+            'paymentStatusCounts' => $showData['paymentStatusCounts'],
+            'activity' => $showData['activity'],
             'customerTypeLabels' => Customer::customerTypeLabels(),
+            'quoteStatusLabels' => \App\Models\Quote::statusLabels(),
+            'salesDocumentStatusLabels' => \App\Models\SalesDocument::statusLabels(),
+            'salesDocumentSourceLabels' => \App\Models\SalesDocument::sourceLabels(),
+            'salesDocumentPaymentStatusLabels' => \App\Models\SalesDocument::paymentStatusLabels(),
+            'receiptStatusLabels' => \App\Models\SalesDocumentReceipt::statusLabels(),
         ]);
     }
 

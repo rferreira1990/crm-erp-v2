@@ -35,6 +35,7 @@ class Customer extends Model
         'email',
         'website',
         'notes',
+        'internal_notes',
         'logo_path',
         'price_tier_id',
         'payment_term_id',
@@ -216,6 +217,11 @@ class Customer extends Model
     public function setNotesAttribute(?string $value): void
     {
         $this->attributes['notes'] = $this->normalizeNullableString($value);
+    }
+
+    public function setInternalNotesAttribute(?string $value): void
+    {
+        $this->attributes['internal_notes'] = $this->normalizeNullableString($value);
     }
 
     public function setPrintCommentsAttribute(?string $value): void

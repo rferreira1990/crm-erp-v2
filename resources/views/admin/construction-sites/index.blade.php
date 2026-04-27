@@ -22,7 +22,7 @@
 
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.construction-sites.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.construction-sites.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#construction-sites-live-table">
                 <div class="col-12 col-lg-5">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input type="text" id="q" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="Codigo, nome ou cliente">
@@ -53,7 +53,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="construction-sites-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">

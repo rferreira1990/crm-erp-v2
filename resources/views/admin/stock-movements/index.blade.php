@@ -20,7 +20,7 @@
 @section('content')
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.stock-movements.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.stock-movements.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#stock-movements-live-table">
                 <div class="col-12 col-md-6 col-xl-4">
                     <label class="form-label" for="article_id">Artigo</label>
                     <select id="article_id" name="article_id" class="form-select">
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="stock-movements-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">

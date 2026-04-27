@@ -28,7 +28,7 @@
         </div>
 
         <div class="card-body border-bottom border-translucent">
-            <form method="GET" action="{{ route('admin.brands.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.brands.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#brands-live-table">
                 <div class="col-12 col-md-6">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input
@@ -47,9 +47,10 @@
             </form>
         </div>
 
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm fs-9 mb-0">
+        <div id="brands-live-table">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm fs-9 mb-0">
                     <thead class="bg-body-tertiary">
                         <tr>
                             <th class="ps-3">Logotipo</th>
@@ -105,14 +106,15 @@
                             </tr>
                         @endforelse
                     </tbody>
-                </table>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        @if ($brands->hasPages())
-            <div class="card-footer">
-                {{ $brands->links() }}
-            </div>
-        @endif
+            @if ($brands->hasPages())
+                <div class="card-footer">
+                    {{ $brands->links() }}
+                </div>
+            @endif
+        </div>
     </div>
 @endsection

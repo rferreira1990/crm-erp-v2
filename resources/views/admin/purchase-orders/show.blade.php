@@ -6,6 +6,15 @@
 
 @section('page_actions')
     <a href="{{ route('admin.purchase-orders.index') }}" class="btn btn-phoenix-secondary btn-sm">Voltar</a>
+    @can('company.purchase_orders.update')
+        @if ($purchaseOrder->isEditableManualDraft() && $purchaseOrder->receipts->isEmpty())
+            <a href="{{ route('admin.purchase-orders.edit', $purchaseOrder->id) }}" class="btn btn-phoenix-secondary btn-sm">Editar</a>
+        @elseif ($purchaseOrder->isManualOrigin())
+            <button type="button" class="btn btn-phoenix-secondary btn-sm" disabled title="Disponivel apenas para encomendas manuais em rascunho sem rececoes.">
+                Editar
+            </button>
+        @endif
+    @endcan
     @if ($purchaseOrder->canReceiveMaterial() && auth()->user()->can('company.purchase_order_receipts.create'))
         <a href="{{ route('admin.purchase-order-receipts.create', $purchaseOrder->id) }}" class="btn btn-primary btn-sm">Registar rececao</a>
     @endif
@@ -63,6 +72,10 @@
                         <div class="col-12 col-md-3">
                             <div class="text-body-tertiary fs-9">Entrega prevista</div>
                             <div class="fw-semibold">{{ optional($purchaseOrder->expected_delivery_date)->format('Y-m-d') ?? '-' }}</div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="text-body-tertiary fs-9">Origem</div>
+                            <div class="fw-semibold">{{ $purchaseOrder->originLabel() }}</div>
                         </div>
                     </div>
                 </div>
@@ -171,6 +184,10 @@
                     <h5 class="mb-0">Rastreabilidade</h5>
                 </div>
                 <div class="card-body">
+                    <div class="mb-2">
+                        <div class="text-body-tertiary fs-9">Origem</div>
+                        <div class="fw-semibold">{{ $purchaseOrder->originLabel() }}</div>
+                    </div>
                     <div class="mb-2">
                         <div class="text-body-tertiary fs-9">RFQ origem</div>
                         <div class="fw-semibold">

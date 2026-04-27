@@ -279,6 +279,35 @@ class ArticlesTest extends TestCase
         ]))->assertNotFound();
     }
 
+    public function test_company_admin_can_update_article_even_with_empty_upload_fields(): void
+    {
+        $company = $this->createCompany('Empresa Artigos Update');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $family = $this->createFamily($company, '09', 'Familia Update');
+        $article = $this->createArticle($company, $family, 'Artigo original');
+
+        $response = $this->actingAs($admin)->patch(route('admin.articles.update', $article->id), [
+            'designation' => 'Artigo atualizado',
+            'product_family_id' => $family->id,
+            'category_id' => $this->defaultCategoryId(),
+            'unit_id' => $this->defaultUnitId(),
+            'vat_rate_id' => $this->mainland23Rate()->id,
+            'moves_stock' => 1,
+            'stock_alert_enabled' => 0,
+            'is_active' => 1,
+            'images' => [],
+            'documents' => [],
+        ]);
+
+        $response->assertRedirect(route('admin.articles.edit', $article->id));
+        $response->assertSessionHas('status');
+        $this->assertDatabaseHas('articles', [
+            'id' => $article->id,
+            'company_id' => $company->id,
+            'designation' => 'Artigo atualizado',
+        ]);
+    }
+
     public function test_user_without_permissions_cannot_manage_articles_module(): void
     {
         $company = $this->createCompany('Empresa Artigos Sem Perm');

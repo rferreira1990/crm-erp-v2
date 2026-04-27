@@ -13,6 +13,7 @@ use App\Models\Customer;
 use App\Models\CustomerContact;
 use App\Models\Quote;
 use App\Models\SalesDocument;
+use App\Models\SalesDocumentReceipt;
 use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Services\Admin\CompanyMailSettingsService;
@@ -84,6 +85,7 @@ class SalesDocumentController extends Controller
             'documents' => $documents,
             'statusLabels' => SalesDocument::statusLabels(),
             'sourceLabels' => SalesDocument::sourceLabels(),
+            'paymentStatusLabels' => SalesDocument::paymentStatusLabels(),
             'customers' => Customer::query()
                 ->forCompany($companyId)
                 ->orderBy('name')
@@ -166,6 +168,14 @@ class SalesDocumentController extends Controller
                     'article:id,code,designation',
                     'unit:id,code,name',
                 ]),
+            'receipts' => fn ($query) => $query
+                ->orderByDesc('receipt_date')
+                ->orderByDesc('id')
+                ->with([
+                    'paymentMethod:id,name',
+                    'creator:id,name',
+                    'canceller:id,name',
+                ]),
             'stockMovements' => fn ($query) => $query
                 ->with([
                     'article:id,code,designation',
@@ -175,12 +185,21 @@ class SalesDocumentController extends Controller
                 ->orderByDesc('id'),
         ]);
 
+        $totalReceived = round((float) $document->receipts
+            ->where('status', SalesDocumentReceipt::STATUS_ISSUED)
+            ->sum('amount'), 2);
+        $openAmount = round(max(0, (float) $document->grand_total - $totalReceived), 2);
+
         return view('admin.sales-documents.show', [
             'document' => $document,
             'statusLabels' => SalesDocument::statusLabels(),
             'sourceLabels' => SalesDocument::sourceLabels(),
+            'paymentStatusLabels' => SalesDocument::paymentStatusLabels(),
+            'receiptStatusLabels' => SalesDocumentReceipt::statusLabels(),
             'movementTypeLabels' => StockMovement::typeLabels(),
             'movementDirectionLabels' => StockMovement::directionLabels(),
+            'totalReceived' => $totalReceived,
+            'openAmount' => $openAmount,
         ]);
     }
 

@@ -114,6 +114,7 @@ class CustomersTest extends TestCase
             'default_commercial_discount' => 5.50,
             'has_credit_limit' => true,
             'credit_limit' => 1000,
+            'internal_notes' => 'Nota interna de teste',
             'is_active' => true,
         ]);
 
@@ -135,7 +136,8 @@ class CustomersTest extends TestCase
         $response->assertSee('123456789');
         $response->assertSee('cliente.ficha@example.test');
         $response->assertSee('Contacto Preferencial');
-        $response->assertSee('Condicoes financeiras');
+        $response->assertSee('Notas internas');
+        $response->assertSee('Nota interna de teste');
         $response->assertSee('Contactos do cliente');
     }
 
@@ -157,6 +159,7 @@ class CustomersTest extends TestCase
         $response = $this->actingAs($admin)->post(route('admin.customers.store'), [
             'customer_type' => Customer::TYPE_COMPANY,
             'name' => '  Cliente   Novo  ',
+            'internal_notes' => 'Nota interna de criacao',
             'has_credit_limit' => 0,
             'is_active' => 1,
         ]);
@@ -174,10 +177,40 @@ class CustomersTest extends TestCase
             'company_id' => $company->id,
             'customer_type' => Customer::TYPE_COMPANY,
             'name' => 'Cliente Novo',
+            'internal_notes' => 'Nota interna de criacao',
             'country_id' => $countryPortugalId,
             'price_tier_id' => $normalTierId,
             'payment_term_id' => $paymentTerm->id,
             'is_active' => true,
+        ]);
+    }
+
+    public function test_company_admin_can_update_internal_notes(): void
+    {
+        $company = $this->createCompany('Empresa Clientes Internal Notes Update');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $customer = Customer::query()->create([
+            'company_id' => $company->id,
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Internal Notes',
+            'has_credit_limit' => false,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->patch(route('admin.customers.update', $customer->id), [
+            'customer_type' => Customer::TYPE_COMPANY,
+            'name' => 'Cliente Internal Notes',
+            'internal_notes' => 'Atualizacao interna privada',
+            'has_credit_limit' => 0,
+            'is_active' => 1,
+        ]);
+
+        $response->assertRedirect(route('admin.customers.edit', $customer->id));
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'company_id' => $company->id,
+            'internal_notes' => 'Atualizacao interna privada',
         ]);
     }
 

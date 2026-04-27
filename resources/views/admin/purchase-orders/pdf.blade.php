@@ -60,6 +60,7 @@
                         <span class="strong">{{ $purchaseOrder->number }}</span>
                         | Emissao: {{ optional($purchaseOrder->issue_date)->format('Y-m-d') }}
                         | Estado: {{ $purchaseOrder->statusLabel() }}
+                        | Origem: {{ $purchaseOrder->originLabel() }}
                     </div>
                     <div class="doc-meta" style="margin-top:4px;">
                         Ref. RFQ: {{ $rfqReference !== '' ? $rfqReference : '-' }}

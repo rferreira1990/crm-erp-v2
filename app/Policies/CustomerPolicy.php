@@ -23,6 +23,24 @@ class CustomerPolicy extends BaseCompanyPolicy
             && $user->can('company.customers.view');
     }
 
+    public function viewStatement(User $user, Customer $customer): bool
+    {
+        return $this->canAccessCompanyResource($user, $customer)
+            && $user->can('company.customer_statement.view');
+    }
+
+    public function pdfStatement(User $user, Customer $customer): bool
+    {
+        return $this->canAccessCompanyResource($user, $customer)
+            && $user->can('company.customer_statement.pdf');
+    }
+
+    public function sendStatement(User $user, Customer $customer): bool
+    {
+        return $this->canAccessCompanyResource($user, $customer)
+            && $user->can('company.customer_statement.send');
+    }
+
     public function create(User $user): bool
     {
         return $user->is_active
@@ -42,4 +60,3 @@ class CustomerPolicy extends BaseCompanyPolicy
             && $user->can('company.customers.delete');
     }
 }
-

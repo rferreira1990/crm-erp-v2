@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BrandController extends Controller
 {
@@ -193,6 +194,30 @@ class BrandController extends Controller
         return redirect()
             ->route('admin.brands.edit', $brandModel->id)
             ->with('status', 'Ficheiro removido com sucesso.');
+    }
+
+    public function showLogo(Request $request, int $brand): StreamedResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $brandModel = $this->findCompanyBrandOrFail($companyId, $brand);
+        $this->authorize('view', $brandModel);
+
+        if (! $brandModel->logo_path) {
+            abort(404);
+        }
+
+        $extension = pathinfo($brandModel->logo_path, PATHINFO_EXTENSION);
+        $filename = 'brand-'.$brandModel->id.'-logo'.($extension !== '' ? '.'.$extension : '');
+
+        if (Storage::disk('public')->exists($brandModel->logo_path)) {
+            return Storage::disk('public')->response($brandModel->logo_path, $filename);
+        }
+
+        if (Storage::disk('local')->exists($brandModel->logo_path)) {
+            return Storage::disk('local')->response($brandModel->logo_path, $filename);
+        }
+
+        abort(404);
     }
 
     private function findCompanyBrandOrFail(int $companyId, int $brandId): Brand

@@ -5,10 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ChangePurchaseOrderStatusRequest;
 use App\Http\Requests\Admin\SendPurchaseOrderEmailRequest;
+use App\Http\Requests\Admin\StorePurchaseOrderRequest;
+use App\Http\Requests\Admin\UpdatePurchaseOrderRequest;
+use App\Models\Article;
 use App\Mail\Admin\PurchaseOrderSentMail;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderReceipt;
+use App\Models\Supplier;
+use App\Models\Unit;
 use App\Services\Admin\CompanyMailSettingsService;
+use App\Services\Admin\ManualPurchaseOrderService;
 use App\Services\Admin\PurchaseOrderPdfService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +32,8 @@ class PurchaseOrderController extends Controller
 {
     public function __construct(
         private readonly PurchaseOrderPdfService $purchaseOrderPdfService,
-        private readonly CompanyMailSettingsService $companyMailSettingsService
+        private readonly CompanyMailSettingsService $companyMailSettingsService,
+        private readonly ManualPurchaseOrderService $manualPurchaseOrderService
     ) {
     }
 
@@ -37,6 +44,10 @@ class PurchaseOrderController extends Controller
         $companyId = (int) $request->user()->company_id;
         $search = trim((string) $request->query('q', ''));
         $status = trim((string) $request->query('status', ''));
+        $sourceType = trim((string) $request->query('source_type', ''));
+        $supplierId = (int) $request->query('supplier_id', 0);
+        $issueDateFrom = trim((string) $request->query('issue_date_from', ''));
+        $issueDateTo = trim((string) $request->query('issue_date_to', ''));
 
         $purchaseOrders = PurchaseOrder::query()
             ->forCompany($companyId)
@@ -55,6 +66,26 @@ class PurchaseOrderController extends Controller
             ->when($status !== '' && in_array($status, PurchaseOrder::statuses(), true), function ($query) use ($status): void {
                 $query->where('status', $status);
             })
+            ->when($sourceType === PurchaseOrder::SOURCE_MANUAL, function ($query): void {
+                $query->whereNull('supplier_quote_request_id')
+                    ->whereNull('supplier_quote_award_id');
+            })
+            ->when($sourceType === PurchaseOrder::SOURCE_RFQ, function ($query): void {
+                $query->where(function ($sourceQuery): void {
+                    $sourceQuery
+                        ->whereNotNull('supplier_quote_request_id')
+                        ->orWhereNotNull('supplier_quote_award_id');
+                });
+            })
+            ->when($supplierId > 0, function ($query) use ($supplierId): void {
+                $query->where('supplier_id', $supplierId);
+            })
+            ->when($this->isIsoDate($issueDateFrom), function ($query) use ($issueDateFrom): void {
+                $query->whereDate('issue_date', '>=', $issueDateFrom);
+            })
+            ->when($this->isIsoDate($issueDateTo), function ($query) use ($issueDateTo): void {
+                $query->whereDate('issue_date', '<=', $issueDateTo);
+            })
             ->orderByDesc('issue_date')
             ->orderByDesc('id')
             ->paginate(20)
@@ -63,11 +94,66 @@ class PurchaseOrderController extends Controller
         return view('admin.purchase-orders.index', [
             'purchaseOrders' => $purchaseOrders,
             'statusLabels' => PurchaseOrder::statusLabels(),
+            'sourceTypeLabels' => [
+                PurchaseOrder::SOURCE_MANUAL => 'Manual',
+                PurchaseOrder::SOURCE_RFQ => 'RFQ',
+            ],
+            'suppliers' => Supplier::query()
+                ->forCompany($companyId)
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'filters' => [
                 'q' => $search,
                 'status' => $status,
+                'source_type' => $sourceType,
+                'supplier_id' => $supplierId > 0 ? $supplierId : '',
+                'issue_date_from' => $issueDateFrom,
+                'issue_date_to' => $issueDateTo,
             ],
         ]);
+    }
+
+    public function create(Request $request): View
+    {
+        $this->authorize('create', PurchaseOrder::class);
+
+        $companyId = (int) $request->user()->company_id;
+
+        return view('admin.purchase-orders.create', [
+            'suppliers' => Supplier::query()
+                ->forCompany($companyId)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']),
+            'articles' => Article::query()
+                ->forCompany($companyId)
+                ->where('is_active', true)
+                ->with('unit:id,code,name')
+                ->orderBy('designation')
+                ->get(['id', 'code', 'designation', 'unit_id', 'cost_price']),
+            'units' => Unit::query()
+                ->visibleToCompany($companyId)
+                ->orderBy('code')
+                ->get(['id', 'code', 'name']),
+            'defaults' => [
+                'issue_date' => now()->toDateString(),
+            ],
+        ]);
+    }
+
+    public function store(StorePurchaseOrderRequest $request): RedirectResponse
+    {
+        $this->authorize('create', PurchaseOrder::class);
+
+        $purchaseOrder = $this->manualPurchaseOrderService->create(
+            companyId: (int) $request->user()->company_id,
+            createdBy: (int) $request->user()->id,
+            payload: $request->validated()
+        );
+
+        return redirect()
+            ->route('admin.purchase-orders.show', $purchaseOrder->id)
+            ->with('status', 'Encomenda criada com sucesso.');
     }
 
     public function show(Request $request, int $purchaseOrder): View
@@ -106,6 +192,69 @@ class PurchaseOrderController extends Controller
             'statusLabels' => PurchaseOrder::statusLabels(),
             'receiptStatusLabels' => PurchaseOrderReceipt::statusLabels(),
         ]);
+    }
+
+    public function edit(Request $request, int $purchaseOrder): View|RedirectResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $purchaseOrderModel = $this->findCompanyPurchaseOrderOrFail($companyId, $purchaseOrder);
+        $this->authorize('update', $purchaseOrderModel);
+
+        if (! $purchaseOrderModel->isEditableManualDraft()) {
+            abort(404);
+        }
+
+        if ($purchaseOrderModel->receipts()->exists()) {
+            return redirect()
+                ->route('admin.purchase-orders.show', $purchaseOrderModel->id)
+                ->withErrors([
+                    'purchase_order' => 'Nao e possivel editar a encomenda porque ja tem rececoes associadas.',
+                ]);
+        }
+
+        $purchaseOrderModel->load([
+            'items' => fn ($query) => $query->orderBy('line_order')->orderBy('id'),
+        ]);
+
+        return view('admin.purchase-orders.edit', [
+            'purchaseOrder' => $purchaseOrderModel,
+            'suppliers' => Supplier::query()
+                ->forCompany($companyId)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']),
+            'articles' => Article::query()
+                ->forCompany($companyId)
+                ->where('is_active', true)
+                ->with('unit:id,code,name')
+                ->orderBy('designation')
+                ->get(['id', 'code', 'designation', 'unit_id', 'cost_price']),
+            'units' => Unit::query()
+                ->visibleToCompany($companyId)
+                ->orderBy('code')
+                ->get(['id', 'code', 'name']),
+        ]);
+    }
+
+    public function update(UpdatePurchaseOrderRequest $request, int $purchaseOrder): RedirectResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $purchaseOrderModel = $this->findCompanyPurchaseOrderOrFail($companyId, $purchaseOrder);
+        $this->authorize('update', $purchaseOrderModel);
+
+        if (! $purchaseOrderModel->isEditableManualDraft()) {
+            abort(404);
+        }
+
+        $purchaseOrderModel = $this->manualPurchaseOrderService->update(
+            companyId: $companyId,
+            purchaseOrderId: (int) $purchaseOrderModel->id,
+            payload: $request->validated()
+        );
+
+        return redirect()
+            ->route('admin.purchase-orders.show', $purchaseOrderModel->id)
+            ->with('status', 'Encomenda atualizada com sucesso.');
     }
 
     public function generatePdf(Request $request, int $purchaseOrder): RedirectResponse
@@ -234,5 +383,10 @@ class PurchaseOrderController extends Controller
         }
 
         return 'Falha no envio da encomenda por email. Verifique a configuracao SMTP e tente novamente.';
+    }
+
+    private function isIsoDate(string $value): bool
+    {
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1;
     }
 }

@@ -27,6 +27,11 @@
             </form>
         @endif
     @endcan
+    @can('company.sales_document_receipts.create')
+        @if ($document->canReceivePayments() && $openAmount > 0)
+            <a href="{{ route('admin.sales-document-receipts.create', $document->id) }}" class="btn btn-primary btn-sm">Emitir recibo</a>
+        @endif
+    @endcan
     <form method="POST" action="{{ route('admin.sales-documents.pdf.generate', $document->id) }}" class="d-inline">
         @csrf
         <button type="submit" class="btn btn-phoenix-secondary btn-sm">Gerar PDF</button>
@@ -69,6 +74,14 @@
                         <div class="col-12 col-md-4">
                             <div class="text-body-tertiary fs-9">Vencimento</div>
                             <div class="fw-semibold">{{ optional($document->due_date)->format('Y-m-d') ?? '-' }}</div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="text-body-tertiary fs-9">Estado pagamento</div>
+                            <div class="fw-semibold">
+                                <span class="badge badge-phoenix {{ $document->paymentStatusBadgeClass() }}">
+                                    {{ $paymentStatusLabels[$document->payment_status] ?? $document->paymentStatusLabel() }}
+                                </span>
+                            </div>
                         </div>
                         <div class="col-12 col-md-8">
                             <div class="text-body-tertiary fs-9">Cliente</div>
@@ -155,10 +168,61 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-12 col-md-3"><span class="text-body-tertiary fs-9">Subtotal:</span> <span class="fw-semibold">{{ number_format((float) $document->subtotal, 2, ',', '.') }} {{ $document->currency }}</span></div>
-                        <div class="col-12 col-md-3"><span class="text-body-tertiary fs-9">Desconto:</span> <span class="fw-semibold">{{ number_format((float) $document->discount_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
-                        <div class="col-12 col-md-3"><span class="text-body-tertiary fs-9">Impostos:</span> <span class="fw-semibold">{{ number_format((float) $document->tax_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
-                        <div class="col-12 col-md-3"><span class="text-body-tertiary fs-9">Total:</span> <span class="fw-bold">{{ number_format((float) $document->grand_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Subtotal:</span> <span class="fw-semibold">{{ number_format((float) $document->subtotal, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Desconto:</span> <span class="fw-semibold">{{ number_format((float) $document->discount_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Impostos:</span> <span class="fw-semibold">{{ number_format((float) $document->tax_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Total documento:</span> <span class="fw-bold">{{ number_format((float) $document->grand_total, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Total recebido:</span> <span class="fw-semibold">{{ number_format((float) $totalReceived, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                        <div class="col-12 col-md-4"><span class="text-body-tertiary fs-9">Valor em aberto:</span> <span class="fw-semibold">{{ number_format((float) $openAmount, 2, ',', '.') }} {{ $document->currency }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recibos</h5>
+                    @can('company.sales_document_receipts.create')
+                        @if ($document->canReceivePayments() && $openAmount > 0)
+                            <a href="{{ route('admin.sales-document-receipts.create', $document->id) }}" class="btn btn-primary btn-sm">Emitir recibo</a>
+                        @endif
+                    @endcan
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm fs-9 mb-0">
+                            <thead class="bg-body-tertiary">
+                                <tr>
+                                    <th class="ps-3">Recibo</th>
+                                    <th>Data</th>
+                                    <th>Modo pagamento</th>
+                                    <th>Valor</th>
+                                    <th>Estado</th>
+                                    <th class="text-end pe-3">Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($document->receipts as $receipt)
+                                    <tr>
+                                        <td class="ps-3 fw-semibold">{{ $receipt->number }}</td>
+                                        <td>{{ optional($receipt->receipt_date)->format('Y-m-d') ?? '-' }}</td>
+                                        <td>{{ $receipt->paymentMethod?->name ?? '-' }}</td>
+                                        <td>{{ number_format((float) $receipt->amount, 2, ',', '.') }} {{ $document->currency }}</td>
+                                        <td>
+                                            <span class="badge badge-phoenix {{ $receipt->statusBadgeClass() }}">
+                                                {{ $receiptStatusLabels[$receipt->status] ?? $receipt->status }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <a href="{{ route('admin.sales-document-receipts.show', $receipt->id) }}" class="btn btn-phoenix-secondary btn-sm">Ficha</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-body-tertiary">Sem recibos emitidos.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

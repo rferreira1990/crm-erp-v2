@@ -26,12 +26,12 @@
         </div>
     @endif
 
-    <div class="card mb-4">
+    <div class="card mb-4" id="users-live-table">
         <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Utilizadores da empresa</h5>
         </div>
         <div class="card-body border-bottom border-translucent">
-            <form method="GET" action="{{ route('admin.users.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.users.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#users-live-table">
                 <div class="col-12 col-md-5">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input type="text" id="q" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="Nome ou email">

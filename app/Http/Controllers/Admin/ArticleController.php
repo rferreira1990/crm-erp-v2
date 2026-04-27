@@ -11,6 +11,8 @@ use App\Models\ArticleFile;
 use App\Models\ArticleImage;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderReceipt;
 use App\Models\ProductFamily;
 use App\Models\StockMovement;
 use App\Models\Unit;
@@ -26,6 +28,7 @@ use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -44,17 +47,43 @@ class ArticleController extends Controller
         $this->authorize('viewAny', Article::class);
 
         $companyId = (int) $request->user()->company_id;
-        $search = trim((string) $request->query('q', ''));
+        $filters = $this->resolveArticleListFilters($request, $companyId);
 
-        $articles = $this->buildArticleIndexQuery($companyId, $search)
+        $articles = $this->buildArticlesQuery($companyId, $filters)
             ->paginate(20)
             ->withQueryString();
 
         return view('admin.articles.index', [
             'articles' => $articles,
             'filters' => [
-                'q' => $search,
+                'q' => $filters['q'],
+                'family_id' => $filters['family_id'] ?? '',
+                'brand_id' => $filters['brand_id'] ?? '',
             ],
+            'familyOptions' => ProductFamily::query()
+                ->where('company_id', $companyId)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'brandOptions' => Brand::query()
+                ->where('company_id', $companyId)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+        ]);
+    }
+
+    public function table(Request $request): View
+    {
+        $this->authorize('viewAny', Article::class);
+
+        $companyId = (int) $request->user()->company_id;
+        $filters = $this->resolveArticleListFilters($request, $companyId);
+
+        $articles = $this->buildArticlesQuery($companyId, $filters)
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.articles.partials.table', [
+            'articles' => $articles,
         ]);
     }
 
@@ -63,9 +92,12 @@ class ArticleController extends Controller
         $this->authorize('viewAny', Article::class);
 
         $companyId = (int) $request->user()->company_id;
+        $filters = $this->resolveArticleListFilters($request, $companyId);
 
         return $this->articleCsvExportService->download($companyId, [
-            'q' => trim((string) $request->query('q', '')),
+            'q' => $filters['q'],
+            'family_id' => $filters['family_id'],
+            'brand_id' => $filters['brand_id'],
         ]);
     }
 
@@ -308,25 +340,106 @@ class ArticleController extends Controller
         }
     }
 
-    private function buildArticleIndexQuery(int $companyId, string $search): Builder
+    /**
+     * @param array{q?: ?string, family_id?: ?int, brand_id?: ?int} $filters
+     */
+    private function buildArticlesQuery(int $companyId, array $filters): Builder
     {
+        $search = trim((string) ($filters['q'] ?? ''));
+        $familyId = (int) ($filters['family_id'] ?? 0);
+        $brandId = (int) ($filters['brand_id'] ?? 0);
+
+        $receivedSubquery = DB::table('purchase_order_receipt_items as pri')
+            ->selectRaw('pri.purchase_order_item_id, SUM(pri.received_quantity) as total_received')
+            ->join('purchase_order_receipts as pr', function ($join) use ($companyId): void {
+                $join->on('pr.id', '=', 'pri.purchase_order_receipt_id')
+                    ->where('pr.company_id', '=', $companyId)
+                    ->where('pr.status', '=', PurchaseOrderReceipt::STATUS_POSTED);
+            })
+            ->where('pri.company_id', $companyId)
+            ->groupBy('pri.purchase_order_item_id');
+
+        $pendingStockSubquery = DB::table('purchase_order_items as poi')
+            ->selectRaw('COALESCE(SUM(CASE WHEN (poi.quantity - COALESCE(received.total_received, 0)) > 0 THEN (poi.quantity - COALESCE(received.total_received, 0)) ELSE 0 END), 0)')
+            ->join('purchase_orders as po', function ($join) use ($companyId): void {
+                $join->on('po.id', '=', 'poi.purchase_order_id')
+                    ->where('po.company_id', '=', $companyId)
+                    ->whereIn('po.status', [
+                        PurchaseOrder::STATUS_SENT,
+                        PurchaseOrder::STATUS_CONFIRMED,
+                        PurchaseOrder::STATUS_PARTIALLY_RECEIVED,
+                    ]);
+            })
+            ->leftJoinSub($receivedSubquery, 'received', function ($join): void {
+                $join->on('received.purchase_order_item_id', '=', 'poi.id');
+            })
+            ->where('poi.company_id', $companyId)
+            ->whereColumn('poi.article_id', 'articles.id');
+
         return Article::query()
-            ->where('company_id', $companyId)
+            ->from('articles')
+            ->where('articles.company_id', $companyId)
             ->with([
-                'productFamily:id,name,family_code',
+                'productFamily:id,name',
                 'category:id,name',
-                'brand:id,name',
+                'brand:id,name,logo_path',
                 'unit:id,code',
                 'vatRate:id,name,rate,is_exempt',
             ])
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $searchQuery) use ($search): void {
-                    $searchQuery->where('code', 'like', '%'.$search.'%')
-                        ->orWhere('designation', 'like', '%'.$search.'%')
-                        ->orWhere('ean', 'like', '%'.$search.'%');
+                    $searchQuery->where('articles.code', 'like', '%'.$search.'%')
+                        ->orWhere('articles.designation', 'like', '%'.$search.'%')
+                        ->orWhere('articles.ean', 'like', '%'.$search.'%');
                 });
             })
-            ->orderBy('designation');
+            ->when($familyId > 0, function (Builder $query) use ($familyId): void {
+                $query->where('articles.product_family_id', $familyId);
+            })
+            ->when($brandId > 0, function (Builder $query) use ($brandId): void {
+                $query->where('articles.brand_id', $brandId);
+            })
+            ->select('articles.*')
+            ->selectSub($pendingStockSubquery, 'stock_ordered_pending')
+            ->orderBy('articles.designation');
+    }
+
+    /**
+     * @return array{q:string, family_id:?int, brand_id:?int}
+     */
+    private function resolveArticleListFilters(Request $request, int $companyId): array
+    {
+        $search = trim((string) $request->query('q', ''));
+        $familyId = max(0, (int) $request->query('family_id', 0));
+        $brandId = max(0, (int) $request->query('brand_id', 0));
+
+        if ($familyId > 0) {
+            $belongsToCompany = ProductFamily::query()
+                ->where('company_id', $companyId)
+                ->whereKey($familyId)
+                ->exists();
+
+            if (! $belongsToCompany) {
+                abort(404);
+            }
+        }
+
+        if ($brandId > 0) {
+            $belongsToCompany = Brand::query()
+                ->where('company_id', $companyId)
+                ->whereKey($brandId)
+                ->exists();
+
+            if (! $belongsToCompany) {
+                abort(404);
+            }
+        }
+
+        return [
+            'q' => $search,
+            'family_id' => $familyId > 0 ? $familyId : null,
+            'brand_id' => $brandId > 0 ? $brandId : null,
+        ];
     }
 
     /**
@@ -334,6 +447,10 @@ class ArticleController extends Controller
      */
     private function normalizeArticlePayload(array $data, VatRate $vatRate): array
     {
+        // Keep only persisted article attributes. Upload helper fields (e.g. images/documents)
+        // are validated in FormRequests but must never be sent to the articles table.
+        $data = array_intersect_key($data, array_flip((new Article())->getFillable()));
+
         $movesStock = (bool) ($data['moves_stock'] ?? false);
         $stockAlertEnabled = (bool) ($data['stock_alert_enabled'] ?? false);
 

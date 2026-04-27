@@ -24,7 +24,7 @@
             <h5 class="mb-0">Filtros</h5>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.construction-site-time-entries.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('admin.construction-site-time-entries.index') }}" class="row g-3" data-live-table-form data-live-table-target="#construction-site-time-entries-live-table">
                 <div class="col-12 col-md-3">
                     <label class="form-label" for="construction_site_id">Obra</label>
                     <select id="construction_site_id" name="construction_site_id" class="form-select">
@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="construction-site-time-entries-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">

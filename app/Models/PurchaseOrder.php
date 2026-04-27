@@ -16,6 +16,9 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
+    public const SOURCE_MANUAL = 'manual';
+    public const SOURCE_RFQ = 'rfq';
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SENT = 'sent';
     public const STATUS_CONFIRMED = 'confirmed';
@@ -180,6 +183,40 @@ class PurchaseOrder extends Model
             self::STATUS_CANCELLED => 'badge-phoenix-danger',
             default => 'badge-phoenix-secondary',
         };
+    }
+
+    public function sourceType(): string
+    {
+        return $this->supplier_quote_request_id !== null || $this->supplier_quote_award_id !== null
+            ? self::SOURCE_RFQ
+            : self::SOURCE_MANUAL;
+    }
+
+    public function isManualOrigin(): bool
+    {
+        return $this->sourceType() === self::SOURCE_MANUAL;
+    }
+
+    public function isManual(): bool
+    {
+        return $this->isManualOrigin();
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function isEditableManualDraft(): bool
+    {
+        return ! $this->is_locked
+            && $this->isManual()
+            && $this->isDraft();
+    }
+
+    public function originLabel(): string
+    {
+        return $this->isManualOrigin() ? 'Manual' : 'RFQ';
     }
 
     public function isEditable(): bool

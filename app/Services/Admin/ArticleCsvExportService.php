@@ -81,6 +81,8 @@ class ArticleCsvExportService
     private function buildQuery(int $companyId, array $filters): Builder
     {
         $search = trim((string) ($filters['q'] ?? ''));
+        $familyId = (int) ($filters['family_id'] ?? 0);
+        $brandId = (int) ($filters['brand_id'] ?? 0);
 
         $receivedSubquery = DB::table('purchase_order_receipt_items as pri')
             ->selectRaw('pri.purchase_order_item_id, SUM(pri.received_quantity) as total_received')
@@ -127,6 +129,12 @@ class ArticleCsvExportService
                         ->orWhere('articles.designation', 'like', '%'.$search.'%')
                         ->orWhere('articles.ean', 'like', '%'.$search.'%');
                 });
+            })
+            ->when($familyId > 0, function (Builder $query) use ($familyId): void {
+                $query->where('articles.product_family_id', $familyId);
+            })
+            ->when($brandId > 0, function (Builder $query) use ($brandId): void {
+                $query->where('articles.brand_id', $brandId);
             })
             ->select([
                 'articles.code as reference',

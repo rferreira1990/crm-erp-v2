@@ -1,11 +1,11 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', 'Artigos / Produtos')
 @section('page_title', 'Artigos / Produtos')
 @section('page_subtitle', 'Gestao de artigos da sua empresa')
 
 @section('page_actions')
-    <a href="{{ route('admin.articles.export.csv', request()->only('q')) }}" class="btn btn-phoenix-secondary btn-sm">Exportar CSV</a>
+    <a href="{{ route('admin.articles.export.csv', request()->only(['q', 'family_id', 'brand_id'])) }}" class="btn btn-phoenix-secondary btn-sm" data-live-table-export>Exportar CSV</a>
     <a href="{{ route('admin.articles.import') }}" class="btn btn-phoenix-secondary btn-sm">Importar CSV</a>
     <a href="{{ route('admin.articles.create') }}" class="btn btn-primary btn-sm">Novo artigo</a>
 @endsection
@@ -24,120 +24,83 @@
         </div>
     @endif
 
-    <div class="card">
-        <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Lista de artigos</h5>
-        </div>
+    <div class="mb-4">
+        <ul class="nav nav-links mx-n3">
+            <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{{ route('admin.articles.index') }}">
+                    <span>Todos </span>
+                    <span class="text-body-tertiary fw-semibold">({{ $articles->total() }})</span>
+                </a>
+            </li>
+            @if (! empty($filters['q']))
+                <li class="nav-item">
+                    <span class="nav-link">
+                        <span>Pesquisa: </span>
+                        <span class="text-body-tertiary fw-semibold">{{ $filters['q'] }}</span>
+                    </span>
+                </li>
+            @endif
+            @if (! empty($filters['family_id']) || ! empty($filters['brand_id']))
+                <li class="nav-item">
+                    <span class="nav-link text-body-tertiary fw-semibold">Filtros ativos</span>
+                </li>
+            @endif
+        </ul>
+    </div>
 
-        <div class="card-body border-bottom border-translucent">
-            <form method="GET" action="{{ route('admin.articles.index') }}" class="row g-3 align-items-end">
-                <div class="col-12 col-md-6">
-                    <label for="q" class="form-label">Pesquisar</label>
-                    <input
-                        type="text"
-                        id="q"
-                        name="q"
-                        value="{{ $filters['q'] ?? '' }}"
-                        class="form-control"
-                        placeholder="Codigo, designacao ou EAN"
-                    >
-                </div>
-                <div class="col-12 col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
-                    <a href="{{ route('admin.articles.index') }}" class="btn btn-phoenix-secondary flex-fill">Limpar</a>
+    <div id="products">
+        <div class="mb-4">
+            <form
+                method="GET"
+                action="{{ route('admin.articles.index') }}"
+                id="articles-filter-form"
+                data-live-table-form
+                data-live-table-target="#articles-table-container"
+                data-live-table-endpoint="{{ route('admin.articles.table') }}"
+                data-live-table-history-endpoint="{{ route('admin.articles.index') }}"
+                data-live-table-export-selector="[data-live-table-export]"
+            >
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="search-box">
+                        <input
+                            class="form-control search-input"
+                            type="search"
+                            id="q"
+                            name="q"
+                            value="{{ $filters['q'] ?? '' }}"
+                            placeholder="Pesquisar por codigo, designacao ou EAN"
+                            aria-label="Pesquisar artigos"
+                            autocomplete="off"
+                        />
+                        <span class="fas fa-search search-box-icon"></span>
+                    </div>
+
+                    <div class="scrollbar overflow-hidden-y">
+                        <div class="btn-group position-static" role="group">
+                            <select name="family_id" class="form-select form-select-sm">
+                                <option value="">Familia</option>
+                                @foreach ($familyOptions as $familyOption)
+                                    <option value="{{ $familyOption->id }}" @selected((string) $filters['family_id'] === (string) $familyOption->id)>
+                                        {{ $familyOption->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <select name="brand_id" class="form-select form-select-sm">
+                                <option value="">Marca</option>
+                                @foreach ($brandOptions as $brandOption)
+                                    <option value="{{ $brandOption->id }}" @selected((string) $filters['brand_id'] === (string) $brandOption->id)>
+                                        {{ $brandOption->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
 
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm fs-9 mb-0">
-                    <thead class="bg-body-tertiary">
-                        <tr>
-                            <th class="ps-3">Codigo</th>
-                            <th>Designacao</th>
-                            <th>Familia</th>
-                            <th>Categoria</th>
-                            <th>Marca</th>
-                            <th>Unidade</th>
-                            <th>IVA</th>
-                            <th>Custo</th>
-                            <th>Venda</th>
-                            <th>Estado</th>
-                            <th class="text-end pe-3">Acoes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($articles as $article)
-                            <tr>
-                                <td class="ps-3 fw-semibold">{{ $article->code }}</td>
-                                <td>{{ $article->designation }}</td>
-                                <td>{{ $article->productFamily?->name ?? '-' }}</td>
-                                <td>{{ $article->category?->name ?? '-' }}</td>
-                                <td>{{ $article->brand?->name ?? '-' }}</td>
-                                <td>{{ $article->unit?->code ?? '-' }}</td>
-                                <td>
-                                    @if ($article->vatRate)
-                                        {{ $article->vatRate->name }} ({{ number_format((float) $article->vatRate->rate, 2) }}%)
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($article->cost_price !== null)
-                                        {{ number_format((float) $article->cost_price, 4, ',', '.') }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($article->sale_price !== null)
-                                        {{ number_format((float) $article->sale_price, 4, ',', '.') }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($article->is_active)
-                                        <span class="badge badge-phoenix badge-phoenix-success">Ativo</span>
-                                    @else
-                                        <span class="badge badge-phoenix badge-phoenix-secondary">Inativo</span>
-                                    @endif
-                                </td>
-                                <td class="text-end pe-3">
-                                    <div class="d-inline-flex gap-2">
-                                        <a href="{{ route('admin.articles.show', $article->id) }}" class="btn btn-phoenix-secondary btn-sm">
-                                            Ficha
-                                        </a>
-                                        <a href="{{ route('admin.articles.edit', $article->id) }}" class="btn btn-phoenix-secondary btn-sm">
-                                            Editar
-                                        </a>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.articles.destroy', $article->id) }}"
-                                            data-confirm="Tem a certeza que pretende apagar este artigo?"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-phoenix-danger btn-sm">Apagar</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="11" class="text-center py-4 text-body-tertiary">Sem artigos registados.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+        <div id="articles-table-container">
+            @include('admin.articles.partials.table', ['articles' => $articles])
         </div>
-
-        @if ($articles->hasPages())
-            <div class="card-footer">
-                {{ $articles->links() }}
-            </div>
-        @endif
     </div>
 @endsection

@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ConstructionSiteLogController;
 use App\Http\Controllers\Admin\ConstructionSiteMaterialUsageController;
 use App\Http\Controllers\Admin\ConstructionSiteTimeEntryController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\CustomerStatementController;
 use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Admin\QuoteDashboardController;
 use App\Http\Controllers\Admin\ProductFamilyController;
 use App\Http\Controllers\Admin\QuoteController;
 use App\Http\Controllers\Admin\SalesDocumentController;
+use App\Http\Controllers\Admin\SalesDocumentReceiptController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
 use App\Http\Controllers\Admin\SupplierQuoteAwardController;
@@ -33,6 +35,10 @@ use App\Http\Controllers\Admin\SupplierQuoteComparisonController;
 use App\Http\Controllers\Admin\SupplierQuoteRequestController;
 use App\Http\Controllers\Admin\SupplierQuoteResponseController;
 use App\Http\Controllers\Admin\StockMovementController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EmailAccountController;
+use App\Http\Controllers\Admin\EmailInboxController;
+use App\Http\Controllers\Admin\EmailMessageController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
@@ -78,9 +84,7 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/dashboard', function () {
-            return view('admin.dashboard.index');
-        })->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/dashboard/version-old', function () {
             return view('admin.dashboard.version_old');
@@ -92,6 +96,30 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->middleware('throttle:6,1')
             ->name('company-settings.test-smtp');
         Route::get('/company-settings/logo', [CompanySettingsController::class, 'showLogo'])->name('company-settings.logo.show');
+
+        Route::get('/email/accounts', [EmailAccountController::class, 'edit'])->name('email-accounts.edit');
+        Route::post('/email/accounts', [EmailAccountController::class, 'store'])->name('email-accounts.store');
+        Route::put('/email/accounts/{emailAccount}', [EmailAccountController::class, 'update'])
+            ->whereNumber('emailAccount')
+            ->name('email-accounts.update');
+        Route::post('/email/accounts/{emailAccount}/test-connection', [EmailAccountController::class, 'testConnection'])
+            ->whereNumber('emailAccount')
+            ->middleware('throttle:6,1')
+            ->name('email-accounts.test-connection');
+
+        Route::get('/email/inbox', [EmailInboxController::class, 'index'])->name('email-inbox.index');
+        Route::get('/email/inbox/table', [EmailInboxController::class, 'table'])->name('email-inbox.table');
+        Route::post('/email/inbox/sync', [EmailInboxController::class, 'sync'])
+            ->middleware('throttle:6,1')
+            ->name('email-inbox.sync');
+
+        Route::get('/email/messages/{emailMessage}', [EmailMessageController::class, 'show'])
+            ->whereNumber('emailMessage')
+            ->name('email-messages.show');
+        Route::get('/email/messages/{emailMessage}/attachments/{emailMessageAttachment}/download', [EmailMessageController::class, 'downloadAttachment'])
+            ->whereNumber('emailMessage')
+            ->whereNumber('emailMessageAttachment')
+            ->name('email-attachments.download');
 
         Route::get('/users', [CompanyUserController::class, 'index'])->name('users.index');
         Route::patch('/users/{companyUser}', [CompanyUserController::class, 'update'])
@@ -151,6 +179,9 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
         Route::get('/brands/create', [BrandController::class, 'create'])->name('brands.create');
         Route::post('/brands', [BrandController::class, 'store'])->name('brands.store');
+        Route::get('/brands/{brand}/logo', [BrandController::class, 'showLogo'])
+            ->whereNumber('brand')
+            ->name('brands.logo.show');
         Route::get('/brands/{brand}/edit', [BrandController::class, 'edit'])
             ->whereNumber('brand')
             ->name('brands.edit');
@@ -166,6 +197,7 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->name('brands.files.destroy');
 
         Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
+        Route::get('/articles/table', [ArticleController::class, 'table'])->name('articles.table');
         Route::get('/articles/create', [ArticleController::class, 'create'])->name('articles.create');
         Route::post('/articles', [ArticleController::class, 'store'])->name('articles.store');
         Route::get('/articles/export/csv', [ArticleController::class, 'exportCsv'])->name('articles.export.csv');
@@ -210,6 +242,15 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])
             ->whereNumber('customer')
             ->name('customers.show');
+        Route::get('/customers/{customer}/statement', [CustomerStatementController::class, 'show'])
+            ->whereNumber('customer')
+            ->name('customers.statement.show');
+        Route::get('/customers/{customer}/statement/pdf/download', [CustomerStatementController::class, 'downloadPdf'])
+            ->whereNumber('customer')
+            ->name('customers.statement.pdf.download');
+        Route::post('/customers/{customer}/statement/email/send', [CustomerStatementController::class, 'sendEmail'])
+            ->whereNumber('customer')
+            ->name('customers.statement.email.send');
         Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])
             ->whereNumber('customer')
             ->name('customers.edit');
@@ -473,6 +514,30 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::post('/sales-documents/{salesDocument}/email/send', [SalesDocumentController::class, 'sendEmail'])
             ->whereNumber('salesDocument')
             ->name('sales-documents.email.send');
+
+        Route::get('/sales-document-receipts', [SalesDocumentReceiptController::class, 'index'])
+            ->name('sales-document-receipts.index');
+        Route::get('/sales-documents/{salesDocument}/receipts/create', [SalesDocumentReceiptController::class, 'create'])
+            ->whereNumber('salesDocument')
+            ->name('sales-document-receipts.create');
+        Route::post('/sales-documents/{salesDocument}/receipts', [SalesDocumentReceiptController::class, 'store'])
+            ->whereNumber('salesDocument')
+            ->name('sales-document-receipts.store');
+        Route::get('/sales-document-receipts/{salesDocumentReceipt}', [SalesDocumentReceiptController::class, 'show'])
+            ->whereNumber('salesDocumentReceipt')
+            ->name('sales-document-receipts.show');
+        Route::post('/sales-document-receipts/{salesDocumentReceipt}/cancel', [SalesDocumentReceiptController::class, 'cancel'])
+            ->whereNumber('salesDocumentReceipt')
+            ->name('sales-document-receipts.cancel');
+        Route::post('/sales-document-receipts/{salesDocumentReceipt}/email/send', [SalesDocumentReceiptController::class, 'sendEmail'])
+            ->whereNumber('salesDocumentReceipt')
+            ->name('sales-document-receipts.email.send');
+        Route::post('/sales-document-receipts/{salesDocumentReceipt}/pdf/generate', [SalesDocumentReceiptController::class, 'generatePdf'])
+            ->whereNumber('salesDocumentReceipt')
+            ->name('sales-document-receipts.pdf.generate');
+        Route::get('/sales-document-receipts/{salesDocumentReceipt}/pdf/download', [SalesDocumentReceiptController::class, 'downloadPdf'])
+            ->whereNumber('salesDocumentReceipt')
+            ->name('sales-document-receipts.pdf.download');
 
         Route::get('/rfqs', [SupplierQuoteRequestController::class, 'index'])->name('rfqs.index');
         Route::get('/rfqs/create', [SupplierQuoteRequestController::class, 'create'])->name('rfqs.create');

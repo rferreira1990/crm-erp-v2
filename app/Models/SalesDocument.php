@@ -23,6 +23,10 @@ class SalesDocument extends Model
     public const STATUS_ISSUED = 'issued';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PAYMENT_STATUS_UNPAID = 'unpaid';
+    public const PAYMENT_STATUS_PARTIAL = 'partial';
+    public const PAYMENT_STATUS_PAID = 'paid';
+
     /**
      * @var list<string>
      */
@@ -43,6 +47,7 @@ class SalesDocument extends Model
         'customer_contact_email_snapshot',
         'customer_contact_phone_snapshot',
         'status',
+        'payment_status',
         'issue_date',
         'due_date',
         'notes',
@@ -52,6 +57,7 @@ class SalesDocument extends Model
         'tax_total',
         'grand_total',
         'issued_at',
+        'paid_at',
         'created_by',
         'updated_by',
         'pdf_path',
@@ -66,6 +72,7 @@ class SalesDocument extends Model
             'issue_date' => 'date',
             'due_date' => 'date',
             'issued_at' => 'datetime',
+            'paid_at' => 'datetime',
             'subtotal' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'tax_total' => 'decimal:2',
@@ -111,6 +118,13 @@ class SalesDocument extends Model
     public function items(): HasMany
     {
         return $this->hasMany(SalesDocumentItem::class)->orderBy('line_order')->orderBy('id');
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(SalesDocumentReceipt::class)
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id');
     }
 
     public function stockMovements(): HasMany
@@ -184,6 +198,49 @@ class SalesDocument extends Model
         return self::statusLabels()[$this->status] ?? $this->status;
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function paymentStatuses(): array
+    {
+        return [
+            self::PAYMENT_STATUS_UNPAID,
+            self::PAYMENT_STATUS_PARTIAL,
+            self::PAYMENT_STATUS_PAID,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function paymentStatusLabels(): array
+    {
+        return [
+            self::PAYMENT_STATUS_UNPAID => 'Por pagar',
+            self::PAYMENT_STATUS_PARTIAL => 'Parcial',
+            self::PAYMENT_STATUS_PAID => 'Pago',
+        ];
+    }
+
+    public function paymentStatusLabel(): string
+    {
+        $status = (string) ($this->payment_status ?: self::PAYMENT_STATUS_UNPAID);
+
+        return self::paymentStatusLabels()[$status] ?? $status;
+    }
+
+    public function paymentStatusBadgeClass(): string
+    {
+        $status = (string) ($this->payment_status ?: self::PAYMENT_STATUS_UNPAID);
+
+        return match ($status) {
+            self::PAYMENT_STATUS_UNPAID => 'badge-phoenix-danger',
+            self::PAYMENT_STATUS_PARTIAL => 'badge-phoenix-warning',
+            self::PAYMENT_STATUS_PAID => 'badge-phoenix-success',
+            default => 'badge-phoenix-secondary',
+        };
+    }
+
     public function statusBadgeClass(): string
     {
         return match ($this->status) {
@@ -202,6 +259,30 @@ class SalesDocument extends Model
     public function isIssued(): bool
     {
         return $this->status === self::STATUS_ISSUED;
+    }
+
+    public function isPaid(): bool
+    {
+        return (string) $this->payment_status === self::PAYMENT_STATUS_PAID;
+    }
+
+    public function canReceivePayments(): bool
+    {
+        return $this->status === self::STATUS_ISSUED;
+    }
+
+    public function issuedReceiptsTotal(): float
+    {
+        return round((float) $this->receipts()
+            ->where('status', SalesDocumentReceipt::STATUS_ISSUED)
+            ->sum('amount'), 2);
+    }
+
+    public function openAmount(): float
+    {
+        $open = round((float) $this->grand_total - $this->issuedReceiptsTotal(), 2);
+
+        return $open > 0 ? $open : 0.0;
     }
 
     public function isManualSource(): bool
@@ -341,4 +422,3 @@ class SalesDocument extends Model
         });
     }
 }
-

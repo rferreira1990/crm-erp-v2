@@ -29,7 +29,7 @@
 @section('content')
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.sales-documents.index') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('admin.sales-documents.index') }}" class="row g-3 align-items-end" data-live-table-form data-live-table-target="#sales-documents-live-table">
                 <div class="col-12 col-md-6 col-xl-4">
                     <label for="q" class="form-label">Pesquisar</label>
                     <input type="text" id="q" name="q" class="form-control" value="{{ $filters['q'] }}" placeholder="Numero ou cliente">
@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="sales-documents-live-table">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-sm fs-9 mb-0">
@@ -81,6 +81,7 @@
                             <th>Cliente</th>
                             <th>Linhas</th>
                             <th>Total</th>
+                            <th>Pagamento</th>
                             <th>Stock</th>
                             <th>Estado</th>
                             <th class="text-end pe-3">Acoes</th>
@@ -95,6 +96,11 @@
                                 <td>{{ $document->customer_name_snapshot ?: ($document->customer?->name ?? '-') }}</td>
                                 <td>{{ $document->items_count }}</td>
                                 <td>{{ number_format((float) $document->grand_total, 2, ',', '.') }} {{ $document->currency }}</td>
+                                <td>
+                                    <span class="badge badge-phoenix {{ $document->paymentStatusBadgeClass() }}">
+                                        {{ $paymentStatusLabels[$document->payment_status] ?? $document->paymentStatusLabel() }}
+                                    </span>
+                                </td>
                                 <td>
                                     @if ($document->shouldMoveStock())
                                         <span class="badge badge-phoenix badge-phoenix-warning">Movimenta</span>
@@ -118,7 +124,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-body-tertiary">Sem documentos registados.</td>
+                                <td colspan="10" class="text-center py-4 text-body-tertiary">Sem documentos registados.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -133,4 +139,3 @@
         @endif
     </div>
 @endsection
-

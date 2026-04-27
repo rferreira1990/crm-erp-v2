@@ -186,12 +186,17 @@
     </div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <label for="notes" class="form-label">Notas</label>
                 <textarea id="notes" name="notes" rows="4" class="form-control @error('notes') is-invalid @enderror" maxlength="5000">{{ old('notes', $customer->notes ?? '') }}</textarea>
                 @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
+                <label for="internal_notes" class="form-label">Notas internas</label>
+                <textarea id="internal_notes" name="internal_notes" rows="4" class="form-control @error('internal_notes') is-invalid @enderror" maxlength="5000">{{ old('internal_notes', $customer->internal_notes ?? '') }}</textarea>
+                @error('internal_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-12 col-md-4">
                 <label for="print_comments" class="form-label">Comentarios de impressao</label>
                 <textarea id="print_comments" name="print_comments" rows="4" class="form-control @error('print_comments') is-invalid @enderror" maxlength="5000">{{ old('print_comments', $customer->print_comments ?? '') }}</textarea>
                 @error('print_comments')<div class="invalid-feedback">{{ $message }}</div>@enderror
