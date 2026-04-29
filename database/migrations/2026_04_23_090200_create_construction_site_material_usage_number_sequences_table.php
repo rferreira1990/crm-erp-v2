@@ -29,7 +29,7 @@ return new class extends Migration
 
             $table->unique(
                 ['company_id', 'year'],
-                'construction_site_material_usage_number_sequences_company_year_uk'
+                'csmuns_company_year_uk'
             );
         });
     }
