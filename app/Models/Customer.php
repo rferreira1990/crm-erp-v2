@@ -40,6 +40,7 @@ class Customer extends Model
         'price_tier_id',
         'payment_term_id',
         'default_vat_rate_id',
+        'default_vat_exemption_reason_id',
         'default_commercial_discount',
         'has_credit_limit',
         'credit_limit',
@@ -83,6 +84,11 @@ class Customer extends Model
     public function defaultVatRate(): BelongsTo
     {
         return $this->belongsTo(VatRate::class, 'default_vat_rate_id');
+    }
+
+    public function defaultVatExemptionReason(): BelongsTo
+    {
+        return $this->belongsTo(VatExemptionReason::class, 'default_vat_exemption_reason_id');
     }
 
     public function contacts(): HasMany

@@ -45,6 +45,7 @@ class StoreCustomerRequest extends FormRequest
             'price_tier_id' => $this->normalizeNullableInteger($this->input('price_tier_id')),
             'payment_term_id' => $paymentTermId,
             'default_vat_rate_id' => $this->normalizeNullableInteger($this->input('default_vat_rate_id')),
+            'default_vat_exemption_reason_id' => $this->normalizeNullableInteger($this->input('default_vat_exemption_reason_id')),
             'default_commercial_discount' => $this->normalizeNullableNumeric($this->input('default_commercial_discount')),
             'has_credit_limit' => $hasCreditLimit,
             'credit_limit' => $hasCreditLimit
@@ -94,6 +95,7 @@ class StoreCustomerRequest extends FormRequest
             'price_tier_id' => ['nullable', 'integer', Rule::exists('price_tiers', 'id')],
             'payment_term_id' => ['nullable', 'integer', Rule::exists('payment_terms', 'id')],
             'default_vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],
+            'default_vat_exemption_reason_id' => ['nullable', 'integer', Rule::exists('vat_exemption_reasons', 'id')],
             'default_commercial_discount' => ['nullable', 'numeric', 'between:0,100'],
             'has_credit_limit' => ['required', 'boolean'],
             'credit_limit' => ['nullable', 'numeric', 'min:0'],
@@ -137,6 +139,8 @@ class StoreCustomerRequest extends FormRequest
             }
 
             $defaultVatRateId = $this->input('default_vat_rate_id');
+            $defaultVatExemptionReasonId = $this->input('default_vat_exemption_reason_id');
+            $selectedVatRate = null;
             if ($defaultVatRateId !== null) {
                 $vatRate = VatRate::query()
                     ->with([
@@ -148,7 +152,31 @@ class StoreCustomerRequest extends FormRequest
 
                 if (! $vatRate || ! $vatRate->isEnabledForCompany($companyId)) {
                     $validator->errors()->add('default_vat_rate_id', 'A taxa de IVA selecionada nao esta ativa para a empresa.');
+                } else {
+                    $selectedVatRate = $vatRate;
                 }
+            }
+
+            if ($defaultVatExemptionReasonId !== null) {
+                $reasonExists = \App\Models\VatExemptionReason::query()
+                    ->whereKey((int) $defaultVatExemptionReasonId)
+                    ->exists();
+
+                if (! $reasonExists) {
+                    $validator->errors()->add('default_vat_exemption_reason_id', 'O motivo de isencao selecionado nao esta ativo para a empresa.');
+                }
+            }
+
+            if ($selectedVatRate === null && $defaultVatExemptionReasonId !== null) {
+                $validator->errors()->add('default_vat_exemption_reason_id', 'Nao pode indicar motivo de isencao sem taxa de IVA.');
+            }
+
+            if ($selectedVatRate !== null && $selectedVatRate->is_exempt && $defaultVatExemptionReasonId === null) {
+                $validator->errors()->add('default_vat_exemption_reason_id', 'Quando a taxa de IVA habitual e isenta, o motivo de isencao e obrigatorio.');
+            }
+
+            if ($selectedVatRate !== null && ! $selectedVatRate->is_exempt && $defaultVatExemptionReasonId !== null) {
+                $validator->errors()->add('default_vat_exemption_reason_id', 'Apenas pode indicar motivo de isencao quando a taxa de IVA habitual e isenta.');
             }
         });
     }

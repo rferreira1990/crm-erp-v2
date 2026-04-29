@@ -35,6 +35,7 @@ class CustomerShowDataService
             'priceTier:id,name,percentage_adjustment',
             'paymentTerm:id,name',
             'defaultVatRate:id,name,rate',
+            'defaultVatExemptionReason:id,code,name',
             'contacts' => fn ($query) => $query
                 ->orderByDesc('is_primary')
                 ->orderBy('name')
@@ -178,4 +179,3 @@ class CustomerShowDataService
         ];
     }
 }
-

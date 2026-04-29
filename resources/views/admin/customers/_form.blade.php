@@ -5,6 +5,7 @@
     $selectedPriceTierId = old('price_tier_id', $customer->price_tier_id ?? ($defaults['price_tier_id'] ?? ''));
     $selectedPaymentTermId = old('payment_term_id', $customer->payment_term_id ?? ($defaults['payment_term_id'] ?? ''));
     $selectedVatRateId = old('default_vat_rate_id', $customer->default_vat_rate_id ?? '');
+    $selectedVatExemptionReasonId = old('default_vat_exemption_reason_id', $customer->default_vat_exemption_reason_id ?? '');
     $selectedCustomerType = old('customer_type', $customer->customer_type ?? '');
     $hasCreditLimit = old('has_credit_limit', $customer->has_credit_limit ?? false);
 @endphp
@@ -152,12 +153,28 @@
                 <select id="default_vat_rate_id" name="default_vat_rate_id" class="form-select @error('default_vat_rate_id') is-invalid @enderror">
                     <option value="">Sem taxa habitual</option>
                     @foreach (($vatRateOptions ?? []) as $vatRateOption)
-                        <option value="{{ $vatRateOption->id }}" @selected((string) $selectedVatRateId === (string) $vatRateOption->id)>
+                        <option
+                            value="{{ $vatRateOption->id }}"
+                            data-is-exempt="{{ $vatRateOption->is_exempt ? '1' : '0' }}"
+                            @selected((string) $selectedVatRateId === (string) $vatRateOption->id)
+                        >
                             {{ $vatRateOption->name }} ({{ number_format((float) $vatRateOption->rate, 2) }}%)
                         </option>
                     @endforeach
                 </select>
                 @error('default_vat_rate_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-12 col-md-3" id="default-vat-exemption-reason-wrapper">
+                <label for="default_vat_exemption_reason_id" class="form-label">Motivo isencao IVA habitual</label>
+                <select id="default_vat_exemption_reason_id" name="default_vat_exemption_reason_id" class="form-select @error('default_vat_exemption_reason_id') is-invalid @enderror">
+                    <option value="">Selecionar motivo</option>
+                    @foreach (($vatExemptionReasonOptions ?? []) as $reasonOption)
+                        <option value="{{ $reasonOption->id }}" @selected((string) $selectedVatExemptionReasonId === (string) $reasonOption->id)>
+                            {{ $reasonOption->code }} - {{ $reasonOption->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('default_vat_exemption_reason_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12 col-md-3">
                 <label for="default_commercial_discount" class="form-label">Desconto comercial %</label>
@@ -252,6 +269,9 @@
             document.addEventListener('DOMContentLoaded', function () {
                 const hasCreditLimit = document.getElementById('has_credit_limit');
                 const creditLimit = document.getElementById('credit_limit');
+                const defaultVatRate = document.getElementById('default_vat_rate_id');
+                const defaultVatExemptionReason = document.getElementById('default_vat_exemption_reason_id');
+                const defaultVatExemptionWrapper = document.getElementById('default-vat-exemption-reason-wrapper');
 
                 if (!hasCreditLimit || !creditLimit) {
                     return;
@@ -269,6 +289,30 @@
 
                 hasCreditLimit.addEventListener('change', syncCreditLimit);
                 syncCreditLimit();
+
+                if (!defaultVatRate || !defaultVatExemptionReason || !defaultVatExemptionWrapper) {
+                    return;
+                }
+
+                const syncDefaultVatExemptionReason = () => {
+                    const selectedOption = defaultVatRate.options[defaultVatRate.selectedIndex] || null;
+                    const isExempt = selectedOption && selectedOption.getAttribute('data-is-exempt') === '1';
+
+                    if (!isExempt) {
+                        defaultVatExemptionReason.value = '';
+                        defaultVatExemptionReason.required = false;
+                        defaultVatExemptionReason.disabled = true;
+                        defaultVatExemptionWrapper.classList.add('opacity-75');
+                        return;
+                    }
+
+                    defaultVatExemptionReason.disabled = false;
+                    defaultVatExemptionReason.required = true;
+                    defaultVatExemptionWrapper.classList.remove('opacity-75');
+                };
+
+                defaultVatRate.addEventListener('change', syncDefaultVatExemptionReason);
+                syncDefaultVatExemptionReason();
             });
         </script>
     @endpush

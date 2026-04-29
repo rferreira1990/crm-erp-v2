@@ -189,12 +189,15 @@
                     @endphp
                     <tr>
                         <td>{{ $item->sort_order }}</td>
-                        <td>
-                            {{ $item->description }}
-                            @if ($articleCode)
-                                <div class="muted">{{ $articleCode }}</div>
-                            @endif
-                        </td>
+                    <td>
+                        {{ $item->description }}
+                        @if ($articleCode)
+                            <div class="muted">{{ $articleCode }}</div>
+                        @endif
+                        @if (filled($item->article?->print_notes))
+                            <div class="muted">Nota: {{ $item->article->print_notes }}</div>
+                        @endif
+                    </td>
                         <td class="text-right">{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
                         <td>{{ $unitCode ?? '-' }}</td>
                         <td class="text-right">{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>

@@ -18,6 +18,7 @@
         .card { border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; min-height: 94px; }
         .card-title { margin: 0 0 6px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; }
         .strong { font-weight: bold; }
+        .muted { color: #64748b; font-size: 10px; margin-top: 2px; }
         .lines { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .lines th, .lines td { border: 1px solid #cbd5e1; padding: 6px; vertical-align: top; }
         .lines th { background: #e2e8f0; font-size: 10px; text-transform: uppercase; }
@@ -110,7 +111,12 @@
             @foreach ($document->items as $item)
                 <tr>
                     <td>{{ $item->line_order }}</td>
-                    <td>{{ $item->description }}</td>
+                    <td>
+                        {{ $item->description }}
+                        @if (filled($item->article?->print_notes))
+                            <div class="muted">Nota: {{ $item->article->print_notes }}</div>
+                        @endif
+                    </td>
                     <td class="text-right">{{ number_format((float) $item->quantity, 3, ',', '.') }}</td>
                     <td>{{ $item->unit_name_snapshot ?: '-' }}</td>
                     <td class="text-right">{{ number_format((float) $item->unit_price, 4, ',', '.') }}</td>
@@ -149,4 +155,3 @@
     @endif
 </body>
 </html>
-

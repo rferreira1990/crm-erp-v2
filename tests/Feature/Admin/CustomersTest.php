@@ -3,12 +3,15 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Company;
+use App\Models\CompanyVatExemptionReasonOverride;
+use App\Models\CompanyVatRateOverride;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\CustomerContact;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
 use App\Models\User;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use Database\Seeders\InitialSaasSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -306,6 +309,94 @@ class CustomersTest extends TestCase
             ->firstOrFail();
 
         $this->assertNull($customer->credit_limit);
+    }
+
+    public function test_customer_exempt_default_vat_requires_exemption_reason(): void
+    {
+        $company = $this->createCompany('Empresa Clientes IVA Isento');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $exemptVatRate = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'Isento')
+            ->firstOrFail();
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+
+        CompanyVatRateOverride::query()->create([
+            'company_id' => $company->id,
+            'vat_rate_id' => $exemptVatRate->id,
+            'is_enabled' => true,
+        ]);
+
+        CompanyVatExemptionReasonOverride::query()->create([
+            'company_id' => $company->id,
+            'vat_exemption_reason_id' => $reason->id,
+            'is_enabled' => true,
+        ]);
+
+        $invalid = $this->actingAs($admin)
+            ->from(route('admin.customers.create'))
+            ->post(route('admin.customers.store'), [
+                'customer_type' => Customer::TYPE_COMPANY,
+                'name' => 'Cliente Isento Sem Motivo',
+                'default_vat_rate_id' => $exemptVatRate->id,
+                'has_credit_limit' => 0,
+                'is_active' => 1,
+            ]);
+
+        $invalid->assertRedirect(route('admin.customers.create'));
+        $invalid->assertSessionHasErrors('default_vat_exemption_reason_id');
+
+        $valid = $this->actingAs($admin)
+            ->post(route('admin.customers.store'), [
+                'customer_type' => Customer::TYPE_COMPANY,
+                'name' => 'Cliente Isento Com Motivo',
+                'default_vat_rate_id' => $exemptVatRate->id,
+                'default_vat_exemption_reason_id' => $reason->id,
+                'has_credit_limit' => 0,
+                'is_active' => 1,
+            ]);
+
+        $valid->assertRedirect(route('admin.customers.index'));
+
+        $this->assertDatabaseHas('customers', [
+            'company_id' => $company->id,
+            'name' => 'Cliente Isento Com Motivo',
+            'default_vat_rate_id' => $exemptVatRate->id,
+            'default_vat_exemption_reason_id' => $reason->id,
+        ]);
+    }
+
+    public function test_customer_non_exempt_vat_does_not_accept_exemption_reason(): void
+    {
+        $company = $this->createCompany('Empresa Clientes IVA Normal Com Motivo');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $rate23 = VatRate::query()
+            ->where('region', VatRate::REGION_MAINLAND)
+            ->where('name', 'IVA 23%')
+            ->firstOrFail();
+        $reason = VatExemptionReason::query()->where('code', 'M07')->firstOrFail();
+
+        CompanyVatExemptionReasonOverride::query()->create([
+            'company_id' => $company->id,
+            'vat_exemption_reason_id' => $reason->id,
+            'is_enabled' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->from(route('admin.customers.create'))
+            ->post(route('admin.customers.store'), [
+                'customer_type' => Customer::TYPE_COMPANY,
+                'name' => 'Cliente IVA 23 Com Motivo',
+                'default_vat_rate_id' => $rate23->id,
+                'default_vat_exemption_reason_id' => $reason->id,
+                'has_credit_limit' => 0,
+                'is_active' => 1,
+            ]);
+
+        $response->assertRedirect(route('admin.customers.create'));
+        $response->assertSessionHasErrors('default_vat_exemption_reason_id');
     }
 
     public function test_customer_update_with_new_logo_replaces_existing_logo_and_removes_old_file(): void

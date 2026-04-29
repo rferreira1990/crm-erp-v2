@@ -11,10 +11,16 @@ use App\Models\ArticleFile;
 use App\Models\ArticleImage;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\ConstructionSiteMaterialUsageItem;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderReceipt;
+use App\Models\PurchaseOrderReceiptItem;
 use App\Models\ProductFamily;
+use App\Models\QuoteItem;
+use App\Models\SalesDocumentItem;
 use App\Models\StockMovement;
+use App\Models\SupplierQuoteRequestItem;
 use App\Models\Unit;
 use App\Models\VatExemptionReason;
 use App\Models\VatRate;
@@ -245,6 +251,12 @@ class ArticleController extends Controller
         $articleModel = $this->findCompanyArticleOrFail($companyId, $article);
         $this->authorize('delete', $articleModel);
 
+        if ($this->articleHasAnyUsage($companyId, (int) $articleModel->id)) {
+            return redirect()
+                ->route('admin.articles.show', $articleModel->id)
+                ->withErrors(['article' => 'Este artigo tem historico/uso e nao pode ser apagado. Inative o artigo.']);
+        }
+
         foreach ($articleModel->images()->get(['file_path']) as $image) {
             $this->deleteFromDisk($image->file_path);
         }
@@ -266,6 +278,35 @@ class ArticleController extends Controller
         return redirect()
             ->route('admin.articles.index')
             ->with('status', 'Artigo eliminado com sucesso.');
+    }
+
+    public function deactivate(Request $request, int $article): RedirectResponse
+    {
+        $companyId = (int) $request->user()->company_id;
+        $articleModel = $this->findCompanyArticleOrFail($companyId, $article);
+        $this->authorize('update', $articleModel);
+
+        if (! $articleModel->is_active) {
+            return redirect()
+                ->route('admin.articles.show', $articleModel->id)
+                ->with('status', 'O artigo ja se encontra inativo.');
+        }
+
+        $articleModel->forceFill([
+            'is_active' => false,
+        ])->save();
+
+        Log::info('Article deactivated', [
+            'context' => 'company_articles',
+            'article_id' => $articleModel->id,
+            'company_id' => $companyId,
+            'updated_by' => $request->user()->id,
+            'code' => $articleModel->code,
+        ]);
+
+        return redirect()
+            ->route('admin.articles.show', $articleModel->id)
+            ->with('status', 'Artigo inativado com sucesso.');
     }
 
     public function destroyImage(Request $request, int $article, int $articleImage): RedirectResponse
@@ -562,17 +603,51 @@ class ArticleController extends Controller
             && $articleModel->stock_alert_enabled
             && $articleModel->minimum_stock !== null
             && (float) $articleModel->stock_quantity < (float) $articleModel->minimum_stock;
+        $canDeleteArticle = ! $this->articleHasAnyUsage($companyId, (int) $articleModel->id);
 
         return view('admin.articles.show', [
             'article' => $articleModel,
             'movements' => $movements,
             'belowMinimum' => $belowMinimum,
+            'canDeleteArticle' => $canDeleteArticle,
             'purchaseSummary' => [
                 'lastReceiptMovement' => $lastReceiptMovement,
                 'lastKnownCost' => $lastKnownCost,
                 'recentEntriesCount' => $recentEntriesCount,
             ],
         ]);
+    }
+
+    private function articleHasAnyUsage(int $companyId, int $articleId): bool
+    {
+        return StockMovement::query()
+            ->where('company_id', $companyId)
+            ->where('article_id', $articleId)
+            ->exists()
+            || QuoteItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists()
+            || SupplierQuoteRequestItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists()
+            || PurchaseOrderItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists()
+            || PurchaseOrderReceiptItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists()
+            || SalesDocumentItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists()
+            || ConstructionSiteMaterialUsageItem::query()
+                ->where('company_id', $companyId)
+                ->where('article_id', $articleId)
+                ->exists();
     }
 
     /**

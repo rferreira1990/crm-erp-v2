@@ -9,6 +9,7 @@ use App\Models\Country;
 use App\Models\Customer;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use App\Services\Admin\CustomerShowDataService;
 use Illuminate\Contracts\View\View;
@@ -42,6 +43,7 @@ class CustomerController extends Controller
                 'priceTier:id,name,percentage_adjustment',
                 'paymentTerm:id,name',
                 'defaultVatRate:id,name,rate',
+                'defaultVatExemptionReason:id,code,name',
             ])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($searchQuery) use ($search): void {
@@ -228,6 +230,7 @@ class CustomerController extends Controller
      *   priceTierOptions: Collection<int, PriceTier>,
      *   paymentTermOptions: Collection<int, PaymentTerm>,
      *   vatRateOptions: Collection<int, VatRate>,
+     *   vatExemptionReasonOptions: Collection<int, VatExemptionReason>,
      *   customerTypeOptions: array<string, string>
      * }
      */
@@ -245,6 +248,7 @@ class CustomerController extends Controller
             'priceTierOptions' => $this->visiblePriceTiers($companyId, $includePriceTierId),
             'paymentTermOptions' => $this->visiblePaymentTerms($companyId, $includePaymentTermId),
             'vatRateOptions' => $this->enabledVatRates($companyId, $includeVatRateId),
+            'vatExemptionReasonOptions' => $this->enabledVatExemptionReasons($companyId),
             'customerTypeOptions' => Customer::customerTypeLabels(),
         ];
     }
@@ -312,6 +316,23 @@ class CustomerController extends Controller
     }
 
     /**
+     * @return Collection<int, VatExemptionReason>
+     */
+    private function enabledVatExemptionReasons(int $companyId): Collection
+    {
+        return VatExemptionReason::query()
+            ->with([
+                'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+            ])
+            ->visibleToCompany($companyId)
+            ->orderBy('code')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name'])
+            ->filter(fn (VatExemptionReason $reason): bool => $reason->isEnabledForCompany($companyId))
+            ->values();
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
@@ -319,6 +340,26 @@ class CustomerController extends Controller
     {
         if (($data['price_tier_id'] ?? null) === null) {
             $data['price_tier_id'] = Customer::defaultPriceTierIdForCompany($companyId);
+        }
+
+        $defaultVatRateId = isset($data['default_vat_rate_id']) && $data['default_vat_rate_id'] !== null
+            ? (int) $data['default_vat_rate_id']
+            : null;
+
+        if ($defaultVatRateId === null) {
+            $data['default_vat_exemption_reason_id'] = null;
+        } else {
+            $vatRate = VatRate::query()
+                ->with([
+                    'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+                ])
+                ->visibleToCompany($companyId)
+                ->whereKey($defaultVatRateId)
+                ->first();
+
+            if (! $vatRate || ! $vatRate->is_exempt) {
+                $data['default_vat_exemption_reason_id'] = null;
+            }
         }
 
         if (! (bool) ($data['has_credit_limit'] ?? false)) {

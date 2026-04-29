@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StoreProductFamilyRequest;
 use App\Http\Requests\Admin\UpdateProductFamilyRequest;
 use App\Models\ProductFamily;
 use Illuminate\Contracts\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -21,23 +22,43 @@ class ProductFamilyController extends Controller
 
         $companyId = (int) $request->user()->company_id;
         $search = trim((string) $request->query('q', ''));
+        $perPage = 20;
 
-        $families = ProductFamily::query()
+        $allFamilies = ProductFamily::query()
             ->visibleToCompany($companyId)
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', '%'.$search.'%');
             })
-            ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END')
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+            ->get();
+
+        $hierarchyLabels = $this->buildHierarchyLabels($allFamilies, $companyId);
+
+        $orderedFamilies = $allFamilies
+            ->sortBy(function (ProductFamily $family) use ($hierarchyLabels): string {
+                return mb_strtolower((string) ($hierarchyLabels[$family->id] ?? $family->name));
+            }, SORT_NATURAL)
+            ->values();
+
+        $currentPage = max(1, (int) $request->query('page', 1));
+        $pageItems = $orderedFamilies
+            ->slice(($currentPage - 1) * $perPage, $perPage)
+            ->values();
+
+        $families = new LengthAwarePaginator(
+            $pageItems,
+            $orderedFamilies->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('admin.product-families.index', [
             'families' => $families,
-            'hierarchyLabels' => $this->buildHierarchyLabels(
-                $families->getCollection(),
-                $companyId
-            ),
+            'hierarchyLabels' => $hierarchyLabels,
+            'familyDepths' => $this->buildFamilyDepths($allFamilies),
             'filters' => [
                 'q' => $search,
             ],
@@ -228,6 +249,58 @@ class ProductFamilyController extends Controller
         }
 
         return $labels;
+    }
+
+    /**
+     * @param Collection<int, ProductFamily> $families
+     * @return array<int, int>
+     */
+    private function buildFamilyDepths(Collection $families): array
+    {
+        $map = $families->keyBy('id');
+        $depthCache = [];
+
+        $resolveDepth = function (int $familyId) use (&$resolveDepth, &$depthCache, $map): int {
+            if (isset($depthCache[$familyId])) {
+                return $depthCache[$familyId];
+            }
+
+            $depth = 0;
+            $seen = [];
+            $cursorId = $familyId;
+
+            while ($cursorId > 0 && $depth < 50) {
+                if (isset($seen[$cursorId])) {
+                    break;
+                }
+                $seen[$cursorId] = true;
+
+                /** @var ProductFamily|null $family */
+                $family = $map->get($cursorId);
+                if (! $family || $family->parent_id === null) {
+                    break;
+                }
+
+                $parentId = (int) $family->parent_id;
+                if (! $map->has($parentId)) {
+                    break;
+                }
+
+                $depth++;
+                $cursorId = $parentId;
+            }
+
+            $depthCache[$familyId] = $depth;
+
+            return $depth;
+        };
+
+        $depths = [];
+        foreach ($families as $family) {
+            $depths[$family->id] = $resolveDepth((int) $family->id);
+        }
+
+        return $depths;
     }
 
     /**

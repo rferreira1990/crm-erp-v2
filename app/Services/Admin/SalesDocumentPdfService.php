@@ -20,7 +20,7 @@ class SalesDocumentPdfService
             'creator:id,name',
             'items' => fn ($query) => $query
                 ->with([
-                    'article:id,code,designation',
+                    'article:id,code,designation,print_notes',
                     'unit:id,code,name',
                 ])
                 ->orderBy('line_order')
@@ -84,4 +84,3 @@ class SalesDocumentPdfService
         return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }
-

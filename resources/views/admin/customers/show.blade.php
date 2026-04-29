@@ -162,7 +162,8 @@
                             <div class="mb-2"><span class="text-body-tertiary">Website:</span> <span class="fw-semibold">{{ $customer->website ?: '-' }}</span></div>
                             <div class="mb-2"><span class="text-body-tertiary">Condicao pagamento:</span> <span class="fw-semibold">{{ $customer->paymentTerm?->name ?: '-' }}</span></div>
                             <div class="mb-2"><span class="text-body-tertiary">Escalao preco:</span> <span class="fw-semibold">{{ $customer->priceTier?->name ?: 'Normal / default' }}</span></div>
-                            <div><span class="text-body-tertiary">IVA habitual:</span> <span class="fw-semibold">{{ $customer->defaultVatRate ? $customer->defaultVatRate->name.' ('.number_format((float) $customer->defaultVatRate->rate, 2).'%)' : '-' }}</span></div>
+                            <div class="mb-2"><span class="text-body-tertiary">IVA habitual:</span> <span class="fw-semibold">{{ $customer->defaultVatRate ? $customer->defaultVatRate->name.' ('.number_format((float) $customer->defaultVatRate->rate, 2).'%)' : '-' }}</span></div>
+                            <div><span class="text-body-tertiary">Motivo isencao IVA habitual:</span> <span class="fw-semibold">{{ $customer->defaultVatExemptionReason ? $customer->defaultVatExemptionReason->code.' - '.$customer->defaultVatExemptionReason->name : '-' }}</span></div>
                         </div>
                     </div>
                 </div>
@@ -519,4 +520,3 @@
         </div>
     </div>
 @endsection
-

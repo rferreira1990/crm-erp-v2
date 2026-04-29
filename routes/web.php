@@ -216,6 +216,9 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::patch('/articles/{article}', [ArticleController::class, 'update'])
             ->whereNumber('article')
             ->name('articles.update');
+        Route::post('/articles/{article}/deactivate', [ArticleController::class, 'deactivate'])
+            ->whereNumber('article')
+            ->name('articles.deactivate');
         Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])
             ->whereNumber('article')
             ->name('articles.destroy');

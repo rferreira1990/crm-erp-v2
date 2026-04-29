@@ -20,6 +20,7 @@ class QuotePdfService
             'paymentMethod:id,name',
             'items' => fn ($query) => $query
                 ->with([
+                    'article:id,code,designation,print_notes',
                     'unit:id,code,name',
                     'vatRate:id,name,rate,is_exempt',
                     'vatExemptionReason:id,code,name',

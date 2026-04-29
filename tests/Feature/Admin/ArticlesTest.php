@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\CompanyVatExemptionReasonOverride;
 use App\Models\CompanyVatRateOverride;
 use App\Models\ProductFamily;
+use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\VatExemptionReason;
@@ -338,6 +339,71 @@ class ArticlesTest extends TestCase
             'is_active' => 1,
         ])->assertForbidden();
         $this->actingAs($noPermUser)->delete(route('admin.articles.destroy', $article->id))->assertForbidden();
+    }
+
+    public function test_article_without_usage_can_be_deleted(): void
+    {
+        $company = $this->createCompany('Empresa Artigos Delete Livre');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $family = $this->createFamily($company, '10', 'Familia Delete Livre');
+        $article = $this->createArticle($company, $family, 'Artigo sem uso');
+
+        $this->actingAs($admin)
+            ->delete(route('admin.articles.destroy', $article->id))
+            ->assertRedirect(route('admin.articles.index'))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseMissing('articles', [
+            'id' => $article->id,
+            'company_id' => $company->id,
+        ]);
+    }
+
+    public function test_article_with_usage_cannot_be_deleted_but_can_be_deactivated(): void
+    {
+        $company = $this->createCompany('Empresa Artigos Delete Bloqueado');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $family = $this->createFamily($company, '11', 'Familia Delete Bloqueado');
+        $article = $this->createArticle($company, $family, 'Artigo com uso');
+
+        StockMovement::query()->create([
+            'company_id' => $company->id,
+            'article_id' => $article->id,
+            'type' => StockMovement::TYPE_MANUAL_ADJUSTMENT_IN,
+            'direction' => StockMovement::DIRECTION_IN,
+            'reason_code' => StockMovement::REASON_STOCK_INITIAL,
+            'quantity' => 1,
+            'unit_cost' => 0,
+            'reference_type' => StockMovement::REFERENCE_MANUAL,
+            'reference_id' => 1,
+            'reference_line_id' => 1,
+            'movement_date' => now()->toDateString(),
+            'notes' => 'Teste bloqueio delete',
+            'performed_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.articles.show', $article->id))
+            ->delete(route('admin.articles.destroy', $article->id))
+            ->assertRedirect(route('admin.articles.show', $article->id))
+            ->assertSessionHasErrors('article');
+
+        $this->assertDatabaseHas('articles', [
+            'id' => $article->id,
+            'company_id' => $company->id,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.articles.deactivate', $article->id))
+            ->assertRedirect(route('admin.articles.show', $article->id))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseHas('articles', [
+            'id' => $article->id,
+            'company_id' => $company->id,
+            'is_active' => false,
+        ]);
     }
 
     private function createArticle(Company $company, ProductFamily $family, string $designation): Article

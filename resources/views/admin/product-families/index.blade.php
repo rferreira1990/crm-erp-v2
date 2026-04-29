@@ -61,6 +61,12 @@
                     </thead>
                     <tbody>
                         @forelse ($families as $family)
+                            @php
+                                $depth = (int) ($familyDepths[$family->id] ?? 0);
+                                $isChild = $depth > 0;
+                                $padding = 12 + ($depth * 20);
+                                $treePrefix = $isChild ? '└─ ' : '• ';
+                            @endphp
                             <tr>
                                 <td class="ps-3">
                                     @if ($family->family_code)
@@ -69,7 +75,11 @@
                                         <span class="text-body-tertiary">-</span>
                                     @endif
                                 </td>
-                                <td class="ps-3 fw-semibold">{{ $family->name }}</td>
+                                <td class="ps-3 fw-semibold">
+                                    <div style="padding-left: {{ $padding }}px;">
+                                        <span class="text-body-tertiary">{{ $treePrefix }}</span>{{ $family->name }}
+                                    </div>
+                                </td>
                                 <td>{{ $hierarchyLabels[$family->id] ?? $family->name }}</td>
                                 <td class="text-end pe-3">
                                     <div class="d-inline-flex gap-2">

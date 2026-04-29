@@ -8,6 +8,21 @@
     <a href="{{ route('admin.articles.index') }}" class="btn btn-phoenix-secondary btn-sm">Voltar</a>
     @can('company.articles.update')
         <a href="{{ route('admin.articles.edit', $article->id) }}" class="btn btn-primary btn-sm">Editar artigo</a>
+        @if (! $canDeleteArticle && $article->is_active)
+            <form method="POST" action="{{ route('admin.articles.deactivate', $article->id) }}" class="d-inline" data-confirm="Tem a certeza que pretende inativar este artigo?">
+                @csrf
+                <button type="submit" class="btn btn-phoenix-warning btn-sm">Inativar</button>
+            </form>
+        @endif
+    @endcan
+    @can('company.articles.delete')
+        @if ($canDeleteArticle)
+            <form method="POST" action="{{ route('admin.articles.destroy', $article->id) }}" class="d-inline" data-confirm="Tem a certeza que pretende apagar este artigo?">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-phoenix-danger btn-sm">Apagar artigo</button>
+            </form>
+        @endif
     @endcan
 @endsection
 
@@ -20,6 +35,12 @@
 @endsection
 
 @section('content')
+    @if ($errors->any())
+        <div class="alert alert-danger mb-4" role="alert">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <div class="row g-4 mb-4">
         <div class="col-12 col-xxl-8">
             <div class="card mb-4">
