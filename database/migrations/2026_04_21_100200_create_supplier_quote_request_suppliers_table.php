@@ -18,7 +18,11 @@ return new class extends Migration
         Schema::create('supplier_quote_request_suppliers', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('supplier_quote_request_id')->constrained('supplier_quote_requests')->cascadeOnDelete();
+            $table->foreignId('supplier_quote_request_id');
+            $table->foreign('supplier_quote_request_id', 'sqrs_sqr_fk')
+                ->references('id')
+                ->on('supplier_quote_requests')
+                ->cascadeOnDelete();
             $table->foreignId('supplier_id')->constrained('suppliers');
             $table->string('status', 20)->default('draft');
             $table->string('sent_to_email', 190)->nullable();
