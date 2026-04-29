@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Models\Customer;
 use App\Models\PaymentTerm;
 use App\Models\PriceTier;
+use App\Models\VatExemptionReason;
 use App\Models\VatRate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -158,11 +159,15 @@ class StoreCustomerRequest extends FormRequest
             }
 
             if ($defaultVatExemptionReasonId !== null) {
-                $reasonExists = \App\Models\VatExemptionReason::query()
+                $reason = VatExemptionReason::query()
+                    ->with([
+                        'companyOverrides' => fn ($query) => $query->where('company_id', $companyId),
+                    ])
+                    ->visibleToCompany($companyId)
                     ->whereKey((int) $defaultVatExemptionReasonId)
-                    ->exists();
+                    ->first();
 
-                if (! $reasonExists) {
+                if (! $reason || ! $reason->isEnabledForCompany($companyId)) {
                     $validator->errors()->add('default_vat_exemption_reason_id', 'O motivo de isencao selecionado nao esta ativo para a empresa.');
                 }
             }
