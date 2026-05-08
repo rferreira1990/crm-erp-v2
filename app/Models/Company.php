@@ -38,6 +38,10 @@ class Company extends Model
         'mail_username',
         'mail_password',
         'mail_encryption',
+        'pdf_layout',
+        'ai_monthly_budget_eur',
+        'ai_budget_warning_percent',
+        'ai_budget_hard_stop_enabled',
         'is_active',
     ];
 
@@ -50,6 +54,9 @@ class Company extends Model
             'is_active' => 'boolean',
             'mail_use_custom_settings' => 'boolean',
             'mail_password' => 'encrypted',
+            'ai_monthly_budget_eur' => 'decimal:2',
+            'ai_budget_warning_percent' => 'integer',
+            'ai_budget_hard_stop_enabled' => 'boolean',
         ];
     }
 
@@ -61,6 +68,26 @@ class Company extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class);
+    }
+
+    public function aiUsageLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageLog::class);
+    }
+
+    public function telegramUserLinks(): HasMany
+    {
+        return $this->hasMany(TelegramUserLink::class);
+    }
+
+    public function telegramPendingSelections(): HasMany
+    {
+        return $this->hasMany(TelegramPendingSelection::class);
+    }
+
+    public function telegramEmailDrafts(): HasMany
+    {
+        return $this->hasMany(TelegramEmailDraft::class);
     }
 
     public function scopeActive(Builder $query): Builder

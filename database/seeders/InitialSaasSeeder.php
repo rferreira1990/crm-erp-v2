@@ -74,6 +74,17 @@ class InitialSaasSeeder extends Seeder
             'company.purchase_order_receipts.update',
             'company.purchase_order_receipts.post',
             'company.purchase_order_receipts.delete',
+            'company.purchase_documents.view',
+            'company.purchase_documents.create',
+            'company.purchase_documents.update',
+            'company.purchase_documents.confirm',
+            'company.purchase_documents.cancel',
+            'company.supplier_payments.view',
+            'company.supplier_payments.create',
+            'company.supplier_payments.cancel',
+            'company.supplier_payments.pdf',
+            'company.supplier_payments.send',
+            'company.supplier_statement.view',
             'company.sales_documents.view',
             'company.sales_documents.create',
             'company.sales_documents.update',
@@ -132,6 +143,10 @@ class InitialSaasSeeder extends Seeder
             'company.vat_rates.manage_availability',
             'company.vat_exemption_reasons.view',
             'company.vat_exemption_reasons.manage_availability',
+            'company.ai_test.use',
+            'company.ai.quote_text_improve',
+            'company.telegram.link.manage',
+            'company.telegram.email.send',
         ];
 
         foreach ($permissions as $permissionName) {
@@ -211,6 +226,17 @@ class InitialSaasSeeder extends Seeder
             'company.purchase_order_receipts.update',
             'company.purchase_order_receipts.post',
             'company.purchase_order_receipts.delete',
+            'company.purchase_documents.view',
+            'company.purchase_documents.create',
+            'company.purchase_documents.update',
+            'company.purchase_documents.confirm',
+            'company.purchase_documents.cancel',
+            'company.supplier_payments.view',
+            'company.supplier_payments.create',
+            'company.supplier_payments.cancel',
+            'company.supplier_payments.pdf',
+            'company.supplier_payments.send',
+            'company.supplier_statement.view',
             'company.sales_documents.view',
             'company.sales_documents.create',
             'company.sales_documents.update',
@@ -269,6 +295,10 @@ class InitialSaasSeeder extends Seeder
             'company.vat_rates.manage_availability',
             'company.vat_exemption_reasons.view',
             'company.vat_exemption_reasons.manage_availability',
+            'company.ai_test.use',
+            'company.ai.quote_text_improve',
+            'company.telegram.link.manage',
+            'company.telegram.email.send',
         ]);
         $companyUserRole->syncPermissions([]);
 
@@ -283,13 +313,20 @@ class InitialSaasSeeder extends Seeder
             ]
         );
 
+        $seedDefaultPassword = (string) env('SEED_DEFAULT_PASSWORD', 'password');
+        if (app()->environment('production') && $seedDefaultPassword === 'password') {
+            throw new \RuntimeException(
+                'Defina SEED_DEFAULT_PASSWORD antes de executar o InitialSaasSeeder em producao.'
+            );
+        }
+
         $superAdmin = User::updateOrCreate(
             ['email' => 'superadmin@crm.local'],
             [
                 'name' => 'Super Admin',
                 'company_id' => null,
                 'invited_by' => null,
-                'password' => Hash::make('password'),
+                'password' => Hash::make($seedDefaultPassword),
                 'is_super_admin' => true,
                 'is_active' => true,
             ]
@@ -301,7 +338,7 @@ class InitialSaasSeeder extends Seeder
                 'name' => 'Admin Empresa Demo',
                 'company_id' => $company->id,
                 'invited_by' => $superAdmin->id,
-                'password' => Hash::make('password'),
+                'password' => Hash::make($seedDefaultPassword),
                 'is_super_admin' => false,
                 'is_active' => true,
             ]

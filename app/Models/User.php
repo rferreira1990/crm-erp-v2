@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -79,6 +80,31 @@ class User extends Authenticatable
     public function sentInvitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'invited_by');
+    }
+
+    public function aiUsageLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageLog::class);
+    }
+
+    public function telegramUserLinks(): HasMany
+    {
+        return $this->hasMany(TelegramUserLink::class);
+    }
+
+    public function activeTelegramUserLink(): HasOne
+    {
+        return $this->hasOne(TelegramUserLink::class)->where('is_active', true);
+    }
+
+    public function telegramPendingSelections(): HasMany
+    {
+        return $this->hasMany(TelegramPendingSelection::class);
+    }
+
+    public function telegramEmailDrafts(): HasMany
+    {
+        return $this->hasMany(TelegramEmailDraft::class);
     }
 
     public function isSuperAdmin(): bool
