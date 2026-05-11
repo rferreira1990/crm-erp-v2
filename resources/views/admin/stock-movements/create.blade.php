@@ -30,7 +30,16 @@
                 @csrf
                 <div class="col-12 col-md-6">
                     <label for="article_id" class="form-label">Artigo <span class="text-danger">*</span></label>
-                    <select id="article_id" name="article_id" class="form-select @error('article_id') is-invalid @enderror" required>
+                    <select
+                        id="article_id"
+                        name="article_id"
+                        class="form-select @error('article_id') is-invalid @enderror"
+                        data-ajax-search-url="{{ route('admin.api.articles.search') }}"
+                        data-ajax-search-placeholder="Pesquisar artigo..."
+                        data-ajax-search-empty-label="Selecionar artigo"
+                        data-ajax-search-params="active_only=1&moves_stock_only=1"
+                        required
+                    >
                         <option value="">Selecionar artigo</option>
                         @foreach ($articleOptions as $article)
                             <option value="{{ $article->id }}" data-stock="{{ number_format((float) $article->stock_quantity, 3, '.', '') }}" @selected((int) old('article_id') === (int) $article->id)>

@@ -77,7 +77,7 @@ class UpdateSupplierRequest extends FormRequest
             'email' => ['nullable', 'email:rfc', 'max:190'],
             'website' => ['nullable', 'url:http,https', 'max:255'],
             'notes' => ['nullable', 'string', 'max:5000'],
-            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:3072'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_logo' => ['nullable', 'boolean'],
             'payment_term_id' => ['nullable', 'integer', Rule::exists('payment_terms', 'id')],
             'default_vat_rate_id' => ['nullable', 'integer', Rule::exists('vat_rates', 'id')],

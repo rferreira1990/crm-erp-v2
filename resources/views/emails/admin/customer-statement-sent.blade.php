@@ -1,4 +1,4 @@
-<!doctype html>
+ï»¿<!doctype html>
 <html lang="pt">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -24,9 +24,9 @@
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0 16px;border:1px solid #e5e7eb;border-radius:8px;">
                                 <tr>
                                     <td style="padding:12px 14px;">
-                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Debitos: <strong>{{ number_format((float) $totalDebit, 2, ',', '.') }} €</strong></div>
-                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Creditos: <strong>{{ number_format((float) $totalCredit, 2, ',', '.') }} €</strong></div>
-                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Saldo: <strong>{{ number_format((float) $balance, 2, ',', '.') }} €</strong></div>
+                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Debitos: <strong>{{ number_format((float) $totalDebit, 2, ',', '.') }} â‚¬</strong></div>
+                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Creditos: <strong>{{ number_format((float) $totalCredit, 2, ',', '.') }} â‚¬</strong></div>
+                                        <div style="font-size:14px;line-height:1.6;color:#111827;">Saldo: <strong>{{ number_format((float) $balance, 2, ',', '.') }} â‚¬</strong></div>
                                     </td>
                                 </tr>
                             </table>
@@ -40,7 +40,13 @@
                                     </tr>
                                 </table>
                             @endif
-                            <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">Qualquer esclarecimento, estamos ao dispor.</p>
+                            @if (! empty($signatureHtml))
+                                <div style="margin:0;font-size:14px;line-height:1.65;color:#111827;">
+                                    {!! $signatureHtml !!}
+                                </div>
+                            @else
+                                <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">Qualquer esclarecimento, estamos ao dispor.</p>
+                            @endif
                         </td>
                     </tr>
                 </table>
@@ -49,3 +55,4 @@
     </table>
 </body>
 </html>
+

@@ -145,6 +145,11 @@ class InitialSaasSeeder extends Seeder
             'company.vat_exemption_reasons.manage_availability',
             'company.ai_test.use',
             'company.ai.quote_text_improve',
+            'company.calendar.view',
+            'company.calendar.create',
+            'company.calendar.update',
+            'company.calendar.delete',
+            'company.calendar.integrations.manage',
             'company.telegram.link.manage',
             'company.telegram.email.send',
         ];
@@ -297,6 +302,11 @@ class InitialSaasSeeder extends Seeder
             'company.vat_exemption_reasons.manage_availability',
             'company.ai_test.use',
             'company.ai.quote_text_improve',
+            'company.calendar.view',
+            'company.calendar.create',
+            'company.calendar.update',
+            'company.calendar.delete',
+            'company.calendar.integrations.manage',
             'company.telegram.link.manage',
             'company.telegram.email.send',
         ]);

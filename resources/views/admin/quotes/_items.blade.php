@@ -100,6 +100,13 @@
                                 @error("items.$rowIndex.article_id")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </td>
                             <td>
+                                <div class="d-flex justify-content-end mb-1">
+                                    @if (! empty($canImproveQuoteText))
+                                        <button type="button" class="btn btn-phoenix-secondary btn-sm py-0 px-2" data-ai-improve-btn title="Melhorar descricao">
+                                            ✨
+                                        </button>
+                                    @endif
+                                </div>
                                 <textarea name="items[{{ $rowIndex }}][description]" rows="2" class="form-control form-control-sm description-input @error("items.$rowIndex.description") is-invalid @enderror">{{ old("items.$rowIndex.description", $item['description'] ?? '') }}</textarea>
                                 @error("items.$rowIndex.description")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </td>
@@ -195,7 +202,16 @@
                 @endforeach
             </select>
         </td>
-        <td><textarea name="items[__INDEX__][description]" rows="2" class="form-control form-control-sm description-input"></textarea></td>
+        <td>
+            <div class="d-flex justify-content-end mb-1">
+                @if (! empty($canImproveQuoteText))
+                    <button type="button" class="btn btn-phoenix-secondary btn-sm py-0 px-2" data-ai-improve-btn title="Melhorar descricao">
+                        ✨
+                    </button>
+                @endif
+            </div>
+            <textarea name="items[__INDEX__][description]" rows="2" class="form-control form-control-sm description-input"></textarea>
+        </td>
         <td><input type="number" name="items[__INDEX__][quantity]" class="form-control form-control-sm quantity-input" min="0" step="0.001" value="1"></td>
         <td>
             <select name="items[__INDEX__][unit_id]" class="form-select form-select-sm unit-select">
@@ -483,11 +499,13 @@
                     const newRow = tbody.querySelectorAll('tr.quote-item-row')[nextIndex];
                     bindRowEvents(newRow);
                     syncRowOrder();
+                    document.dispatchEvent(new Event('ai-improve-refresh'));
                 });
 
                 Array.from(tbody.querySelectorAll('tr.quote-item-row')).forEach((row) => bindRowEvents(row));
                 syncRowOrder();
                 updatePreviewTotals();
+                document.dispatchEvent(new Event('ai-improve-refresh'));
 
                 const currencyInput = document.getElementById('currency');
                 if (currencyInput) {

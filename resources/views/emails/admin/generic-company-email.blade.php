@@ -18,7 +18,12 @@
                 </tr>
                 <tr>
                     <td style="padding:24px;">
-                        <div style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#1f2937;">{!! nl2br(e($bodyText)) !!}</div>
+                        <div style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#1f2937;white-space:normal;">{!! nl2br(e($bodyText)) !!}</div>
+                        @if (! empty($signatureHtml))
+                            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:14px;line-height:1.7;color:#1f2937;">
+                                {!! $signatureHtml !!}
+                            </div>
+                        @endif
                     </td>
                 </tr>
                 <tr>
@@ -41,4 +46,3 @@
 </table>
 </body>
 </html>
-

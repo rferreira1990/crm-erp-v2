@@ -14,6 +14,7 @@ use App\Models\SalesDocument;
 use App\Models\SalesDocumentReceipt;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 class DashboardOverviewService
@@ -816,30 +817,32 @@ class DashboardOverviewService
      */
     private function buildMonthlySalesSeries(int $companyId, array $filters): array
     {
-        $labels = [];
-        $values = [];
         $startMonth = now()->startOfMonth()->subMonths(11);
+        $endMonth = now()->endOfMonth();
 
-        for ($i = 0; $i < 12; $i++) {
-            $monthStart = $startMonth->copy()->addMonths($i)->startOfMonth();
-            $monthEnd = $monthStart->copy()->endOfMonth();
+        $query = SalesDocument::query()
+            ->forCompany($companyId)
+            ->where('status', SalesDocument::STATUS_ISSUED)
+            ->whereBetween('issue_date', [$startMonth->toDateString(), $endMonth->toDateString()]);
 
-            $query = SalesDocument::query()
-                ->forCompany($companyId)
-                ->where('status', SalesDocument::STATUS_ISSUED)
-                ->whereBetween('issue_date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
+        $this->applyCommonFilters(
+            query: $query,
+            filters: $filters,
+            dateColumn: 'issue_date',
+            customerColumn: 'customer_id',
+            responsibleColumn: 'created_by'
+        );
 
-            $this->applyCommonFilters(
-                query: $query,
-                filters: $filters,
-                dateColumn: 'issue_date',
-                customerColumn: 'customer_id',
-                responsibleColumn: 'created_by'
-            );
+        $aggregated = $query
+            ->selectRaw($this->monthlyAggregateSelect('issue_date', 'grand_total'))
+            ->groupBy('year_key', 'month_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                sprintf('%04d_%d', (int) $row->year_key, (int) $row->month_key) => (float) $row->month_total,
+            ])
+            ->all();
 
-            $labels[] = $monthStart->format('M Y');
-            $values[] = round((float) $query->sum('grand_total'), 2);
-        }
+        [$labels, $values] = $this->fillMonthlySeries($startMonth, $aggregated);
 
         return [
             'labels' => $labels,
@@ -853,34 +856,80 @@ class DashboardOverviewService
      */
     private function buildMonthlyReceiptsSeries(int $companyId, array $filters): array
     {
-        $labels = [];
-        $values = [];
         $startMonth = now()->startOfMonth()->subMonths(11);
+        $endMonth = now()->endOfMonth();
 
-        for ($i = 0; $i < 12; $i++) {
-            $monthStart = $startMonth->copy()->addMonths($i)->startOfMonth();
-            $monthEnd = $monthStart->copy()->endOfMonth();
+        $query = SalesDocumentReceipt::query()
+            ->forCompany($companyId)
+            ->where('status', SalesDocumentReceipt::STATUS_ISSUED)
+            ->whereBetween('receipt_date', [$startMonth->toDateString(), $endMonth->toDateString()]);
 
-            $query = SalesDocumentReceipt::query()
-                ->forCompany($companyId)
-                ->where('status', SalesDocumentReceipt::STATUS_ISSUED)
-                ->whereBetween('receipt_date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
+        $this->applyCommonFilters(
+            query: $query,
+            filters: $filters,
+            dateColumn: 'receipt_date',
+            customerColumn: 'customer_id',
+            responsibleColumn: 'created_by'
+        );
 
-            $this->applyCommonFilters(
-                query: $query,
-                filters: $filters,
-                dateColumn: 'receipt_date',
-                customerColumn: 'customer_id',
-                responsibleColumn: 'created_by'
-            );
+        $aggregated = $query
+            ->selectRaw($this->monthlyAggregateSelect('receipt_date', 'amount'))
+            ->groupBy('year_key', 'month_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                sprintf('%04d_%d', (int) $row->year_key, (int) $row->month_key) => (float) $row->month_total,
+            ])
+            ->all();
 
-            $labels[] = $monthStart->format('M Y');
-            $values[] = round((float) $query->sum('amount'), 2);
-        }
+        [$labels, $values] = $this->fillMonthlySeries($startMonth, $aggregated);
 
         return [
             'labels' => $labels,
             'values' => $values,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $aggregated
+     * @return array{0:array<int,string>,1:array<int,float>}
+     */
+    private function fillMonthlySeries(Carbon $startMonth, array $aggregated): array
+    {
+        $labels = [];
+        $values = [];
+
+        for ($i = 0; $i < 12; $i++) {
+            $month = $startMonth->copy()->addMonths($i)->startOfMonth();
+            $key = sprintf('%04d_%d', (int) $month->year, (int) $month->month);
+
+            $labels[] = $month->format('M Y');
+            $values[] = round((float) ($aggregated[$key] ?? 0), 2);
+        }
+
+        return [$labels, $values];
+    }
+
+    private function monthlyAggregateSelect(string $dateColumn, string $sumColumn): string
+    {
+        $driver = DB::connection()->getDriverName();
+
+        return match ($driver) {
+            'sqlite' => sprintf(
+                "CAST(strftime('%%Y', %s) AS INTEGER) as year_key, CAST(strftime('%%m', %s) AS INTEGER) as month_key, COALESCE(SUM(%s), 0) as month_total",
+                $dateColumn,
+                $dateColumn,
+                $sumColumn
+            ),
+            'pgsql' => sprintf(
+                'EXTRACT(YEAR FROM %1$s)::int as year_key, EXTRACT(MONTH FROM %1$s)::int as month_key, COALESCE(SUM(%2$s), 0) as month_total',
+                $dateColumn,
+                $sumColumn
+            ),
+            default => sprintf(
+                'YEAR(%1$s) as year_key, MONTH(%1$s) as month_key, COALESCE(SUM(%2$s), 0) as month_total',
+                $dateColumn,
+                $sumColumn
+            ),
+        };
     }
 }

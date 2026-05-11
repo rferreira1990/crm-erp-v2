@@ -47,7 +47,15 @@
                 <div class="row g-3">
                     <div class="col-12 col-lg-6">
                         <label for="supplier_id" class="form-label">Fornecedor</label>
-                        <select id="supplier_id" name="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" required>
+                        <select
+                            id="supplier_id"
+                            name="supplier_id"
+                            class="form-select @error('supplier_id') is-invalid @enderror"
+                            data-ajax-search-url="{{ route('admin.api.suppliers.search') }}"
+                            data-ajax-search-placeholder="Pesquisar fornecedor..."
+                            data-ajax-search-empty-label="Selecionar fornecedor"
+                            required
+                        >
                             <option value="">Selecionar fornecedor</option>
                             @foreach ($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}" @selected((string) old('supplier_id') === (string) $supplier->id)>

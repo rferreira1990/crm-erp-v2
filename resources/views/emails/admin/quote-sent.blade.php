@@ -97,10 +97,16 @@
                                 Estamos disponiveis para qualquer esclarecimento adicional.
                             </p>
 
-                            <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">
-                                Com os melhores cumprimentos,<br />
-                                <strong>{{ $companyName }}</strong>
-                            </p>
+                            @if (! empty($signatureHtml))
+                                <div style="margin:0;font-size:14px;line-height:1.65;color:#111827;">
+                                    {!! $signatureHtml !!}
+                                </div>
+                            @else
+                                <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">
+                                    Com os melhores cumprimentos,<br />
+                                    <strong>{{ $companyName }}</strong>
+                                </p>
+                            @endif
                         </td>
                     </tr>
 

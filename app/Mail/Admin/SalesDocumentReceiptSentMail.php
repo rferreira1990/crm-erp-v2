@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\SalesDocumentReceipt;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SalesDocumentReceiptSentMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -61,7 +63,7 @@ class SalesDocumentReceiptSentMail extends Mailable
     public function content(): Content
     {
         $this->receipt->loadMissing([
-            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path',
+            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path,mail_signature_html',
             'customer:id,name',
             'salesDocument:id,number,currency,grand_total',
             'paymentMethod:id,name',
@@ -108,6 +110,8 @@ class SalesDocumentReceiptSentMail extends Mailable
                     'location' => $location !== '' ? $location : null,
                 ],
                 'summary' => $summary,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($company?->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($company?->mail_signature_html ?? '')),
             ]
         );
     }

@@ -122,6 +122,11 @@ class PurchaseOrder extends Model
             ->orderByDesc('id');
     }
 
+    public function purchaseDocuments(): HasMany
+    {
+        return $this->hasMany(PurchaseDocument::class);
+    }
+
     public function receiptItems(): HasManyThrough
     {
         return $this->hasManyThrough(

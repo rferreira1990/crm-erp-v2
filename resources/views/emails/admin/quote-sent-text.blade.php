@@ -20,8 +20,12 @@ Mensagem:
 @endif
 Estamos disponiveis para qualquer esclarecimento adicional.
 
+@if (! empty($signatureText))
+{{ $signatureText }}
+@else
 Com os melhores cumprimentos,
 {{ $companyName }}
+@endif
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif

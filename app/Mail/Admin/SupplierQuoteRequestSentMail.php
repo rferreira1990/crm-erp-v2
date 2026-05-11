@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\SupplierQuoteRequest;
 use App\Models\SupplierQuoteRequestSupplier;
 use Illuminate\Bus\Queueable;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SupplierQuoteRequestSentMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -63,7 +65,7 @@ class SupplierQuoteRequestSentMail extends Mailable
     public function content(): Content
     {
         $this->rfq->loadMissing([
-            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path',
+            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path,mail_signature_html',
             'assignedUser:id,name',
         ]);
 
@@ -110,6 +112,8 @@ class SupplierQuoteRequestSentMail extends Mailable
                     'location' => $location !== '' ? $location : null,
                 ],
                 'summary' => $summary,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($company?->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($company?->mail_signature_html ?? '')),
             ]
         );
     }
@@ -186,4 +190,3 @@ class SupplierQuoteRequestSentMail extends Mailable
         return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }
-

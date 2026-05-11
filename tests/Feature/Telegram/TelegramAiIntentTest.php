@@ -187,7 +187,7 @@ class TelegramAiIntentTest extends TestCase
         $botMock = Mockery::mock(TelegramBotService::class);
         $botMock->shouldReceive('sendMessage')
             ->once()
-            ->with(999001, 'Posso ajudar com stock, orcamentos pendentes, informacao de orcamentos, saldos, registos diarios de obra e envio de email.');
+            ->with(999001, 'Posso ajudar com stock, agenda, KPI, vencidos, orcamentos, saldos, registos diarios de obra e envio de email. Use /ajuda.');
         $this->app->instance(TelegramBotService::class, $botMock);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('ola bot', 123456, 999001))
@@ -242,7 +242,7 @@ class TelegramAiIntentTest extends TestCase
         $botMock = Mockery::mock(TelegramBotService::class);
         $botMock->shouldReceive('sendMessage')
             ->once()
-            ->with(999001, 'Posso ajudar com stock, orcamentos pendentes, informacao de orcamentos, saldos, registos diarios de obra e envio de email.');
+            ->with(999001, 'Posso ajudar com stock, agenda, KPI, vencidos, orcamentos, saldos, registos diarios de obra e envio de email. Use /ajuda.');
         $this->app->instance(TelegramBotService::class, $botMock);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('ola bom dia', 123456, 999001))
@@ -318,7 +318,7 @@ class TelegramAiIntentTest extends TestCase
         $botMock = Mockery::mock(TelegramBotService::class);
         $botMock->shouldReceive('sendMessage')
             ->once()
-            ->with(999001, 'Bot Telegram ligado. AI ainda nao esta ativa nesta fase.');
+            ->with(999001, 'Comando nao reconhecido. Use /ajuda.');
         $this->app->instance(TelegramBotService::class, $botMock);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('/stockxxx cabo', 123456, 999001))

@@ -354,7 +354,11 @@ class ConstructionSiteController extends Controller
             ->whereKey($constructionSiteImage)
             ->firstOrFail();
 
-        return Storage::disk('local')->response($image->file_path, $image->original_name);
+        return $this->localDiskResponse(
+            (string) $image->file_path,
+            (string) $image->original_name,
+            ['construction-sites/'.$companyId.'/'.$site->id.'/images']
+        );
     }
 
     public function downloadFile(Request $request, int $constructionSite, int $constructionSiteFile): StreamedResponse
@@ -369,7 +373,11 @@ class ConstructionSiteController extends Controller
             ->whereKey($constructionSiteFile)
             ->firstOrFail();
 
-        return Storage::disk('local')->download($file->file_path, $file->original_name);
+        return $this->localDiskDownload(
+            (string) $file->file_path,
+            (string) $file->original_name,
+            ['construction-sites/'.$companyId.'/'.$site->id.'/files']
+        );
     }
 
     public function destroyImage(Request $request, int $constructionSite, int $constructionSiteImage): RedirectResponse

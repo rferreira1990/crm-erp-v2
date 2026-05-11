@@ -18,6 +18,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queue Delivery Toggle
+    |--------------------------------------------------------------------------
+    |
+    | Keep disabled by default to preserve synchronous behavior. Enable this
+    | per environment when queue workers are running and monitored.
+    |
+    */
+    'queue_enabled' => (bool) env('MAIL_QUEUE_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |

@@ -71,11 +71,20 @@ class StockMovementController extends Controller
         $this->authorize('create', StockMovement::class);
 
         $companyId = (int) $request->user()->company_id;
+        $selectedArticleId = (int) $request->old('article_id', 0);
 
         $articleOptions = Article::query()
             ->forCompany($companyId)
             ->where('moves_stock', true)
+            ->where(function ($query) use ($selectedArticleId): void {
+                $query->where('is_active', true);
+
+                if ($selectedArticleId > 0) {
+                    $query->orWhereKey($selectedArticleId);
+                }
+            })
             ->orderBy('designation')
+            ->limit(50)
             ->get(['id', 'code', 'designation', 'stock_quantity']);
 
         return view('admin.stock-movements.create', [

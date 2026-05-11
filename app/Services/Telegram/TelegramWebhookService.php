@@ -11,9 +11,16 @@ use App\Models\TelegramEmailDraft;
 use App\Models\TelegramUserLink;
 use App\Services\Ai\EmailTextImproverService;
 use App\Services\Telegram\Commands\TelegramConstructionSiteDailyLogAttachmentService;
+use App\Services\Telegram\Commands\TelegramCalendarEventDraftService;
 use App\Services\Telegram\Commands\TelegramConstructionSiteDailyLogCommandService;
 use App\Services\Telegram\Commands\TelegramCustomerBalanceCommandService;
+use App\Services\Telegram\Commands\TelegramAgendaCommandService;
+use App\Services\Telegram\Commands\TelegramKpiCommandService;
+use App\Services\Telegram\Commands\TelegramOverdueCustomerFollowupDraftService;
+use App\Services\Telegram\Commands\TelegramOverdueCustomersCommandService;
+use App\Services\Telegram\Commands\TelegramOverdueSuppliersCommandService;
 use App\Services\Telegram\Commands\TelegramPendingQuotesCommandService;
+use App\Services\Telegram\Commands\TelegramQuoteFollowupCommandService;
 use App\Services\Telegram\Commands\TelegramQuoteInfoCommandService;
 use App\Services\Telegram\Commands\TelegramStockCommandService;
 use App\Services\Telegram\Commands\TelegramSupplierBalanceCommandService;
@@ -27,12 +34,19 @@ class TelegramWebhookService
         private readonly TelegramLinkCodeService $linkCodeService,
         private readonly TelegramUserResolverService $userResolverService,
         private readonly TelegramStockCommandService $stockCommandService,
+        private readonly TelegramAgendaCommandService $agendaCommandService,
+        private readonly TelegramKpiCommandService $kpiCommandService,
+        private readonly TelegramOverdueCustomerFollowupDraftService $overdueCustomerFollowupDraftService,
+        private readonly TelegramOverdueCustomersCommandService $overdueCustomersCommandService,
+        private readonly TelegramOverdueSuppliersCommandService $overdueSuppliersCommandService,
+        private readonly TelegramQuoteFollowupCommandService $quoteFollowupCommandService,
         private readonly TelegramPendingQuotesCommandService $pendingQuotesCommandService,
         private readonly TelegramQuoteInfoCommandService $quoteInfoCommandService,
         private readonly TelegramCustomerBalanceCommandService $customerBalanceCommandService,
         private readonly TelegramSupplierBalanceCommandService $supplierBalanceCommandService,
         private readonly TelegramConstructionSiteDailyLogCommandService $dailyLogCommandService,
         private readonly TelegramConstructionSiteDailyLogAttachmentService $dailyLogAttachmentService,
+        private readonly TelegramCalendarEventDraftService $calendarEventDraftService,
         private readonly TelegramPendingSelectionService $pendingSelectionService,
         private readonly TelegramAiIntentService $aiIntentService,
         private readonly TelegramEmailDraftService $telegramEmailDraftService,
@@ -84,6 +98,12 @@ class TelegramWebhookService
             return;
         }
 
+        if ($this->isHelpCommand($text)) {
+            $this->handleHelpCommand($chatId, $fromIdInt, $linkedUser);
+
+            return;
+        }
+
         if ($this->isCancelEmailCommand($text)) {
             $this->handleCancelEmailCommand($chatId, $linkedUser);
 
@@ -106,11 +126,19 @@ class TelegramWebhookService
             return;
         }
 
+        if ($this->handleCalendarEventCreateApproval($text, $chatId, $linkedUser)) {
+            return;
+        }
+
         if ($this->handleStopAttachPhotosCommand($text, $chatId, $linkedUser)) {
             return;
         }
 
         if ($this->handlePendingSelectionReply($text, $chatId, $linkedUser)) {
+            return;
+        }
+
+        if ($this->handleCreateOverdueCustomerFollowupCommand($text, $chatId, $linkedUser)) {
             return;
         }
 
@@ -126,6 +154,36 @@ class TelegramWebhookService
             return;
         }
 
+        if ($this->isAgendaCommand($text)) {
+            $this->handleAgendaCommand($text, $chatId, $linkedUser);
+
+            return;
+        }
+
+        if ($this->isKpiCommand($text)) {
+            $this->handleKpiCommand($text, $chatId, $linkedUser);
+
+            return;
+        }
+
+        if ($this->isOverdueCustomersCommand($text)) {
+            $this->handleOverdueCustomersCommand($chatId, $linkedUser);
+
+            return;
+        }
+
+        if ($this->isOverdueSuppliersCommand($text)) {
+            $this->handleOverdueSuppliersCommand($chatId, $linkedUser);
+
+            return;
+        }
+
+        if ($this->isQuoteFollowupCommand($text)) {
+            $this->handleQuoteFollowupCommand($chatId, $linkedUser);
+
+            return;
+        }
+
         if ($this->isPendingQuotesCommand($text)) {
             $this->handlePendingQuotesCommand($chatId, $linkedUser);
 
@@ -134,6 +192,12 @@ class TelegramWebhookService
 
         if ($this->isQuoteInfoCommand($text)) {
             $this->handleQuoteInfoCommand($text, $chatId, $linkedUser);
+
+            return;
+        }
+
+        if ($this->isCustomerQuotesCommand($text)) {
+            $this->handleCustomerQuotesCommand($text, $chatId, $linkedUser);
 
             return;
         }
@@ -189,7 +253,7 @@ class TelegramWebhookService
 
         $this->telegramBotService->sendMessage(
             $chatId,
-            'Bot Telegram ligado. AI ainda nao esta ativa nesta fase.'
+            'Comando nao reconhecido. Use /ajuda.'
         );
     }
 
@@ -231,9 +295,39 @@ class TelegramWebhookService
         return str_starts_with($text, '/link');
     }
 
+    private function isHelpCommand(string $text): bool
+    {
+        return preg_match('/^\/ajuda(?:@[A-Za-z0-9_]+)?$/u', $text) === 1;
+    }
+
     private function isStockCommand(string $text): bool
     {
         return preg_match('/^\/stock(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
+    }
+
+    private function isAgendaCommand(string $text): bool
+    {
+        return preg_match('/^\/agenda(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
+    }
+
+    private function isKpiCommand(string $text): bool
+    {
+        return preg_match('/^\/kpi(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
+    }
+
+    private function isOverdueCustomersCommand(string $text): bool
+    {
+        return preg_match('/^\/clientes-vencidos(?:@[A-Za-z0-9_]+)?$/u', $text) === 1;
+    }
+
+    private function isOverdueSuppliersCommand(string $text): bool
+    {
+        return preg_match('/^\/fornecedores-vencidos(?:@[A-Za-z0-9_]+)?$/u', $text) === 1;
+    }
+
+    private function isQuoteFollowupCommand(string $text): bool
+    {
+        return preg_match('/^\/orcamentos-sem-resposta(?:@[A-Za-z0-9_]+)?$/u', $text) === 1;
     }
 
     private function isPendingQuotesCommand(string $text): bool
@@ -244,6 +338,11 @@ class TelegramWebhookService
     private function isQuoteInfoCommand(string $text): bool
     {
         return preg_match('/^\/orcamento(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
+    }
+
+    private function isCustomerQuotesCommand(string $text): bool
+    {
+        return preg_match('/^\/orcamentos-cliente(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
     }
 
     private function isCustomerBalanceCommand(string $text): bool
@@ -259,6 +358,11 @@ class TelegramWebhookService
     private function isDailyLogCommand(string $text): bool
     {
         return preg_match('/^\/diario(?:@[A-Za-z0-9_]+)?(?:\s+.*)?$/u', $text) === 1;
+    }
+
+    private function isCreateOverdueCustomerFollowupCommand(string $text): bool
+    {
+        return preg_match('/^criar\s+follow[\-\s]?up\s+\d+$/iu', trim($text)) === 1;
     }
 
     private function isEmailCommand(string $text): bool
@@ -319,6 +423,68 @@ class TelegramWebhookService
                 $companyName !== '' ? $companyName : 'N/A'
             )
         );
+    }
+
+    private function handleHelpCommand(int|string $chatId, int $telegramUserId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $this->canUseBaseCommands($telegramUserId, $linkedUser)) {
+            if ($this->hasWhitelistConfigured()) {
+                $this->telegramBotService->sendMessage($chatId, 'Utilizador Telegram nao autorizado.');
+            } else {
+                $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+            }
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $this->buildHelpMessage());
+    }
+
+    private function buildHelpMessage(): string
+    {
+        return implode("\n", [
+            'Ajuda do Bot CRM/ERP',
+            '',
+            'Comandos base:',
+            '/ping',
+            '/id',
+            '/link CODIGO',
+            '/ajuda',
+            '',
+            'Stock e agenda:',
+            '/stock TERMO',
+            '/agenda hoje|amanha|semana|mes',
+            '/kpi hoje|mes',
+            '',
+            'Vencimentos e follow-up:',
+            '/clientes-vencidos',
+            'CRIAR FOLLOW-UP N (apos /clientes-vencidos)',
+            '/fornecedores-vencidos',
+            '',
+            'Orcamentos:',
+            '/orcamentos-pendentes',
+            '/orcamentos-sem-resposta',
+            '/orcamento TERMO',
+            '/orcamentos-cliente NOME-CLIENTE',
+            '',
+            'Saldos:',
+            '/cliente-saldo TERMO',
+            '/fornecedor-saldo TERMO',
+            '',
+            'Diario de obra (write):',
+            '/diario obra TERMO | DESCRICAO',
+            '',
+            'Email:',
+            '/email xpto@exemplo.pt',
+            '/cancelar-email',
+            '/email-status',
+            '',
+            'Confirmacoes de escrita:',
+            'OK CRIAR / CANCELAR',
+            '',
+            'Tambem pode escrever em linguagem natural (usa AI).',
+            'Comandos com "/" nao usam AI (custo 0 EUR).',
+        ]);
     }
 
     private function touchLinkedUser(?TelegramUserLink $linkedUser, int|string $chatId): void
@@ -407,6 +573,186 @@ class TelegramWebhookService
         $this->telegramBotService->sendMessage($chatId, $responseText);
     }
 
+    private function handleAgendaCommand(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        $matches = [];
+        preg_match('/^\/agenda(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$/u', $text, $matches);
+        $period = trim((string) ($matches[1] ?? ''));
+
+        if ($period === '') {
+            $this->telegramBotService->sendMessage($chatId, 'Use: /agenda hoje, /agenda amanha, /agenda semana ou /agenda mes');
+
+            return;
+        }
+
+        try {
+            $responseText = $this->agendaCommandService->execute($linkedUser, $period);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /agenda command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar agenda agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $responseText);
+    }
+
+    private function handleKpiCommand(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        $matches = [];
+        preg_match('/^\/kpi(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$/u', $text, $matches);
+        $period = trim((string) ($matches[1] ?? ''));
+        if ($period === '') {
+            $period = 'hoje';
+        }
+
+        try {
+            $responseText = $this->kpiCommandService->execute($linkedUser, $period);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /kpi command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar KPI agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $responseText);
+    }
+
+    private function handleOverdueCustomersCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        try {
+            $message = $this->overdueCustomersCommandService->execute($linkedUser, $chatId);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /clientes-vencidos command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar vencidos de clientes agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $message);
+    }
+
+    private function handleCreateOverdueCustomerFollowupCommand(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): bool
+    {
+        if (! $this->isCreateOverdueCustomerFollowupCommand($text)) {
+            return false;
+        }
+
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return true;
+        }
+
+        $matches = [];
+        preg_match('/^criar\s+follow[\-\s]?up\s+(\d+)$/iu', trim($text), $matches);
+        $choice = (int) ($matches[1] ?? 0);
+
+        try {
+            $result = $this->overdueCustomerFollowupDraftService->prepareFromChoice($linkedUser, $chatId, $choice);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram overdue follow-up draft failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel preparar o follow-up agora. Tente novamente.');
+
+            return true;
+        }
+
+        $this->telegramBotService->sendMessage(
+            $chatId,
+            (string) ($result['message'] ?? 'Nao foi possivel preparar o follow-up.')
+        );
+
+        return true;
+    }
+
+    private function handleOverdueSuppliersCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        try {
+            $message = $this->overdueSuppliersCommandService->execute($linkedUser);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /fornecedores-vencidos command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar vencidos de fornecedores agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $message);
+    }
+
+    private function handleQuoteFollowupCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        try {
+            $message = $this->quoteFollowupCommandService->execute($linkedUser);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /orcamentos-sem-resposta command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar follow-up de orcamentos agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage($chatId, $message);
+    }
+
     private function handlePendingQuotesCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
     {
         if (! $linkedUser) {
@@ -454,6 +800,35 @@ class TelegramWebhookService
             ]);
 
             $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar o orcamento agora. Tente novamente.');
+
+            return;
+        }
+
+        $this->sendCommandResultWithOptionalPdf($chatId, $result);
+    }
+
+    private function handleCustomerQuotesCommand(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): void
+    {
+        if (! $linkedUser) {
+            $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        $matches = [];
+        preg_match('/^\/orcamentos-cliente(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$/u', $text, $matches);
+        $term = trim((string) ($matches[1] ?? ''));
+
+        try {
+            $result = $this->quoteInfoCommandService->executeByCustomerTerm($linkedUser, $chatId, $term);
+        } catch (Throwable $exception) {
+            Log::warning('Telegram /orcamentos-cliente command failed', [
+                'telegram_user_id' => $linkedUser->telegram_user_id,
+                'company_id' => $linkedUser->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar os orcamentos do cliente agora. Tente novamente.');
 
             return;
         }
@@ -537,7 +912,7 @@ class TelegramWebhookService
         preg_match('/^\/email(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$/u', $text, $matches);
         $email = strtolower(trim((string) ($matches[1] ?? '')));
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->telegramBotService->sendMessage($chatId, 'Use: /email xpto@exemplo.pt');
+            $this->telegramBotService->sendMessage($chatId, 'Para iniciar, use: /email destinatario@dominio.pt');
 
             return;
         }
@@ -556,12 +931,15 @@ class TelegramWebhookService
                 'error' => $exception->getMessage(),
             ]);
 
-            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel iniciar o rascunho de email.');
+            $this->telegramBotService->sendMessage($chatId, 'Nao consegui iniciar o rascunho de email agora. Tente novamente em alguns segundos.');
 
             return;
         }
 
-        $this->telegramBotService->sendMessage($chatId, 'Qual e o assunto?');
+        $this->telegramBotService->sendMessage(
+            $chatId,
+            "Vamos preparar o email.\nPasso 1/4: indique o assunto."
+        );
     }
 
     private function handleCancelEmailCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
@@ -574,12 +952,12 @@ class TelegramWebhookService
 
         $cancelled = $this->telegramEmailDraftService->cancelActiveDraft($linkedUser, $chatId);
         if (! $cancelled) {
-            $this->telegramBotService->sendMessage($chatId, 'Nao existe rascunho ativo.');
+            $this->telegramBotService->sendMessage($chatId, 'Nao existe rascunho ativo no momento.');
 
             return;
         }
 
-        $this->telegramBotService->sendMessage($chatId, 'Rascunho de email cancelado.');
+        $this->telegramBotService->sendMessage($chatId, 'Rascunho cancelado. Nenhum email foi enviado.');
     }
 
     private function handleEmailStatusCommand(int|string $chatId, ?TelegramUserLink $linkedUser): void
@@ -601,9 +979,9 @@ class TelegramWebhookService
         $this->telegramBotService->sendMessage(
             $chatId,
             sprintf(
-                "Rascunho ativo\nPara: %s\nEstado: %s\nExpira em: %d min",
+                "Rascunho ativo\nPara: %s\nEstado: %s\nExpira em: %d min\nUse /cancelar-email para anular.",
                 (string) $draft->to_email,
-                (string) $draft->status,
+                $this->mapEmailDraftStatusLabel((string) $draft->status),
                 (int) $remaining
             )
         );
@@ -639,28 +1017,33 @@ class TelegramWebhookService
         try {
             if ($draft->status === TelegramEmailDraft::STATUS_COLLECTING_SUBJECT) {
                 if ($reply === '') {
-                    $this->telegramBotService->sendMessage($chatId, 'Indique o assunto do email.');
+                    $this->telegramBotService->sendMessage($chatId, 'Passo 1/4: preciso do assunto do email.');
 
                     return true;
                 }
 
                 $this->telegramEmailDraftService->setSubject($draft, $reply);
-                $this->telegramBotService->sendMessage($chatId, 'Escreva o texto do email.');
+                $this->telegramBotService->sendMessage(
+                    $chatId,
+                    'Passo 2/4: escreva o texto principal do email.'
+                );
 
                 return true;
             }
 
             if ($draft->status === TelegramEmailDraft::STATUS_COLLECTING_BODY) {
-                if ($reply === '') {
-                    $this->telegramBotService->sendMessage($chatId, 'Escreva o texto do email.');
+                $bodyReply = $this->normalizeMultilineReply($text);
+
+                if ($bodyReply === '') {
+                    $this->telegramBotService->sendMessage($chatId, 'Passo 2/4: preciso do texto do email.');
 
                     return true;
                 }
 
-                $this->telegramEmailDraftService->setBody($draft, $reply);
+                $this->telegramEmailDraftService->setBody($draft, $bodyReply);
                 $this->telegramBotService->sendMessage(
                     $chatId,
-                    "Quer adicionar anexos? Envie ficheiros/fotos agora ou escreva 'sem anexos' ou 'fim'."
+                    "Passo 3/4: quer anexar ficheiros?\nEnvie agora os anexos, ou responda SEM ANEXOS."
                 );
 
                 return true;
@@ -677,7 +1060,7 @@ class TelegramWebhookService
                     $this->telegramEmailDraftService->moveToAiOffer($draft);
                     $this->telegramBotService->sendMessage(
                         $chatId,
-                        'Quer que eu prepare uma versao mais profissional deste email? Responda SIM ou NAO.'
+                        "Passo 4/4: quer que eu melhore o texto com IA?\nResponda SIM ou NAO."
                     );
 
                     return true;
@@ -685,7 +1068,7 @@ class TelegramWebhookService
 
                 $this->telegramBotService->sendMessage(
                     $chatId,
-                    "Envie anexos, ou responda 'sem anexos' / 'fim' para continuar."
+                    "Pode enviar anexos agora.\nQuando terminar, escreva FIM.\nSe nao quiser anexos, escreva SEM ANEXOS."
                 );
 
                 return true;
@@ -706,7 +1089,7 @@ class TelegramWebhookService
 
                     $this->telegramBotService->sendMessage(
                         $chatId,
-                        "Versao melhorada:\n\n".(string) $improved['improved_text']."\n\nUsar esta versao? Responda OK para usar ou ORIGINAL para manter original."
+                        "Versao melhorada sugerida:\n\n".(string) $improved['improved_text']."\n\nResponda OK para usar esta versao ou ORIGINAL para manter o texto inicial."
                     );
 
                     return true;
@@ -719,7 +1102,7 @@ class TelegramWebhookService
                     return true;
                 }
 
-                $this->telegramBotService->sendMessage($chatId, 'Responda SIM para melhorar ou NAO para manter o texto original.');
+                $this->telegramBotService->sendMessage($chatId, 'Resposta invalida. Escreva SIM para melhorar ou NAO para manter o texto original.');
 
                 return true;
             }
@@ -740,7 +1123,7 @@ class TelegramWebhookService
                     return true;
                 }
 
-                $this->telegramBotService->sendMessage($chatId, 'Responda OK para usar a versao melhorada ou ORIGINAL para manter o texto original.');
+                $this->telegramBotService->sendMessage($chatId, 'Resposta invalida. Escreva OK para usar a versao melhorada ou ORIGINAL para manter o texto original.');
 
                 return true;
             }
@@ -749,7 +1132,7 @@ class TelegramWebhookService
                 $replyUpper = $this->normalizeReplyUpper($reply);
                 if ($replyUpper === 'CANCELAR') {
                     $this->telegramEmailDraftService->cancelDraft($draft);
-                    $this->telegramBotService->sendMessage($chatId, 'Rascunho cancelado.');
+                    $this->telegramBotService->sendMessage($chatId, 'Rascunho cancelado. Nenhum email foi enviado.');
 
                     return true;
                 }
@@ -769,7 +1152,7 @@ class TelegramWebhookService
                     return true;
                 }
 
-                $this->telegramBotService->sendMessage($chatId, 'Responda OK ENVIAR para enviar ou CANCELAR.');
+                $this->telegramBotService->sendMessage($chatId, 'Para concluir, responda OK ENVIAR. Para desistir, responda CANCELAR.');
 
                 return true;
             }
@@ -786,7 +1169,7 @@ class TelegramWebhookService
                 'error' => $exception->getMessage(),
             ]);
 
-            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel processar o rascunho de email agora.');
+            $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel processar este rascunho agora. Tente novamente.');
 
             return true;
         }
@@ -803,7 +1186,7 @@ class TelegramWebhookService
         $maxAttachments = max(1, (int) config('telegram.email.max_attachments', TelegramEmailDraftService::MAX_ATTACHMENTS));
 
         if (count($currentAttachments) >= $maxAttachments) {
-            $this->telegramBotService->sendMessage($chatId, "Ja atingiu o limite de {$maxAttachments} anexos. Escreva fim para continuar.");
+            $this->telegramBotService->sendMessage($chatId, "Atingiu o limite de {$maxAttachments} anexos. Escreva FIM para continuar.");
 
             return;
         }
@@ -836,7 +1219,7 @@ class TelegramWebhookService
         }
 
         if ($accepted > 0 && $rejected === 0) {
-            $this->telegramBotService->sendMessage($chatId, 'Anexo recebido. Envie mais anexos ou escreva fim.');
+            $this->telegramBotService->sendMessage($chatId, 'Anexo guardado com sucesso. Pode enviar mais anexos ou escrever FIM.');
 
             return;
         }
@@ -844,7 +1227,7 @@ class TelegramWebhookService
         if ($accepted > 0 && $rejected > 0) {
             $this->telegramBotService->sendMessage(
                 $chatId,
-                sprintf('%d anexo(s) guardado(s). %d rejeitado(s). Envie mais anexos ou escreva fim.', $accepted, $rejected)
+                sprintf('%d anexo(s) guardado(s) e %d rejeitado(s). Pode enviar mais anexos ou escrever FIM.', $accepted, $rejected)
             );
 
             return;
@@ -874,6 +1257,65 @@ class TelegramWebhookService
         return mb_strtoupper($this->normalizeReply($text), 'UTF-8');
     }
 
+    private function normalizeMultilineReply(string $text): string
+    {
+        $value = trim($text);
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', ' ', $value) ?? $value;
+        $value = preg_replace("/\r\n|\r/u", "\n", $value) ?? $value;
+        $value = preg_replace("/\n{3,}/u", "\n\n", $value) ?? $value;
+
+        return trim($value);
+    }
+
+    private function mapEmailDraftStatusLabel(string $status): string
+    {
+        return match ($status) {
+            TelegramEmailDraft::STATUS_COLLECTING_SUBJECT => 'a recolher assunto',
+            TelegramEmailDraft::STATUS_COLLECTING_BODY => 'a recolher texto',
+            TelegramEmailDraft::STATUS_COLLECTING_ATTACHMENTS => 'a recolher anexos',
+            TelegramEmailDraft::STATUS_AI_IMPROVEMENT_OFFER => 'escolha de melhoria IA',
+            TelegramEmailDraft::STATUS_AI_IMPROVEMENT_PREVIEW => 'confirmacao do texto melhorado',
+            TelegramEmailDraft::STATUS_AWAITING_FINAL_APPROVAL => 'a aguardar confirmacao final',
+            default => $status,
+        };
+    }
+
+    private function handleCalendarEventCreateApproval(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): bool
+    {
+        if (! $linkedUser) {
+            return false;
+        }
+
+        $replyUpper = $this->normalizeReplyUpper($text);
+        if (! in_array($replyUpper, ['OK CRIAR', 'CANCELAR'], true)) {
+            return false;
+        }
+
+        $selection = $this->pendingSelectionService->getActiveSelectionByType(
+            $linkedUser,
+            $chatId,
+            TelegramPendingSelectionService::TYPE_CALENDAR_EVENT_CREATE
+        );
+
+        if (! $selection) {
+            $this->telegramBotService->sendMessage($chatId, 'Nao existe criacao pendente. Envie um novo pedido de agenda.');
+
+            return true;
+        }
+
+        if ($replyUpper === 'CANCELAR') {
+            $this->pendingSelectionService->consumeSelection($selection);
+            $this->telegramBotService->sendMessage($chatId, 'Criacao cancelada.');
+
+            return true;
+        }
+
+        $result = $this->calendarEventDraftService->confirmCreation($linkedUser, $selection);
+        $this->telegramBotService->sendMessage($chatId, (string) ($result['message'] ?? 'Nao foi possivel criar o evento.'));
+
+        return true;
+    }
+
     /**
      * @param list<array{file_id:string,file_size:int|null,source:string}> $images
      */
@@ -885,6 +1327,27 @@ class TelegramWebhookService
     ): void {
         if (! $linkedUser) {
             $this->telegramBotService->sendMessage($chatId, 'Conta Telegram nao ligada. Use /link CODIGO.');
+
+            return;
+        }
+
+        $naturalAgendaPeriod = $this->extractNaturalAgendaPeriod($text);
+        if ($naturalAgendaPeriod !== null) {
+            try {
+                $responseText = $this->agendaCommandService->execute($linkedUser, $naturalAgendaPeriod);
+            } catch (Throwable $exception) {
+                Log::warning('Telegram natural agenda query failed', [
+                    'telegram_user_id' => $linkedUser->telegram_user_id,
+                    'company_id' => $linkedUser->company_id,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                $this->telegramBotService->sendMessage($chatId, 'Nao foi possivel consultar agenda agora. Tente novamente.');
+
+                return;
+            }
+
+            $this->telegramBotService->sendMessage($chatId, $responseText);
 
             return;
         }
@@ -910,7 +1373,7 @@ class TelegramWebhookService
             return;
         }
 
-        $this->dispatchNaturalIntent($intentData, $linkedUser, $chatId, $images);
+        $this->dispatchNaturalIntent($intentData, $linkedUser, $chatId, $images, $text);
     }
 
     /**
@@ -920,7 +1383,8 @@ class TelegramWebhookService
         TelegramAiIntentData $intentData,
         TelegramUserLink $linkedUser,
         int|string $chatId,
-        array $images
+        array $images,
+        string $originalText
     ): void {
         try {
             if ($intentData->intent === TelegramAiIntentData::INTENT_STOCK_LOOKUP && $intentData->term !== null) {
@@ -944,6 +1408,13 @@ class TelegramWebhookService
                 return;
             }
 
+            if ($intentData->intent === TelegramAiIntentData::INTENT_CUSTOMER_QUOTES_LOOKUP && $intentData->term !== null) {
+                $result = $this->quoteInfoCommandService->executeByCustomerTerm($linkedUser, $chatId, $intentData->term);
+                $this->sendCommandResultWithOptionalPdf($chatId, $result);
+
+                return;
+            }
+
             if ($intentData->intent === TelegramAiIntentData::INTENT_CUSTOMER_BALANCE_LOOKUP && $intentData->term !== null) {
                 $result = $this->customerBalanceCommandService->execute($linkedUser, $chatId, $intentData->term);
                 $this->telegramBotService->sendMessage($chatId, (string) ($result['message'] ?? 'Nao foi possivel obter o saldo.'));
@@ -954,6 +1425,35 @@ class TelegramWebhookService
             if ($intentData->intent === TelegramAiIntentData::INTENT_SUPPLIER_BALANCE_LOOKUP && $intentData->term !== null) {
                 $result = $this->supplierBalanceCommandService->execute($linkedUser, $chatId, $intentData->term);
                 $this->telegramBotService->sendMessage($chatId, (string) ($result['message'] ?? 'Nao foi possivel obter o saldo.'));
+
+                return;
+            }
+
+            if ($intentData->intent === TelegramAiIntentData::INTENT_KPI_LOOKUP) {
+                $period = $intentData->term !== null ? $intentData->term : 'hoje';
+                $message = $this->kpiCommandService->execute($linkedUser, $period);
+                $this->telegramBotService->sendMessage($chatId, $message);
+
+                return;
+            }
+
+            if ($intentData->intent === TelegramAiIntentData::INTENT_OVERDUE_CUSTOMERS_LOOKUP) {
+                $message = $this->overdueCustomersCommandService->execute($linkedUser, $chatId);
+                $this->telegramBotService->sendMessage($chatId, $message);
+
+                return;
+            }
+
+            if ($intentData->intent === TelegramAiIntentData::INTENT_OVERDUE_SUPPLIERS_LOOKUP) {
+                $message = $this->overdueSuppliersCommandService->execute($linkedUser);
+                $this->telegramBotService->sendMessage($chatId, $message);
+
+                return;
+            }
+
+            if ($intentData->intent === TelegramAiIntentData::INTENT_QUOTES_FOLLOWUP_LOOKUP) {
+                $message = $this->quoteFollowupCommandService->execute($linkedUser);
+                $this->telegramBotService->sendMessage($chatId, $message);
 
                 return;
             }
@@ -972,6 +1472,19 @@ class TelegramWebhookService
                 );
 
                 $this->telegramBotService->sendMessage($chatId, (string) ($result['message'] ?? 'Nao foi possivel criar o registo diario.'));
+
+                return;
+            }
+
+            if ($intentData->intent === TelegramAiIntentData::INTENT_CALENDAR_EVENT_CREATE) {
+                $result = $this->calendarEventDraftService->prepareDraftFromAi(
+                    link: $linkedUser,
+                    chatId: $chatId,
+                    aiData: $intentData->data,
+                    originalMessage: $originalText
+                );
+
+                $this->telegramBotService->sendMessage($chatId, (string) ($result['message'] ?? 'Nao foi possivel preparar o evento.'));
 
                 return;
             }
@@ -1002,8 +1515,64 @@ class TelegramWebhookService
 
         $this->telegramBotService->sendMessage(
             $chatId,
-            'Posso ajudar com stock, orcamentos pendentes, informacao de orcamentos, saldos, registos diarios de obra e envio de email.'
+            'Posso ajudar com stock, agenda, KPI, vencidos, orcamentos, saldos, registos diarios de obra e envio de email. Use /ajuda.'
         );
+    }
+
+    private function extractNaturalAgendaPeriod(string $text): ?string
+    {
+        $normalized = \Illuminate\Support\Str::of($text)->lower()->ascii()->squish()->value();
+        if ($normalized === '' || ! str_contains($normalized, 'agenda')) {
+            return null;
+        }
+
+        $isAgendaQuestion = preg_match('/\b(qual|quais|que|mostra|mostrar|como|ver|tenho|tem|ha|resumo|lista)\b/u', $normalized) === 1
+            || str_contains($normalized, 'agenda para')
+            || str_contains($normalized, 'agenda de')
+            || str_contains($normalized, '?');
+
+        if (! $isAgendaQuestion) {
+            return null;
+        }
+
+        if (str_contains($normalized, 'amanha')) {
+            return 'amanha';
+        }
+
+        if (str_contains($normalized, 'hoje')) {
+            return 'hoje';
+        }
+
+        if (str_contains($normalized, 'semana')) {
+            return 'semana';
+        }
+
+        if (str_contains($normalized, 'mes')) {
+            return 'mes';
+        }
+
+        $weekdayTokens = [
+            'segunda feira',
+            'segunda',
+            'terca feira',
+            'terca',
+            'quarta feira',
+            'quarta',
+            'quinta feira',
+            'quinta',
+            'sexta feira',
+            'sexta',
+            'sabado',
+            'domingo',
+        ];
+
+        foreach ($weekdayTokens as $weekdayToken) {
+            if (preg_match('/\b'.preg_quote($weekdayToken, '/').'\b/u', $normalized) === 1) {
+                return $weekdayToken;
+            }
+        }
+
+        return 'hoje';
     }
 
     private function handlePendingSelectionReply(string $text, int|string $chatId, ?TelegramUserLink $linkedUser): bool
@@ -1444,3 +2013,11 @@ class TelegramWebhookService
         return $normalized;
     }
 }
+
+
+
+
+
+
+
+

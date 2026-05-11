@@ -10,7 +10,6 @@ use App\Http\Requests\Admin\UpdatePurchaseOrderRequest;
 use App\Models\Article;
 use App\Mail\Admin\PurchaseOrderSentMail;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderReceipt;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Services\Admin\CompanyMailSettingsService;
@@ -118,13 +117,10 @@ class PurchaseOrderController extends Controller
         $this->authorize('create', PurchaseOrder::class);
 
         $companyId = (int) $request->user()->company_id;
+        $selectedSupplierId = (int) $request->old('supplier_id', 0);
 
         return view('admin.purchase-orders.create', [
-            'suppliers' => Supplier::query()
-                ->forCompany($companyId)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']),
+            'suppliers' => $this->supplierOptionsForForm($companyId, $selectedSupplierId > 0 ? $selectedSupplierId : null),
             'articles' => Article::query()
                 ->forCompany($companyId)
                 ->where('is_active', true)
@@ -180,17 +176,15 @@ class PurchaseOrderController extends Controller
                             'received_quantity',
                         ]),
                 ]),
-            'receipts' => fn ($query) => $query
-                ->with('receiver:id,name')
+            'purchaseDocuments' => fn ($query) => $query
                 ->withCount('items')
-                ->orderByDesc('receipt_date')
+                ->orderByDesc('issue_date')
                 ->orderByDesc('id'),
         ]);
 
         return view('admin.purchase-orders.show', [
             'purchaseOrder' => $purchaseOrderModel,
             'statusLabels' => PurchaseOrder::statusLabels(),
-            'receiptStatusLabels' => PurchaseOrderReceipt::statusLabels(),
         ]);
     }
 
@@ -218,11 +212,10 @@ class PurchaseOrderController extends Controller
 
         return view('admin.purchase-orders.edit', [
             'purchaseOrder' => $purchaseOrderModel,
-            'suppliers' => Supplier::query()
-                ->forCompany($companyId)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']),
+            'suppliers' => $this->supplierOptionsForForm(
+                companyId: $companyId,
+                selectedSupplierId: (int) old('supplier_id', $purchaseOrderModel->supplier_id)
+            ),
             'articles' => Article::query()
                 ->forCompany($companyId)
                 ->where('is_active', true)
@@ -276,13 +269,14 @@ class PurchaseOrderController extends Controller
         $purchaseOrderModel = $this->findCompanyPurchaseOrderOrFail($companyId, $purchaseOrder);
         $this->authorize('view', $purchaseOrderModel);
 
-        if (! $purchaseOrderModel->pdf_path || ! Storage::disk('local')->exists($purchaseOrderModel->pdf_path)) {
+        if (! $purchaseOrderModel->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $purchaseOrderModel->pdf_path,
-            Str::slug($purchaseOrderModel->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $purchaseOrderModel->pdf_path,
+            Str::slug($purchaseOrderModel->number).'.pdf',
+            ['purchase-orders/'.$companyId.'/'.$purchaseOrderModel->id.'/pdf']
         );
     }
 
@@ -292,7 +286,7 @@ class PurchaseOrderController extends Controller
         $purchaseOrderModel = $this->findCompanyPurchaseOrderOrFail($companyId, $purchaseOrder);
         $this->authorize('send', $purchaseOrderModel);
 
-        if (! $purchaseOrderModel->pdf_path || ! Storage::disk('local')->exists($purchaseOrderModel->pdf_path)) {
+        if (! $purchaseOrderModel->pdf_path) {
             $this->purchaseOrderPdfService->generateAndStore($purchaseOrderModel);
             $purchaseOrderModel->refresh();
         }
@@ -311,7 +305,12 @@ class PurchaseOrderController extends Controller
         }
 
         try {
-            $mailer->send(new PurchaseOrderSentMail($purchaseOrderModel, $subject, $message));
+            $mailable = new PurchaseOrderSentMail($purchaseOrderModel, $subject, $message);
+            if (config('mail.queue_enabled')) {
+                $mailer->queue($mailable);
+            } else {
+                $mailer->send($mailable);
+            }
         } catch (Throwable $exception) {
             Log::warning('Purchase order email send failed', [
                 'context' => 'purchase_orders',
@@ -388,5 +387,21 @@ class PurchaseOrderController extends Controller
     private function isIsoDate(string $value): bool
     {
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1;
+    }
+
+    private function supplierOptionsForForm(int $companyId, ?int $selectedSupplierId = null)
+    {
+        return Supplier::query()
+            ->forCompany($companyId)
+            ->where(function ($query) use ($selectedSupplierId): void {
+                $query->where('is_active', true);
+
+                if ($selectedSupplierId !== null && $selectedSupplierId > 0) {
+                    $query->orWhere('id', $selectedSupplierId);
+                }
+            })
+            ->orderBy('name')
+            ->limit(50)
+            ->get(['id', 'name', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']);
     }
 }

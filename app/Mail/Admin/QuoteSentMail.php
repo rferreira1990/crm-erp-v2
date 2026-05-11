@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\Quote;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Bus\Queueable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class QuoteSentMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -36,7 +38,7 @@ class QuoteSentMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $this->quote->loadMissing(['company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address']);
+        $this->quote->loadMissing(['company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address,mail_signature_html']);
 
         $fromAddress = $this->normalizeEmail((string) ($this->quote->company?->mail_from_address ?? ''))
             ?? (string) config('mail.from.address');
@@ -61,7 +63,7 @@ class QuoteSentMail extends Mailable
     public function content(): Content
     {
         $this->quote->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,mail_from_name,mail_from_address,mail_signature_html',
             'customer:id,name',
             'assignedUser:id,name',
         ]);
@@ -136,6 +138,8 @@ class QuoteSentMail extends Mailable
                 'brandPrimaryColor' => $safePrimaryColor,
                 'contact' => $contact,
                 'summary' => $summary,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($company?->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($company?->mail_signature_html ?? '')),
             ]
         );
     }

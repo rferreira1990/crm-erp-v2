@@ -5,7 +5,10 @@
     $commercialOpen = request()->routeIs(
         'admin.customers.*',
         'admin.suppliers.*',
-        'admin.quotes.*',
+        'admin.quotes.*'
+    );
+
+    $salesOpen = request()->routeIs(
         'admin.sales-documents.*',
         'admin.sales-document-receipts.*'
     );
@@ -20,6 +23,8 @@
         'admin.rfqs.*',
         'admin.purchase-orders.*',
         'admin.purchase-order-receipts.*',
+        'admin.purchase-documents.*',
+        'admin.supplier-payments.*',
         'admin.stock-movements.*'
     );
 
@@ -42,7 +47,8 @@
 
     $hasPurchasesMenu = $user?->can('company.rfq.view')
         || $user?->can('company.purchase_orders.view')
-        || $user?->can('company.purchase_order_receipts.view')
+        || $user?->can('company.purchase_documents.view')
+        || $user?->can('company.supplier_payments.view')
         || $user?->can('company.stock_movements.view');
 
     $hasArticlesMenu = $user?->can('company.articles.view')
@@ -51,6 +57,11 @@
 
     $hasEmailMenu = $user?->can('company.email_inbox.view')
         || $user?->can('company.email_accounts.view');
+
+    $hasSalesMenu = $user?->can('company.sales_documents.view')
+        || $user?->can('company.sales_document_receipts.view');
+
+    $calendarOpen = request()->routeIs('admin.calendar.*');
 @endphp
 
 <nav class="navbar navbar-vertical navbar-expand-lg">
@@ -109,6 +120,28 @@
                         <p class="navbar-vertical-label">Modulos</p>
                         <hr class="navbar-vertical-line" />
                     </li>
+
+                    @can('company.calendar.view')
+                        <li class="nav-item">
+                            <a class="nav-link {{ $calendarOpen ? 'active' : '' }}" href="{{ route('admin.calendar.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="calendar"></span></span>
+                                    <span class="nav-link-text">Agenda</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('company.calendar.integrations.manage')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.calendar.integrations.*') ? 'active' : '' }}" href="{{ route('admin.calendar.integrations.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="cloud"></span></span>
+                                    <span class="nav-link-text">Agenda CalDAV</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
 
                     <li class="nav-item">
                         <div class="nav-item-wrapper">
@@ -207,7 +240,7 @@
 
                     @can('company.construction_sites.view')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.construction-sites.*', 'admin.construction-site-time-entries.*') ? 'active' : '' }}" href="{{ route('admin.construction-sites.index') }}">
+                            <a class="nav-link {{ request()->routeIs('admin.construction-sites.*') ? 'active' : '' }}" href="{{ route('admin.construction-sites.index') }}">
                                 <div class="d-flex align-items-center">
                                     <span class="nav-link-icon"><span data-feather="tool"></span></span>
                                     <span class="nav-link-text">Obras</span>
@@ -216,16 +249,47 @@
                         </li>
                     @endcan
 
-                    @can('company.construction_site_time_entries.view')
+                    @if ($hasSalesMenu)
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.construction-site-time-entries.*') ? 'active' : '' }}" href="{{ route('admin.construction-site-time-entries.index') }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="clock"></span></span>
-                                    <span class="nav-link-text">Horas de Obra</span>
+                            <div class="nav-item-wrapper">
+                                <a
+                                    class="nav-link dropdown-indicator label-1 {{ $salesOpen ? 'active' : '' }}"
+                                    href="#sidebarSalesMenu"
+                                    role="button"
+                                    data-bs-toggle="collapse"
+                                    aria-expanded="{{ $salesOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebarSalesMenu"
+                                >
+                                    <div class="d-flex align-items-center">
+                                        <div class="dropdown-indicator-icon-wrapper">
+                                            <span class="fas fa-caret-right dropdown-indicator-icon"></span>
+                                        </div>
+                                        <span class="nav-link-icon"><span data-feather="trending-up"></span></span>
+                                        <span class="nav-link-text">Vendas</span>
+                                    </div>
+                                </a>
+                                <div class="parent-wrapper label-1">
+                                    <ul class="nav collapse parent {{ $salesOpen ? 'show' : '' }}" data-bs-parent="#navbarVerticalCollapse" id="sidebarSalesMenu">
+                                        <li class="collapsed-nav-item-title d-none">Vendas</li>
+                                        @can('company.sales_documents.view')
+                                            <li class="nav-item">
+                                                <a class="nav-link {{ request()->routeIs('admin.sales-documents.*') ? 'active' : '' }}" href="{{ route('admin.sales-documents.index') }}">
+                                                    <div class="d-flex align-items-center"><span class="nav-link-text">Documentos de Venda</span></div>
+                                                </a>
+                                            </li>
+                                        @endcan
+                                        @can('company.sales_document_receipts.view')
+                                            <li class="nav-item">
+                                                <a class="nav-link {{ request()->routeIs('admin.sales-document-receipts.*') ? 'active' : '' }}" href="{{ route('admin.sales-document-receipts.index') }}">
+                                                    <div class="d-flex align-items-center"><span class="nav-link-text">Recibos</span></div>
+                                                </a>
+                                            </li>
+                                        @endcan
+                                    </ul>
                                 </div>
-                            </a>
+                            </div>
                         </li>
-                    @endcan
+                    @endif
 
                     @if ($hasPurchasesMenu)
                         <li class="nav-item">
@@ -263,10 +327,17 @@
                                                 </a>
                                             </li>
                                         @endcan
-                                        @can('company.purchase_order_receipts.view')
+                                        @can('company.purchase_documents.view')
                                             <li class="nav-item">
-                                                <a class="nav-link {{ request()->routeIs('admin.purchase-order-receipts.*') ? 'active' : '' }}" href="{{ route('admin.purchase-order-receipts.index') }}">
-                                                    <div class="d-flex align-items-center"><span class="nav-link-text">Rececoes de Material</span></div>
+                                                <a class="nav-link {{ request()->routeIs('admin.purchase-documents.*') ? 'active' : '' }}" href="{{ route('admin.purchase-documents.index') }}">
+                                                    <div class="d-flex align-items-center"><span class="nav-link-text">Documentos de Compra</span></div>
+                                                </a>
+                                            </li>
+                                        @endcan
+                                        @can('company.supplier_payments.view')
+                                            <li class="nav-item">
+                                                <a class="nav-link {{ request()->routeIs('admin.supplier-payments.*') ? 'active' : '' }}" href="{{ route('admin.supplier-payments.index') }}">
+                                                    <div class="d-flex align-items-center"><span class="nav-link-text">Pagamentos Fornecedor</span></div>
                                                 </a>
                                             </li>
                                         @endcan
@@ -282,28 +353,6 @@
                             </div>
                         </li>
                     @endif
-
-                    @can('company.sales_documents.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.sales-documents.*') ? 'active' : '' }}" href="{{ route('admin.sales-documents.index') }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="credit-card"></span></span>
-                                    <span class="nav-link-text">Documentos de Venda</span>
-                                </div>
-                            </a>
-                        </li>
-                    @endcan
-
-                    @can('company.sales_document_receipts.view')
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('admin.sales-document-receipts.*') ? 'active' : '' }}" href="{{ route('admin.sales-document-receipts.index') }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="nav-link-icon"><span data-feather="file-text"></span></span>
-                                    <span class="nav-link-text">Recibos</span>
-                                </div>
-                            </a>
-                        </li>
-                    @endcan
 
                     @if ($hasEmailMenu)
                         <li class="nav-item">
@@ -358,6 +407,33 @@
                                 <div class="d-flex align-items-center">
                                     <span class="nav-link-icon"><span data-feather="building"></span></span>
                                     <span class="nav-link-text">Empresa</span>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.company-email-settings.*') ? 'active' : '' }}" href="{{ route('admin.company-email-settings.edit') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="at-sign"></span></span>
+                                    <span class="nav-link-text">Email da Empresa</span>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.company-email-signature.*') ? 'active' : '' }}" href="{{ route('admin.company-email-signature.edit') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="edit-3"></span></span>
+                                    <span class="nav-link-text">Assinatura de Email</span>
+                                </div>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('company.telegram.link.manage')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.telegram.link.*') ? 'active' : '' }}" href="{{ route('admin.telegram.link.index') }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="nav-link-icon"><span data-feather="send"></span></span>
+                                    <span class="nav-link-text">Telegram</span>
                                 </div>
                             </a>
                         </li>

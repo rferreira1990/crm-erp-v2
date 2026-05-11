@@ -298,3 +298,138 @@ const initLiveTable = (form) => {
 document.querySelectorAll('[data-live-table-form]').forEach((form) => {
     initLiveTable(form);
 });
+
+const initAjaxSearchSelect = (select) => {
+    if (!(select instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const endpoint = select.dataset.ajaxSearchUrl;
+    if (!endpoint) {
+        return;
+    }
+
+    const placeholder = select.dataset.ajaxSearchPlaceholder || 'Pesquisar...';
+    const minChars = parseDebounce(select.dataset.ajaxSearchMinChars, 1);
+    const debounceMs = parseDebounce(select.dataset.ajaxSearchDebounce, 300);
+    const extraParams = new URLSearchParams(select.dataset.ajaxSearchParams || '');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mb-2';
+
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = placeholder;
+    input.autocomplete = 'off';
+    wrapper.appendChild(input);
+    select.parentNode?.insertBefore(wrapper, select);
+
+    const optionCache = new Map();
+    Array.from(select.options).forEach((option) => {
+        if (!option.value) {
+            return;
+        }
+        optionCache.set(String(option.value), option.textContent ?? '');
+    });
+
+    let timer = null;
+    let controller = null;
+
+    const applyOptions = (items) => {
+        const currentValue = String(select.value ?? '');
+        const currentLabel = optionCache.get(currentValue) ?? '';
+
+        const firstOption = document.createElement('option');
+        firstOption.value = '';
+        firstOption.textContent = select.dataset.ajaxSearchEmptyLabel || 'Selecionar';
+        select.innerHTML = '';
+        select.appendChild(firstOption);
+
+        items.forEach((item) => {
+            const option = document.createElement('option');
+            option.value = String(item.id ?? '');
+            option.textContent = String(item.text ?? '');
+            if (!option.value) {
+                return;
+            }
+
+            optionCache.set(option.value, option.textContent ?? '');
+
+            if (option.value === currentValue) {
+                option.selected = true;
+            }
+
+            select.appendChild(option);
+        });
+
+        if (currentValue !== '' && !Array.from(select.options).some((option) => option.value === currentValue)) {
+            const selectedOption = document.createElement('option');
+            selectedOption.value = currentValue;
+            selectedOption.selected = true;
+            selectedOption.textContent = currentLabel !== '' ? currentLabel : currentValue;
+            select.appendChild(selectedOption);
+        }
+    };
+
+    const search = (term) => {
+        if (term.length < minChars) {
+            return;
+        }
+
+        if (controller) {
+            controller.abort();
+        }
+
+        controller = new AbortController();
+
+        const params = new URLSearchParams(extraParams);
+        params.set('q', term);
+        const requestUrl = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${params.toString()}`;
+
+        fetch(requestUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            signal: controller.signal,
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Falha no carregamento de opcoes.');
+                }
+                return response.json();
+            })
+            .then((payload) => {
+                const items = Array.isArray(payload?.data) ? payload.data : [];
+                applyOptions(items);
+            })
+            .catch((error) => {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                console.error(error);
+            });
+    };
+
+    input.addEventListener('input', () => {
+        const term = input.value.trim();
+
+        if (timer) {
+            window.clearTimeout(timer);
+        }
+
+        if (term.length < minChars) {
+            return;
+        }
+
+        timer = window.setTimeout(() => {
+            search(term);
+        }, debounceMs);
+    });
+};
+
+document.querySelectorAll('select[data-ajax-search-url]').forEach((select) => {
+    initAjaxSearchSelect(select);
+});

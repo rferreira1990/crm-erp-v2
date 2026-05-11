@@ -21,7 +21,11 @@ Mensagem:
 @endif
 Solicitamos confirmacao de rececao e prazo de entrega.
 
+@if (! empty($signatureText))
+{{ $signatureText }}
+@else
 {{ $companyName }}
+@endif
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif

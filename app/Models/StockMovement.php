@@ -26,6 +26,7 @@ class StockMovement extends Model
     public const DIRECTION_OUT = 'out';
 
     public const REFERENCE_PURCHASE_ORDER_RECEIPT = 'purchase_order_receipt';
+    public const REFERENCE_PURCHASE_DOCUMENT = 'purchase_document';
     public const REFERENCE_CONSTRUCTION_SITE_MATERIAL_USAGE = 'construction_site_material_usage';
     public const REFERENCE_SALES_DOCUMENT = 'sales_document';
     public const REFERENCE_MANUAL = 'manual';

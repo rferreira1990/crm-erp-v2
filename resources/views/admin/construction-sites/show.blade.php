@@ -138,6 +138,56 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Estado orcamental</div>
+                    <div class="h5 mb-0">{{ $economicSummary['budget_status_label'] ?? 'Sem orcamento' }}</div>
+                    <div class="text-body-tertiary fs-10 mt-1">
+                        Consumo:
+                        @if (($economicSummary['budget_consumption_percent'] ?? null) !== null)
+                            {{ number_format((float) $economicSummary['budget_consumption_percent'], 2, ',', '.') }}%
+                        @else
+                            -
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Custo total real</div>
+                    <div class="h5 mb-0">{{ number_format((float) ($economicSummary['total_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                    <div class="text-body-tertiary fs-10 mt-1">Materiais + mao de obra</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Custo materiais (fechados)</div>
+                    <div class="h5 mb-0">{{ number_format((float) ($economicSummary['material_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                    @if (($canViewMaterialUsages ?? false) === true)
+                        <div class="text-body-tertiary fs-10 mt-1">{{ number_format((int) ($materialUsageSummary['posted_usages'] ?? 0), 0, ',', '.') }} consumos fechados</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Mao de obra</div>
+                    <div class="h5 mb-0">{{ number_format((float) ($economicSummary['labor_cost'] ?? 0), 2, ',', '.') }} EUR</div>
+                    @if (($canViewTimeEntries ?? false) === true)
+                        <div class="text-body-tertiary fs-10 mt-1">{{ number_format((float) ($timeEntrySummary['total_hours'] ?? 0), 2, ',', '.') }}h lancadas</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
         <div class="col-12">
             <div class="card">

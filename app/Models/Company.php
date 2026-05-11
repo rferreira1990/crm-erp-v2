@@ -38,6 +38,7 @@ class Company extends Model
         'mail_username',
         'mail_password',
         'mail_encryption',
+        'mail_signature_html',
         'pdf_layout',
         'ai_monthly_budget_eur',
         'ai_budget_warning_percent',
@@ -88,6 +89,16 @@ class Company extends Model
     public function telegramEmailDrafts(): HasMany
     {
         return $this->hasMany(TelegramEmailDraft::class);
+    }
+
+    public function calendarEvents(): HasMany
+    {
+        return $this->hasMany(CalendarEvent::class);
+    }
+
+    public function calendarIntegrations(): HasMany
+    {
+        return $this->hasMany(CompanyCalendarIntegration::class);
     }
 
     public function scopeActive(Builder $query): Builder

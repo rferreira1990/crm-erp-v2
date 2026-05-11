@@ -125,6 +125,12 @@
                 </div>
             </div>
         </div>
+
+        @if ($movements instanceof \Illuminate\Contracts\Pagination\Paginator && $movements->hasPages())
+            <div class="mt-3">
+                {{ $movements->links() }}
+            </div>
+        @endif
     </div>
 
     @can('company.customer_statement.send')

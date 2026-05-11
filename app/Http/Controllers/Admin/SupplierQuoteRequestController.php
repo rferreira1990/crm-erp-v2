@@ -23,11 +23,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 class SupplierQuoteRequestController extends Controller
 {
@@ -269,13 +272,14 @@ class SupplierQuoteRequestController extends Controller
         $rfqModel = $this->findCompanyRfqOrFail($companyId, $rfq);
         $this->authorize('view', $rfqModel);
 
-        if (! $rfqModel->pdf_path || ! Storage::disk('local')->exists($rfqModel->pdf_path)) {
+        if (! $rfqModel->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $rfqModel->pdf_path,
-            Str::slug($rfqModel->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $rfqModel->pdf_path,
+            Str::slug($rfqModel->number).'.pdf',
+            ['rfqs/'.$companyId.'/'.$rfqModel->id.'/pdf']
         );
     }
 
@@ -289,7 +293,7 @@ class SupplierQuoteRequestController extends Controller
             ->whereKey($rfqSupplier)
             ->firstOrFail();
 
-        if (! $invite->pdf_path || ! Storage::disk('local')->exists($invite->pdf_path)) {
+        if (! $invite->pdf_path) {
             abort(404);
         }
 
@@ -298,9 +302,10 @@ class SupplierQuoteRequestController extends Controller
             $filename = Str::slug($rfqModel->number.'-fornecedor').'.pdf';
         }
 
-        return Storage::disk('local')->download(
-            $invite->pdf_path,
-            $filename
+        return $this->localDiskDownload(
+            (string) $invite->pdf_path,
+            $filename,
+            ['rfqs/'.$companyId.'/'.$rfqModel->id.'/pdf/suppliers/'.$invite->id]
         );
     }
 
@@ -354,25 +359,46 @@ class SupplierQuoteRequestController extends Controller
                 ]);
         }
 
-        foreach ($invites as $invite) {
-            $to = strtolower(trim((string) ($invite->supplier_email ?: $invite->supplier?->email)));
-            $supplierPdfPath = $this->rfqPdfService->generateAndStoreForSupplier($rfqModel, $invite);
+        try {
+            foreach ($invites as $invite) {
+                $to = strtolower(trim((string) ($invite->supplier_email ?: $invite->supplier?->email)));
+                $supplierPdfPath = $this->rfqPdfService->generateAndStoreForSupplier($rfqModel, $invite);
 
-            $mailer = Mail::to($to);
-            if ($ccRecipients !== []) {
-                $mailer->cc($ccRecipients);
+                $mailer = Mail::to($to);
+                if ($ccRecipients !== []) {
+                    $mailer->cc($ccRecipients);
+                }
+
+                $invite->forceFill([
+                    'status' => SupplierQuoteRequestSupplier::STATUS_SENT,
+                    'sent_to_email' => $to,
+                    'sent_at' => now(),
+                    'email_subject' => $subject,
+                    'email_message' => $messageBody,
+                    'pdf_path' => $supplierPdfPath,
+                ])->save();
+
+                $mailable = new SupplierQuoteRequestSentMail($rfqModel, $invite, $subject, $messageBody);
+                if (config('mail.queue_enabled')) {
+                    $mailer->queue($mailable);
+                } else {
+                    $mailer->send($mailable);
+                }
             }
+        } catch (Throwable $exception) {
+            Log::warning('Supplier RFQ email send failed', [
+                'context' => 'rfq_email',
+                'rfq_id' => (int) $rfqModel->id,
+                'company_id' => (int) $rfqModel->company_id,
+                'error' => $exception->getMessage(),
+            ]);
 
-            $invite->forceFill([
-                'status' => SupplierQuoteRequestSupplier::STATUS_SENT,
-                'sent_to_email' => $to,
-                'sent_at' => now(),
-                'email_subject' => $subject,
-                'email_message' => $messageBody,
-                'pdf_path' => $supplierPdfPath,
-            ])->save();
-
-            $mailer->send(new SupplierQuoteRequestSentMail($rfqModel, $invite, $subject, $messageBody));
+            return redirect()
+                ->route('admin.rfqs.show', $rfqModel->id)
+                ->withInput()
+                ->withErrors([
+                    'rfq_email' => $this->friendlyEmailError($exception),
+                ]);
         }
 
         $rfqModel->forceFill([
@@ -384,6 +410,23 @@ class SupplierQuoteRequestController extends Controller
         return redirect()
             ->route('admin.rfqs.show', $rfqModel->id)
             ->with('status', 'Pedido de cotacao enviado por email com sucesso.');
+    }
+
+    private function friendlyEmailError(Throwable $exception): string
+    {
+        $message = mb_strtolower($exception->getMessage());
+
+        if ($exception instanceof TransportExceptionInterface) {
+            if (str_contains($message, 'auth') || str_contains($message, '535') || str_contains($message, 'username') || str_contains($message, 'password')) {
+                return 'Falha de autenticacao SMTP. Verifique username e password.';
+            }
+
+            if (str_contains($message, 'connection') || str_contains($message, 'timed out') || str_contains($message, 'refused') || str_contains($message, 'getaddrinfo') || str_contains($message, 'network')) {
+                return 'Falha de ligacao SMTP. Verifique host, porta e encriptacao.';
+            }
+        }
+
+        return 'Falha no envio do pedido de cotacao por email. Verifique a configuracao SMTP e tente novamente.';
     }
 
     /**

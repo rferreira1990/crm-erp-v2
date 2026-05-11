@@ -24,7 +24,7 @@ class SupplierQuoteRequestPdfService
     private function generateAndStoreInternal(SupplierQuoteRequest $rfq, ?SupplierQuoteRequestSupplier $rfqSupplier): string
     {
         $rfq->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,pdf_layout',
             'creator:id,name',
             'assignedUser:id,name',
             'items' => fn ($query) => $query
@@ -40,7 +40,12 @@ class SupplierQuoteRequestPdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($rfq->company?->logo_path);
 
-        $html = view('admin.rfqs.pdf', [
+        $layout = (string) ($rfq->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.rfqs.pdf-modern'
+            : 'admin.rfqs.pdf';
+
+        $html = view($template, [
             'rfq' => $rfq,
             'rfqSupplier' => $rfqSupplier,
             'companyLogoDataUri' => $companyLogoDataUri,

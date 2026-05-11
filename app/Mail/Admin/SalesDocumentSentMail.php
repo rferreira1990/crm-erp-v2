@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\SalesDocument;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SalesDocumentSentMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -61,7 +63,7 @@ class SalesDocumentSentMail extends Mailable
     public function content(): Content
     {
         $this->document->loadMissing([
-            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path',
+            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path,mail_signature_html',
             'customer:id,name',
             'quote:id,number',
             'constructionSite:id,code,name',
@@ -110,6 +112,8 @@ class SalesDocumentSentMail extends Mailable
                     'location' => $location !== '' ? $location : null,
                 ],
                 'summary' => $summary,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($company?->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($company?->mail_signature_html ?? '')),
             ]
         );
     }
@@ -185,4 +189,3 @@ class SalesDocumentSentMail extends Mailable
         return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }
-

@@ -38,7 +38,8 @@ class CustomerStatementController extends Controller
         $statement = $this->customerStatementService->buildStatement(
             companyId: $companyId,
             customerId: (int) $customerModel->id,
-            filters: $filters
+            filters: $filters,
+            paginate: true
         );
         $statement['customer']->loadMissing('company');
 
@@ -62,7 +63,8 @@ class CustomerStatementController extends Controller
         $statement = $this->customerStatementService->buildStatement(
             companyId: $companyId,
             customerId: (int) $customerModel->id,
-            filters: $this->extractFilters($request)
+            filters: $this->extractFilters($request),
+            paginate: false
         );
 
         $pdfBytes = $this->customerStatementPdfService->render($customerModel, $statement);
@@ -88,7 +90,8 @@ class CustomerStatementController extends Controller
         $statement = $this->customerStatementService->buildStatement(
             companyId: $companyId,
             customerId: (int) $customerModel->id,
-            filters: $filters
+            filters: $filters,
+            paginate: false
         );
 
         $customerModel->loadMissing('company');
@@ -108,7 +111,7 @@ class CustomerStatementController extends Controller
         }
 
         try {
-            $mailer->send(new CustomerStatementMail(
+            $mailable = new CustomerStatementMail(
                 company: $customerModel->company,
                 customer: $customerModel,
                 pdfBytes: $pdfBytes,
@@ -119,7 +122,12 @@ class CustomerStatementController extends Controller
                 balance: (float) $statement['balance'],
                 totalDebit: (float) $statement['total_debit'],
                 totalCredit: (float) $statement['total_credit'],
-            ));
+            );
+            if (config('mail.queue_enabled')) {
+                $mailer->queue($mailable);
+            } else {
+                $mailer->send($mailable);
+            }
         } catch (Throwable $exception) {
             Log::warning('Customer statement email send failed', [
                 'context' => 'customer_statement',

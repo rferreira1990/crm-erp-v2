@@ -145,6 +145,7 @@ class CustomerController extends Controller
             'recentQuotes' => $showData['recentQuotes'],
             'recentSalesDocuments' => $showData['recentSalesDocuments'],
             'recentReceipts' => $showData['recentReceipts'],
+            'openSalesDocuments' => $showData['openSalesDocuments'],
             'kpis' => $showData['kpis'],
             'statementSummary' => $showData['statementSummary'],
             'paymentStatusCounts' => $showData['paymentStatusCounts'],
@@ -218,9 +219,10 @@ class CustomerController extends Controller
             abort(404);
         }
 
-        return Storage::disk('local')->response(
-            $customerModel->logo_path,
-            'customer-'.$customerModel->id.'-logo.'.pathinfo($customerModel->logo_path, PATHINFO_EXTENSION)
+        return $this->localDiskResponse(
+            (string) $customerModel->logo_path,
+            'customer-'.$customerModel->id.'-logo.'.pathinfo((string) $customerModel->logo_path, PATHINFO_EXTENSION),
+            ['customers/'.$companyId.'/'.$customerModel->id.'/logo']
         );
     }
 

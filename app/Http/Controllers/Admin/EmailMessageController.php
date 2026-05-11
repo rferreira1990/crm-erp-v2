@@ -7,7 +7,6 @@ use App\Models\EmailMessage;
 use App\Models\EmailMessageAttachment;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmailMessageController extends Controller
@@ -47,18 +46,10 @@ class EmailMessageController extends Controller
 
         $this->authorize('download', $attachment);
 
-        $storagePath = (string) ($attachment->storage_path ?? '');
-        if ($storagePath === '' || ! str_starts_with(trim($storagePath, '/'), 'email/')) {
-            abort(404);
-        }
-
-        if (! Storage::disk('local')->exists($storagePath)) {
-            abort(404);
-        }
-
-        return Storage::disk('local')->download(
-            $storagePath,
-            $attachment->filename
+        return $this->localDiskDownload(
+            (string) ($attachment->storage_path ?? ''),
+            (string) $attachment->filename,
+            ['email']
         );
     }
 

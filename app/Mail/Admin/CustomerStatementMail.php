@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\Company;
 use App\Models\Customer;
 use Illuminate\Bus\Queueable;
@@ -14,6 +15,7 @@ use Illuminate\Queue\SerializesModels;
 
 class CustomerStatementMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -77,6 +79,8 @@ class CustomerStatementMail extends Mailable
                 'balance' => $this->balance,
                 'totalDebit' => $this->totalDebit,
                 'totalCredit' => $this->totalCredit,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($this->company->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($this->company->mail_signature_html ?? '')),
             ]
         );
     }

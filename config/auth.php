@@ -114,4 +114,14 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public Registration
+    |--------------------------------------------------------------------------
+    |
+    | Disable this in production for closed B2B deployments.
+    |
+    */
+    'allow_public_registration' => (bool) env('AUTH_ALLOW_PUBLIC_REGISTRATION', true),
+
 ];

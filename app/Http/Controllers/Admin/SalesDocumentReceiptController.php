@@ -203,13 +203,14 @@ class SalesDocumentReceiptController extends Controller
         $receipt = $this->findCompanyReceiptOrFail($companyId, $salesDocumentReceipt);
         $this->authorize('pdf', $receipt);
 
-        if (! $receipt->pdf_path || ! Storage::disk('local')->exists($receipt->pdf_path)) {
+        if (! $receipt->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $receipt->pdf_path,
-            Str::slug($receipt->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $receipt->pdf_path,
+            Str::slug($receipt->number).'.pdf',
+            ['sales-document-receipts/'.$companyId.'/'.$receipt->id.'/pdf']
         );
     }
 
@@ -238,7 +239,12 @@ class SalesDocumentReceiptController extends Controller
         }
 
         try {
-            $mailer->send(new SalesDocumentReceiptSentMail($receipt, $subject, $message));
+            $mailable = new SalesDocumentReceiptSentMail($receipt, $subject, $message);
+            if (config('mail.queue_enabled')) {
+                $mailer->queue($mailable);
+            } else {
+                $mailer->send($mailable);
+            }
         } catch (Throwable $exception) {
             Log::warning('Sales document receipt email send failed', [
                 'context' => 'sales_document_receipts',

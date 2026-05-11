@@ -44,9 +44,12 @@ class CompanySettingsTest extends TestCase
 
         $this->actingAs($user)->get(route('admin.company-settings.edit'))->assertForbidden();
         $this->actingAs($user)->put(route('admin.company-settings.update'), [
+        ])->assertForbidden();
+        $this->actingAs($user)->get(route('admin.company-email-settings.edit'))->assertForbidden();
+        $this->actingAs($user)->put(route('admin.company-email-settings.update'), [
             'mail_use_custom_settings' => 0,
         ])->assertForbidden();
-        $this->actingAs($user)->post(route('admin.company-settings.test-smtp'))->assertForbidden();
+        $this->actingAs($user)->post(route('admin.company-email-settings.test-smtp'))->assertForbidden();
     }
 
     public function test_superadmin_cannot_access_company_settings_page(): void
@@ -71,7 +74,6 @@ class CompanySettingsTest extends TestCase
             'mobile' => '910000001',
             'email' => 'geral@empresa-fixa.pt',
             'website' => 'https://www.empresa-fixa.pt',
-            'mail_use_custom_settings' => 0,
         ]);
 
         $response->assertRedirect(route('admin.company-settings.edit'));
@@ -97,7 +99,6 @@ class CompanySettingsTest extends TestCase
             'bank_name' => 'Banco Teste',
             'iban' => 'PT50 0000 0000 0000 0000 0000 0',
             'bic_swift' => 'CGDIPTPL',
-            'mail_use_custom_settings' => 0,
         ]);
 
         $response->assertRedirect(route('admin.company-settings.edit'));
@@ -106,6 +107,19 @@ class CompanySettingsTest extends TestCase
         $this->assertSame('Banco Teste', $company->bank_name);
         $this->assertSame('PT50000000000000000000000', $company->iban);
         $this->assertSame('CGDIPTPL', $company->bic_swift);
+    }
+
+    public function test_company_admin_can_update_pdf_layout_preference(): void
+    {
+        $company = $this->createCompany('Empresa Layout PDF');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $response = $this->actingAs($admin)->put(route('admin.company-settings.update'), [
+            'pdf_layout' => 'modern',
+        ]);
+
+        $response->assertRedirect(route('admin.company-settings.edit'));
+        $this->assertSame('modern', (string) $company->fresh()->pdf_layout);
     }
 
     public function test_company_admin_can_upload_replace_and_remove_logo(): void
@@ -118,7 +132,6 @@ class CompanySettingsTest extends TestCase
         $firstLogo = UploadedFile::fake()->image('logo1.png', 200, 80);
         $this->actingAs($admin)->put(route('admin.company-settings.update'), [
             'logo' => $firstLogo,
-            'mail_use_custom_settings' => 0,
         ])->assertRedirect(route('admin.company-settings.edit'));
 
         $company->refresh();
@@ -129,7 +142,6 @@ class CompanySettingsTest extends TestCase
         $secondLogo = UploadedFile::fake()->image('logo2.png', 240, 90);
         $this->actingAs($admin)->put(route('admin.company-settings.update'), [
             'logo' => $secondLogo,
-            'mail_use_custom_settings' => 0,
         ])->assertRedirect(route('admin.company-settings.edit'));
 
         $company->refresh();
@@ -140,7 +152,6 @@ class CompanySettingsTest extends TestCase
 
         $this->actingAs($admin)->put(route('admin.company-settings.update'), [
             'remove_logo' => 1,
-            'mail_use_custom_settings' => 0,
         ])->assertRedirect(route('admin.company-settings.edit'));
 
         $company->refresh();
@@ -153,15 +164,15 @@ class CompanySettingsTest extends TestCase
         $company = $this->createCompany('Empresa SMTP');
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
 
-        $this->actingAs($admin)->put(route('admin.company-settings.update'), [
+        $this->actingAs($admin)->put(route('admin.company-email-settings.update'), [
             'mail_use_custom_settings' => 0,
-        ])->assertRedirect(route('admin.company-settings.edit'));
+        ])->assertRedirect(route('admin.company-email-settings.edit'));
 
         $company->refresh();
         $this->assertFalse($company->mail_use_custom_settings);
 
         $plainPassword = 'smtp-secret-123';
-        $this->actingAs($admin)->put(route('admin.company-settings.update'), [
+        $this->actingAs($admin)->put(route('admin.company-email-settings.update'), [
             'mail_use_custom_settings' => 1,
             'mail_from_name' => 'Empresa SMTP',
             'mail_from_address' => 'smtp@empresa.test',
@@ -170,7 +181,7 @@ class CompanySettingsTest extends TestCase
             'mail_username' => 'smtp-user',
             'mail_password' => $plainPassword,
             'mail_encryption' => 'tls',
-        ])->assertRedirect(route('admin.company-settings.edit'));
+        ])->assertRedirect(route('admin.company-email-settings.edit'));
 
         $company->refresh();
         $this->assertTrue($company->mail_use_custom_settings);
@@ -194,12 +205,12 @@ class CompanySettingsTest extends TestCase
         $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
         $company->forceFill(['email' => 'empresa@teste-smtp.pt'])->save();
 
-        $this->actingAs($admin)->post(route('admin.company-settings.test-smtp'), [])
-            ->assertRedirect(route('admin.company-settings.edit'))
+        $this->actingAs($admin)->post(route('admin.company-email-settings.test-smtp'), [])
+            ->assertRedirect(route('admin.company-email-settings.edit'))
             ->assertSessionHas('status');
         Mail::assertSent(CompanySmtpTestMail::class);
 
-        $this->actingAs($admin)->put(route('admin.company-settings.update'), [
+        $this->actingAs($admin)->put(route('admin.company-email-settings.update'), [
             'mail_use_custom_settings' => 1,
             'mail_from_name' => 'Empresa Teste SMTP',
             'mail_from_address' => 'custom@teste-smtp.pt',
@@ -208,11 +219,11 @@ class CompanySettingsTest extends TestCase
             'mail_username' => 'custom-user',
             'mail_password' => 'custom-pass',
             'mail_encryption' => 'ssl',
-        ])->assertRedirect(route('admin.company-settings.edit'));
+        ])->assertRedirect(route('admin.company-email-settings.edit'));
 
-        $this->actingAs($admin)->post(route('admin.company-settings.test-smtp'), [
+        $this->actingAs($admin)->post(route('admin.company-email-settings.test-smtp'), [
             'test_email' => 'destino@teste-smtp.pt',
-        ])->assertRedirect(route('admin.company-settings.edit'))
+        ])->assertRedirect(route('admin.company-email-settings.edit'))
             ->assertSessionHas('status');
 
         Mail::assertSent(CompanySmtpTestMail::class, 2);
@@ -230,12 +241,41 @@ class CompanySettingsTest extends TestCase
             ->once()
             ->andThrow(new TransportException('Connection timed out'));
 
-        $response = $this->actingAs($admin)->post(route('admin.company-settings.test-smtp'), [
+        $response = $this->actingAs($admin)->post(route('admin.company-email-settings.test-smtp'), [
             'test_email' => 'destino@falha-smtp.pt',
         ]);
 
-        $response->assertRedirect(route('admin.company-settings.edit'));
+        $response->assertRedirect(route('admin.company-email-settings.edit'));
         $response->assertSessionHasErrors('smtp_test');
+    }
+
+    public function test_company_admin_can_update_email_signature_html(): void
+    {
+        $company = $this->createCompany('Empresa Assinatura');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+
+        $payload = [
+            'mail_signature_html' => '<p><strong>Cumprimentos,</strong><br>Equipa</p><img src="https://example.test/logo.png" alt="Logo">',
+        ];
+
+        $this->actingAs($admin)->put(route('admin.company-email-signature.update'), $payload)
+            ->assertRedirect(route('admin.company-email-signature.edit'))
+            ->assertSessionHas('status');
+
+        $company->refresh();
+        $this->assertStringContainsString('<strong>Cumprimentos,</strong>', (string) $company->mail_signature_html);
+        $this->assertStringContainsString('<img', (string) $company->mail_signature_html);
+    }
+
+    public function test_company_user_cannot_manage_email_signature_page(): void
+    {
+        $company = $this->createCompany('Empresa Assinatura User');
+        $user = $this->createCompanyUser($company, User::ROLE_COMPANY_USER);
+
+        $this->actingAs($user)->get(route('admin.company-email-signature.edit'))->assertForbidden();
+        $this->actingAs($user)->put(route('admin.company-email-signature.update'), [
+            'mail_signature_html' => '<p>Teste</p>',
+        ])->assertForbidden();
     }
 
     public function test_company_settings_update_is_scoped_to_authenticated_company(): void
@@ -246,7 +286,6 @@ class CompanySettingsTest extends TestCase
 
         $this->actingAs($adminA)->put(route('admin.company-settings.update'), [
             'address' => 'Rua Empresa A',
-            'mail_use_custom_settings' => 0,
         ])->assertRedirect(route('admin.company-settings.edit'));
 
         $this->assertSame('Rua Empresa A', $companyA->fresh()->address);

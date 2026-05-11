@@ -55,7 +55,7 @@ class TelegramEmailSendCommandTest extends TestCase
         $bot = Mockery::mock(TelegramBotService::class);
         $bot->shouldReceive('sendMessage')
             ->once()
-            ->with(999001, 'Use: /email xpto@exemplo.pt');
+            ->with(999001, 'Para iniciar, use: /email destinatario@dominio.pt');
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('/email invalido'))
@@ -68,7 +68,9 @@ class TelegramEmailSendCommandTest extends TestCase
         $this->createLink($company, $user);
 
         $bot = Mockery::mock(TelegramBotService::class);
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Qual e o assunto?');
+        $bot->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 1/4'));
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('/email xpto@exemplo.pt'))
@@ -90,13 +92,13 @@ class TelegramEmailSendCommandTest extends TestCase
         $this->createLink($company, $user);
 
         $bot = Mockery::mock(TelegramBotService::class);
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Qual e o assunto?');
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Escreva o texto do email.');
-        $bot->shouldReceive('sendMessage')->once()->with(999001, "Quer adicionar anexos? Envie ficheiros/fotos agora ou escreva 'sem anexos' ou 'fim'.");
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Quer que eu prepare uma versao mais profissional deste email? Responda SIM ou NAO.');
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 1/4'));
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 2/4'));
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 3/4'));
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 4/4'));
         $bot->shouldReceive('sendMessage')
             ->once()
-            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Preview do email:') && str_contains((string) $text, 'OK ENVIAR'));
+            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Resumo para confirmacao') && str_contains((string) $text, 'OK ENVIAR'));
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('/email xpto@exemplo.pt'))->assertOk();
@@ -111,6 +113,34 @@ class TelegramEmailSendCommandTest extends TestCase
             'status' => TelegramEmailDraft::STATUS_AWAITING_FINAL_APPROVAL,
             'subject' => 'Assunto de teste',
         ]);
+    }
+
+    public function test_email_body_keeps_line_breaks_from_telegram_message(): void
+    {
+        [$company, $user] = $this->companyAndAdmin('Empresa Email Quebras Linha');
+        $this->createLink($company, $user);
+
+        $bot = Mockery::mock(TelegramBotService::class);
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 1/4'));
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 2/4'));
+        $bot->shouldReceive('sendMessage')->once()->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 3/4'));
+        $this->app->instance(TelegramBotService::class, $bot);
+
+        $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('/email xpto@exemplo.pt'))->assertOk();
+        $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('Assunto com formato'))->assertOk();
+
+        $body = "Boa tarde\n\nConforme combinado, segue anexo.\n\nCumprimentos\nRicardo";
+        $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload($body))->assertOk();
+
+        /** @var TelegramEmailDraft $draft */
+        $draft = TelegramEmailDraft::query()
+            ->where('company_id', $company->id)
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame($body, $draft->original_body);
+        $this->assertSame($body, $draft->selected_body);
     }
 
     public function test_ok_enviar_calls_send_service_and_marks_draft_sent(): void
@@ -175,7 +205,7 @@ class TelegramEmailSendCommandTest extends TestCase
         $this->app->instance(TelegramEmailSendService::class, $sendService);
 
         $bot = Mockery::mock(TelegramBotService::class);
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Responda OK ENVIAR para enviar ou CANCELAR.');
+        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Para concluir, responda OK ENVIAR. Para desistir, responda CANCELAR.');
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('enviar agora'))
@@ -217,7 +247,7 @@ class TelegramEmailSendCommandTest extends TestCase
         $bot = Mockery::mock(TelegramBotService::class);
         $bot->shouldReceive('sendMessage')
             ->once()
-            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Versao melhorada:') && str_contains((string) $text, 'texto melhorado'));
+            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Versao melhorada sugerida:') && str_contains((string) $text, 'texto melhorado'));
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('SIM'))->assertOk();
@@ -283,7 +313,9 @@ class TelegramEmailSendCommandTest extends TestCase
         $this->app->instance(TelegramAiIntentService::class, $intentService);
 
         $bot = Mockery::mock(TelegramBotService::class);
-        $bot->shouldReceive('sendMessage')->once()->with(999001, 'Qual e o assunto?');
+        $bot->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(fn ($chatId, $text) => (string) $chatId === '999001' && str_contains((string) $text, 'Passo 1/4'));
         $this->app->instance(TelegramBotService::class, $bot);
 
         $this->postJson(route('telegram.webhook', ['secret' => 'valid-secret']), $this->messagePayload('enviar email para xpto@exemplo.pt'))
@@ -383,4 +415,3 @@ class TelegramEmailSendCommandTest extends TestCase
         ];
     }
 }
-

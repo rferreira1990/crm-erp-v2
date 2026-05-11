@@ -13,7 +13,7 @@ class PurchaseOrderPdfService
     public function generateAndStore(PurchaseOrder $purchaseOrder): string
     {
         $purchaseOrder->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,pdf_layout',
             'rfq:id,number',
             'creator:id,name',
             'assignedUser:id,name',
@@ -28,7 +28,12 @@ class PurchaseOrderPdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($purchaseOrder->company?->logo_path);
 
-        $html = view('admin.purchase-orders.pdf', [
+        $layout = (string) ($purchaseOrder->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.purchase-orders.pdf-modern'
+            : 'admin.purchase-orders.pdf';
+
+        $html = view($template, [
             'purchaseOrder' => $purchaseOrder,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();

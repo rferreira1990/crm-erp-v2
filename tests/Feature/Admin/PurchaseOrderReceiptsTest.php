@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Company;
+use App\Models\PurchaseDocument;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderReceipt;
 use App\Models\Supplier;
@@ -79,6 +80,41 @@ class PurchaseOrderReceiptsTest extends TestCase
 
             $this->assertSame(1, PurchaseOrderReceipt::query()->where('purchase_order_id', $purchaseOrder->id)->count());
         }
+    }
+
+    public function test_receipt_creation_is_blocked_when_purchase_order_has_confirmed_purchase_document(): void
+    {
+        $company = $this->createCompany('Empresa Rececao Bloqueio Doc Compra');
+        $admin = $this->createCompanyUser($company, User::ROLE_COMPANY_ADMIN);
+        $purchaseOrder = $this->createPurchaseOrderWithItems($company, $admin, PurchaseOrder::STATUS_CONFIRMED);
+
+        PurchaseDocument::createWithGeneratedNumber((int) $company->id, [
+            'supplier_document_number' => 'F-123',
+            'supplier_id' => $purchaseOrder->supplier_id,
+            'purchase_order_id' => $purchaseOrder->id,
+            'status' => PurchaseDocument::STATUS_CONFIRMED,
+            'payment_status' => PurchaseDocument::PAYMENT_STATUS_UNPAID,
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(30)->toDateString(),
+            'notes' => null,
+            'currency' => 'EUR',
+            'subtotal' => 10,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 10,
+            'confirmed_at' => now(),
+            'cancelled_at' => null,
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+            'cancelled_by' => null,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->from(route('admin.purchase-orders.show', $purchaseOrder->id))
+            ->post(route('admin.purchase-order-receipts.store', $purchaseOrder->id), $this->buildReceiptPayload($purchaseOrder, [1 => 1]));
+
+        $response->assertRedirect(route('admin.purchase-orders.show', $purchaseOrder->id));
+        $response->assertSessionHasErrors('purchase_order');
     }
 
     public function test_partial_receipt_sets_purchase_order_status_to_partially_received(): void

@@ -66,6 +66,8 @@ class GenericCompanyEmail extends Mailable
                 'companyName' => $companyName,
                 'subjectLine' => trim($this->subjectLine),
                 'bodyText' => trim($this->bodyText),
+                'signatureHtml' => $this->normalizedSignatureHtml(),
+                'signatureText' => $this->normalizedSignatureText(),
                 'brandPrimaryColor' => $brandPrimaryColor,
             ]
         );
@@ -109,5 +111,23 @@ class GenericCompanyEmail extends Mailable
 
         return $normalized;
     }
-}
 
+    private function normalizedSignatureHtml(): ?string
+    {
+        $signature = trim((string) ($this->company->mail_signature_html ?? ''));
+
+        return $signature !== '' ? $signature : null;
+    }
+
+    private function normalizedSignatureText(): ?string
+    {
+        $signatureHtml = $this->normalizedSignatureHtml();
+        if (! is_string($signatureHtml) || $signatureHtml === '') {
+            return null;
+        }
+
+        $text = trim((string) preg_replace('/\s+/', ' ', strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $signatureHtml))));
+
+        return $text !== '' ? $text : null;
+    }
+}

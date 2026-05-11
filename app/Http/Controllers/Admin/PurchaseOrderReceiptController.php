@@ -178,13 +178,14 @@ class PurchaseOrderReceiptController extends Controller
         $receipt = $this->findCompanyReceiptOrFail($companyId, $purchaseOrderReceipt);
         $this->authorize('view', $receipt);
 
-        if (! $receipt->pdf_path || ! Storage::disk('local')->exists($receipt->pdf_path)) {
+        if (! $receipt->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $receipt->pdf_path,
-            Str::slug($receipt->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $receipt->pdf_path,
+            Str::slug($receipt->number).'.pdf',
+            ['purchase-order-receipts/'.$companyId.'/'.$receipt->id.'/pdf']
         );
     }
 

@@ -232,15 +232,15 @@ class TelegramEmailDraftService
     {
         $attachments = $this->attachments($draft);
         $lines = [
-            'Preview do email:',
+            'Resumo para confirmacao:',
             '',
-            'Para: '.$draft->to_email,
-            'Assunto: '.((string) ($draft->subject ?? '-')),
+            '1) Destinatario: '.$draft->to_email,
+            '2) Assunto: '.((string) ($draft->subject ?? '-')),
             '',
-            'Texto:',
+            '3) Texto:',
             (string) ($draft->selected_body ?? $draft->original_body ?? '-'),
             '',
-            'Anexos:',
+            '4) Anexos:',
         ];
 
         if ($attachments === []) {
@@ -253,9 +253,8 @@ class TelegramEmailDraftService
         }
 
         $lines[] = '';
-        $lines[] = 'Responder:';
-        $lines[] = 'OK ENVIAR';
-        $lines[] = 'CANCELAR';
+        $lines[] = 'Para enviar agora responda: OK ENVIAR';
+        $lines[] = 'Para cancelar responda: CANCELAR';
 
         return implode("\n", $lines);
     }

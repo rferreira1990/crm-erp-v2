@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Company;
+use App\Models\CompanyCalendarIntegration;
 use App\Models\Article;
 use App\Models\Brand;
+use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\ConstructionSite;
 use App\Models\ConstructionSiteLog;
@@ -22,9 +24,11 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderReceipt;
 use App\Models\PriceTier;
 use App\Models\ProductFamily;
+use App\Models\PurchaseDocument;
 use App\Models\Quote;
 use App\Models\SalesDocument;
 use App\Models\SalesDocumentReceipt;
+use App\Models\SupplierPayment;
 use App\Models\SupplierQuoteRequest;
 use App\Models\Supplier;
 use App\Models\SupplierContact;
@@ -36,6 +40,7 @@ use App\Models\VatRate;
 use App\Policies\CategoryPolicy;
 use App\Policies\ArticlePolicy;
 use App\Policies\BrandPolicy;
+use App\Policies\CalendarEventPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\CustomerContactPolicy;
 use App\Policies\ConstructionSitePolicy;
@@ -44,12 +49,14 @@ use App\Policies\ConstructionSiteMaterialUsagePolicy;
 use App\Policies\ConstructionSiteTimeEntryPolicy;
 use App\Policies\CompanyUserPolicy;
 use App\Policies\CompanyPolicy;
+use App\Policies\CompanyCalendarIntegrationPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\EmailAccountPolicy;
 use App\Policies\EmailMessageAttachmentPolicy;
 use App\Policies\EmailMessagePolicy;
 use App\Policies\PaymentMethodPolicy;
 use App\Policies\PaymentTermPolicy;
+use App\Policies\PurchaseDocumentPolicy;
 use App\Policies\PurchaseOrderPolicy;
 use App\Policies\PurchaseOrderReceiptPolicy;
 use App\Policies\PriceTierPolicy;
@@ -58,6 +65,7 @@ use App\Policies\QuotePolicy;
 use App\Policies\SalesDocumentPolicy;
 use App\Policies\SalesDocumentReceiptPolicy;
 use App\Policies\SupplierQuoteRequestPolicy;
+use App\Policies\SupplierPaymentPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\SupplierContactPolicy;
 use App\Policies\StockMovementPolicy;
@@ -93,8 +101,10 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
 
         Gate::policy(Company::class, CompanyPolicy::class);
+        Gate::policy(CompanyCalendarIntegration::class, CompanyCalendarIntegrationPolicy::class);
         Gate::policy(Article::class, ArticlePolicy::class);
         Gate::policy(Brand::class, BrandPolicy::class);
+        Gate::policy(CalendarEvent::class, CalendarEventPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(ConstructionSite::class, ConstructionSitePolicy::class);
         Gate::policy(ConstructionSiteLog::class, ConstructionSiteLogPolicy::class);
@@ -111,6 +121,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Invitation::class, InvitationPolicy::class);
         Gate::policy(PaymentMethod::class, PaymentMethodPolicy::class);
         Gate::policy(PaymentTerm::class, PaymentTermPolicy::class);
+        Gate::policy(PurchaseDocument::class, PurchaseDocumentPolicy::class);
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(PurchaseOrderReceipt::class, PurchaseOrderReceiptPolicy::class);
         Gate::policy(PriceTier::class, PriceTierPolicy::class);
@@ -118,6 +129,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Quote::class, QuotePolicy::class);
         Gate::policy(SalesDocument::class, SalesDocumentPolicy::class);
         Gate::policy(SalesDocumentReceipt::class, SalesDocumentReceiptPolicy::class);
+        Gate::policy(SupplierPayment::class, SupplierPaymentPolicy::class);
         Gate::policy(SupplierQuoteRequest::class, SupplierQuoteRequestPolicy::class);
         Gate::policy(Unit::class, UnitPolicy::class);
         Gate::policy(User::class, CompanyUserPolicy::class);
@@ -138,6 +150,10 @@ class AppServiceProvider extends ServiceProvider
                 : 'ip:'.$request->ip();
 
             return Limit::perMinute(10)->by($key);
+        });
+
+        RateLimiter::for('telegram-webhook', function (Request $request) {
+            return Limit::perMinute(60)->by('telegram-webhook:'.$request->ip());
         });
 
         $this->applyPlatformMailBranding();

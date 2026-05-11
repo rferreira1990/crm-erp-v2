@@ -13,7 +13,7 @@ class SalesDocumentPdfService
     public function generateAndStore(SalesDocument $document): string
     {
         $document->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path,pdf_layout',
             'customer:id,name',
             'quote:id,number',
             'constructionSite:id,code,name',
@@ -29,7 +29,12 @@ class SalesDocumentPdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($document->company?->logo_path);
 
-        $html = view('admin.sales-documents.pdf', [
+        $layout = (string) ($document->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.sales-documents.pdf-modern'
+            : 'admin.sales-documents.pdf';
+
+        $html = view($template, [
             'document' => $document,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();

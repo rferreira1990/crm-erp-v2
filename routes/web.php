@@ -6,6 +6,7 @@ use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\CompanyUserInvitationController;
 use App\Http\Controllers\Admin\CompanySettingsController;
+use App\Http\Controllers\Admin\CompanyEmailSettingsController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ArticleController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Admin\CustomerContactController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PaymentTermController;
 use App\Http\Controllers\Admin\PriceTierController;
+use App\Http\Controllers\Admin\PurchaseDocumentController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\PurchaseOrderGenerationController;
 use App\Http\Controllers\Admin\PurchaseOrderReceiptController;
@@ -30,18 +32,25 @@ use App\Http\Controllers\Admin\SalesDocumentController;
 use App\Http\Controllers\Admin\SalesDocumentReceiptController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\SupplierContactController;
+use App\Http\Controllers\Admin\SupplierPaymentController;
 use App\Http\Controllers\Admin\SupplierQuoteAwardController;
 use App\Http\Controllers\Admin\SupplierQuoteComparisonController;
 use App\Http\Controllers\Admin\SupplierQuoteRequestController;
 use App\Http\Controllers\Admin\SupplierQuoteResponseController;
+use App\Http\Controllers\Admin\SupplierStatementController;
 use App\Http\Controllers\Admin\StockMovementController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailAccountController;
 use App\Http\Controllers\Admin\EmailInboxController;
 use App\Http\Controllers\Admin\EmailMessageController;
+use App\Http\Controllers\Admin\LookupSearchController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\VatExemptionReasonController;
 use App\Http\Controllers\Admin\VatRateController;
+use App\Http\Controllers\Ai\ImproveQuoteTextController;
+use App\Http\Controllers\Calendar\CalendarEventController;
+use App\Http\Controllers\Calendar\CalendarIntegrationController;
+use App\Http\Controllers\Telegram\TelegramLinkController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdmin\SuperAdminInvitationController;
 use Illuminate\Support\Facades\Route;
@@ -85,6 +94,47 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/calendar', [CalendarEventController::class, 'index'])->name('calendar.index');
+        Route::get('/calendar/events', [CalendarEventController::class, 'events'])->name('calendar.events');
+        Route::post('/calendar/events', [CalendarEventController::class, 'store'])->name('calendar.events.store');
+        Route::put('/calendar/events/{calendarEvent}', [CalendarEventController::class, 'update'])
+            ->whereNumber('calendarEvent')
+            ->name('calendar.events.update');
+        Route::patch('/calendar/events/{calendarEvent}/complete', [CalendarEventController::class, 'complete'])
+            ->whereNumber('calendarEvent')
+            ->name('calendar.events.complete');
+        Route::patch('/calendar/events/{calendarEvent}/cancel', [CalendarEventController::class, 'cancel'])
+            ->whereNumber('calendarEvent')
+            ->name('calendar.events.cancel');
+        Route::delete('/calendar/events/{calendarEvent}', [CalendarEventController::class, 'destroy'])
+            ->whereNumber('calendarEvent')
+            ->name('calendar.events.destroy');
+        Route::get('/calendar/integrations', [CalendarIntegrationController::class, 'index'])->name('calendar.integrations.index');
+        Route::put('/calendar/integrations', [CalendarIntegrationController::class, 'update'])->name('calendar.integrations.update');
+        Route::post('/calendar/integrations/test-connection', [CalendarIntegrationController::class, 'testConnection'])
+            ->middleware('throttle:6,1')
+            ->name('calendar.integrations.test-connection');
+        Route::post('/calendar/integrations/sync-now', [CalendarIntegrationController::class, 'syncNow'])
+            ->middleware('throttle:6,1')
+            ->name('calendar.integrations.sync-now');
+        Route::post('/ai/improve-quote-text', ImproveQuoteTextController::class)
+            ->middleware('throttle:20,1')
+            ->name('ai.improve-quote-text');
+        Route::get('/telegram/link', [TelegramLinkController::class, 'index'])->name('telegram.link.index');
+        Route::post('/telegram/link/code', [TelegramLinkController::class, 'generateCode'])
+            ->middleware('throttle:10,1')
+            ->name('telegram.link.code');
+        Route::delete('/telegram/link', [TelegramLinkController::class, 'destroy'])->name('telegram.link.destroy');
+
+        Route::get('/api/articles/search', [LookupSearchController::class, 'articles'])
+            ->middleware('throttle:30,1')
+            ->name('api.articles.search');
+        Route::get('/api/customers/search', [LookupSearchController::class, 'customers'])
+            ->middleware('throttle:30,1')
+            ->name('api.customers.search');
+        Route::get('/api/suppliers/search', [LookupSearchController::class, 'suppliers'])
+            ->middleware('throttle:30,1')
+            ->name('api.suppliers.search');
 
         Route::get('/dashboard/version-old', function () {
             return view('admin.dashboard.version_old');
@@ -92,9 +142,14 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
 
         Route::get('/company-settings', [CompanySettingsController::class, 'edit'])->name('company-settings.edit');
         Route::put('/company-settings', [CompanySettingsController::class, 'update'])->name('company-settings.update');
-        Route::post('/company-settings/test-smtp', [CompanySettingsController::class, 'testSmtp'])
+
+        Route::get('/company-email-settings', [CompanyEmailSettingsController::class, 'edit'])->name('company-email-settings.edit');
+        Route::put('/company-email-settings', [CompanyEmailSettingsController::class, 'update'])->name('company-email-settings.update');
+        Route::post('/company-email-settings/test-smtp', [CompanyEmailSettingsController::class, 'testSmtp'])
             ->middleware('throttle:6,1')
-            ->name('company-settings.test-smtp');
+            ->name('company-email-settings.test-smtp');
+        Route::get('/company-email-signature', [CompanyEmailSettingsController::class, 'editSignature'])->name('company-email-signature.edit');
+        Route::put('/company-email-signature', [CompanyEmailSettingsController::class, 'updateSignature'])->name('company-email-signature.update');
         Route::get('/company-settings/logo', [CompanySettingsController::class, 'showLogo'])->name('company-settings.logo.show');
 
         Route::get('/email/accounts', [EmailAccountController::class, 'edit'])->name('email-accounts.edit');
@@ -424,6 +479,9 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
         Route::get('/suppliers/{supplier}', [SupplierController::class, 'show'])
             ->whereNumber('supplier')
             ->name('suppliers.show');
+        Route::get('/suppliers/{supplier}/statement', [SupplierStatementController::class, 'show'])
+            ->whereNumber('supplier')
+            ->name('suppliers.statement.show');
         Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])
             ->whereNumber('supplier')
             ->name('suppliers.edit');
@@ -653,6 +711,52 @@ Route::middleware(['auth', 'company.context', 'not.superadmin'])
             ->whereNumber('purchaseOrderReceipt')
             ->whereNumber('receiptItem')
             ->name('purchase-order-receipts.lines.resolve');
+
+        Route::get('/purchase-documents', [PurchaseDocumentController::class, 'index'])
+            ->name('purchase-documents.index');
+        Route::get('/purchase-documents/create', [PurchaseDocumentController::class, 'create'])
+            ->name('purchase-documents.create');
+        Route::post('/purchase-documents', [PurchaseDocumentController::class, 'store'])
+            ->name('purchase-documents.store');
+        Route::get('/purchase-documents/{purchaseDocument}', [PurchaseDocumentController::class, 'show'])
+            ->whereNumber('purchaseDocument')
+            ->name('purchase-documents.show');
+        Route::get('/purchase-documents/{purchaseDocument}/edit', [PurchaseDocumentController::class, 'edit'])
+            ->whereNumber('purchaseDocument')
+            ->name('purchase-documents.edit');
+        Route::patch('/purchase-documents/{purchaseDocument}', [PurchaseDocumentController::class, 'update'])
+            ->whereNumber('purchaseDocument')
+            ->name('purchase-documents.update');
+        Route::post('/purchase-documents/{purchaseDocument}/confirm', [PurchaseDocumentController::class, 'confirm'])
+            ->whereNumber('purchaseDocument')
+            ->name('purchase-documents.confirm');
+        Route::post('/purchase-documents/{purchaseDocument}/cancel', [PurchaseDocumentController::class, 'cancel'])
+            ->whereNumber('purchaseDocument')
+            ->name('purchase-documents.cancel');
+
+        Route::get('/supplier-payments', [SupplierPaymentController::class, 'index'])
+            ->name('supplier-payments.index');
+        Route::get('/purchase-documents/{purchaseDocument}/payments/create', [SupplierPaymentController::class, 'create'])
+            ->whereNumber('purchaseDocument')
+            ->name('supplier-payments.create');
+        Route::post('/purchase-documents/{purchaseDocument}/payments', [SupplierPaymentController::class, 'store'])
+            ->whereNumber('purchaseDocument')
+            ->name('supplier-payments.store');
+        Route::get('/supplier-payments/{supplierPayment}', [SupplierPaymentController::class, 'show'])
+            ->whereNumber('supplierPayment')
+            ->name('supplier-payments.show');
+        Route::post('/supplier-payments/{supplierPayment}/pdf/generate', [SupplierPaymentController::class, 'generatePdf'])
+            ->whereNumber('supplierPayment')
+            ->name('supplier-payments.pdf.generate');
+        Route::get('/supplier-payments/{supplierPayment}/pdf/download', [SupplierPaymentController::class, 'downloadPdf'])
+            ->whereNumber('supplierPayment')
+            ->name('supplier-payments.pdf.download');
+        Route::post('/supplier-payments/{supplierPayment}/email/send', [SupplierPaymentController::class, 'sendEmail'])
+            ->whereNumber('supplierPayment')
+            ->name('supplier-payments.email.send');
+        Route::post('/supplier-payments/{supplierPayment}/cancel', [SupplierPaymentController::class, 'cancel'])
+            ->whereNumber('supplierPayment')
+            ->name('supplier-payments.cancel');
 
         Route::get('/stock-movements', [StockMovementController::class, 'index'])
             ->name('stock-movements.index');

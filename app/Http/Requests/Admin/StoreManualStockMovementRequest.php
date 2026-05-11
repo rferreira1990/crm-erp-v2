@@ -35,8 +35,15 @@ class StoreManualStockMovementRequest extends FormRequest
      */
     public function rules(): array
     {
+        $companyId = (int) ($this->user()?->company_id ?? 0);
+
         return [
-            'article_id' => ['required', 'integer', 'min:1', 'exists:articles,id'],
+            'article_id' => [
+                'required',
+                'integer',
+                'min:1',
+                Rule::exists('articles', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
             'type' => ['required', Rule::in(StockMovement::manualTypes())],
             'quantity' => ['required', 'numeric', 'gt:0'],
             'reason_code' => ['required', Rule::in(array_keys(StockMovement::reasonLabels()))],

@@ -13,7 +13,7 @@ class QuotePdfService
     public function generateAndStore(Quote $quote): string
     {
         $quote->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,bank_name,iban,bic_swift,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,bank_name,iban,bic_swift,logo_path,pdf_layout',
             'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
             'customerContact:id,customer_id,name,email,phone,job_title',
             'paymentTerm:id,name',
@@ -31,7 +31,12 @@ class QuotePdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($quote->company?->logo_path);
 
-        $html = view('admin.quotes.pdf', [
+        $layout = (string) ($quote->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.quotes.pdf-modern'
+            : 'admin.quotes.pdf';
+
+        $html = view($template, [
             'quote' => $quote,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();

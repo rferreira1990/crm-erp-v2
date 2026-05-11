@@ -236,18 +236,15 @@ class SupplierQuoteResponseController extends Controller
             abort(404);
         }
 
-        if (! Storage::disk('local')->exists($supplierQuote->supplier_document_pdf_path)) {
-            abort(404);
-        }
-
         $fileName = Str::slug($rfqModel->number.'-documento-'.$rfqSupplierModel->supplier_name).'.pdf';
         if ($fileName === '.pdf') {
             $fileName = Str::slug($rfqModel->number.'-documento-fornecedor').'.pdf';
         }
 
-        return Storage::disk('local')->download(
-            $supplierQuote->supplier_document_pdf_path,
-            $fileName
+        return $this->localDiskDownload(
+            (string) $supplierQuote->supplier_document_pdf_path,
+            $fileName,
+            ['rfqs/'.$companyId.'/'.$rfqModel->id.'/suppliers/'.$rfqSupplierModel->id.'/response']
         );
     }
 

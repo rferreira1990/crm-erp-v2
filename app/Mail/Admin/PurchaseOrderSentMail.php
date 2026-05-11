@@ -2,6 +2,7 @@
 
 namespace App\Mail\Admin;
 
+use App\Mail\Concerns\BuildsCompanySignature;
 use App\Models\PurchaseOrder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PurchaseOrderSentMail extends Mailable
 {
+    use BuildsCompanySignature;
     use Queueable;
     use SerializesModels;
 
@@ -61,7 +63,7 @@ class PurchaseOrderSentMail extends Mailable
     public function content(): Content
     {
         $this->purchaseOrder->loadMissing([
-            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path',
+            'company:id,name,email,phone,mobile,website,nif,address,postal_code,locality,city,logo_path,mail_signature_html',
             'rfq:id,number',
             'assignedUser:id,name',
             'items:id,purchase_order_id,source_supplier_quote_item_id',
@@ -114,6 +116,8 @@ class PurchaseOrderSentMail extends Mailable
                     'location' => $location !== '' ? $location : null,
                 ],
                 'summary' => $summary,
+                'signatureHtml' => $this->normalizeSignatureHtml((string) ($company?->mail_signature_html ?? '')),
+                'signatureText' => $this->normalizeSignatureText((string) ($company?->mail_signature_html ?? '')),
             ],
         );
     }

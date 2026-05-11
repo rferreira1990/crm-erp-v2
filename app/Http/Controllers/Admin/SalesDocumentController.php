@@ -352,7 +352,12 @@ class SalesDocumentController extends Controller
         }
 
         try {
-            $mailer->send(new SalesDocumentSentMail($document, $subject, $message));
+            $mailable = new SalesDocumentSentMail($document, $subject, $message);
+            if (config('mail.queue_enabled')) {
+                $mailer->queue($mailable);
+            } else {
+                $mailer->send($mailable);
+            }
         } catch (Throwable $exception) {
             Log::warning('Sales document email send failed', [
                 'context' => 'sales_documents',
@@ -379,13 +384,14 @@ class SalesDocumentController extends Controller
         $document = $this->findCompanySalesDocumentOrFail($companyId, $salesDocument);
         $this->authorize('view', $document);
 
-        if (! $document->pdf_path || ! Storage::disk('local')->exists($document->pdf_path)) {
+        if (! $document->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $document->pdf_path,
-            Str::slug($document->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $document->pdf_path,
+            Str::slug($document->number).'.pdf',
+            ['sales-documents/'.$companyId.'/'.$document->id.'/pdf']
         );
     }
 
@@ -443,8 +449,15 @@ class SalesDocumentController extends Controller
             'selectedCustomerId' => $selectedCustomerId,
             'customers' => Customer::query()
                 ->forCompany($companyId)
-                ->where('is_active', true)
+                ->where(function ($query) use ($selectedCustomerId): void {
+                    $query->where('is_active', true);
+
+                    if ($selectedCustomerId !== null && $selectedCustomerId > 0) {
+                        $query->orWhereKey($selectedCustomerId);
+                    }
+                })
                 ->orderBy('name')
+                ->limit(50)
                 ->get(['id', 'name', 'nif', 'email', 'phone', 'mobile', 'address', 'postal_code', 'locality', 'city']),
             'contacts' => $selectedCustomerId
                 ? CustomerContact::query()

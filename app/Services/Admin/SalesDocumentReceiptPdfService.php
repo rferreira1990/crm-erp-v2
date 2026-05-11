@@ -13,7 +13,7 @@ class SalesDocumentReceiptPdfService
     public function generateAndStore(SalesDocumentReceipt $receipt): string
     {
         $receipt->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path,pdf_layout',
             'salesDocument:id,number,issue_date,currency,grand_total',
             'customer:id,name,nif,email,phone,mobile,address,postal_code,locality,city',
             'paymentMethod:id,name',
@@ -23,7 +23,12 @@ class SalesDocumentReceiptPdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($receipt->company?->logo_path);
 
-        $html = view('admin.sales-document-receipts.pdf', [
+        $layout = (string) ($receipt->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.sales-document-receipts.pdf-modern'
+            : 'admin.sales-document-receipts.pdf';
+
+        $html = view($template, [
             'receipt' => $receipt,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();

@@ -84,10 +84,16 @@
                                     </tr>
                                 </table>
                             @endif
-                            <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">
-                                Aguardamos o vosso melhor preco e prazo de entrega.<br />
-                                <strong>{{ $companyName }}</strong>
-                            </p>
+                            @if (! empty($signatureHtml))
+                                <div style="margin:0;font-size:14px;line-height:1.65;color:#111827;">
+                                    {!! $signatureHtml !!}
+                                </div>
+                            @else
+                                <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;">
+                                    Aguardamos o vosso melhor preco e prazo de entrega.<br />
+                                    <strong>{{ $companyName }}</strong>
+                                </p>
+                            @endif
                         </td>
                     </tr>
                     <tr>
@@ -124,4 +130,3 @@
     </table>
 </body>
 </html>
-

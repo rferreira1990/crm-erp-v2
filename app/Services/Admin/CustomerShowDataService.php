@@ -17,6 +17,7 @@ class CustomerShowDataService
      *   recentQuotes: Collection<int, Quote>,
      *   recentSalesDocuments: Collection<int, SalesDocument>,
      *   recentReceipts: Collection<int, SalesDocumentReceipt>,
+     *   openSalesDocuments: Collection<int, SalesDocument>,
      *   kpis: array<string, float|int|string|null>,
      *   statementSummary: array{
      *     total_debit: float,
@@ -89,6 +90,45 @@ class CustomerShowDataService
                 'currency',
             ]);
 
+        $openSalesDocuments = (clone $issuedDocumentsBaseQuery)
+            ->whereIn('payment_status', [
+                SalesDocument::PAYMENT_STATUS_UNPAID,
+                SalesDocument::PAYMENT_STATUS_PARTIAL,
+            ])
+            ->withSum([
+                'receipts as issued_receipts_total' => fn ($query) => $query
+                    ->where('status', SalesDocumentReceipt::STATUS_ISSUED),
+            ], 'amount')
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get([
+                'id',
+                'company_id',
+                'number',
+                'status',
+                'payment_status',
+                'issue_date',
+                'due_date',
+                'grand_total',
+                'currency',
+            ])
+            ->map(function (SalesDocument $document): SalesDocument {
+                $issuedReceiptsTotal = round((float) ($document->issued_receipts_total ?? 0), 2);
+                $openAmount = round(max(0, (float) $document->grand_total - $issuedReceiptsTotal), 2);
+                $isOverdue = $document->due_date !== null && $document->due_date->lt(now()->startOfDay());
+
+                $document->setAttribute('issued_receipts_total', $issuedReceiptsTotal);
+                $document->setAttribute('open_amount', $openAmount);
+                $document->setAttribute('is_overdue', $isOverdue);
+
+                return $document;
+            })
+            ->filter(fn (SalesDocument $document): bool => (float) $document->open_amount > 0)
+            ->values();
+
         $receiptsBaseQuery = SalesDocumentReceipt::query()
             ->forCompany($companyId)
             ->where('customer_id', $customerId);
@@ -113,14 +153,32 @@ class CustomerShowDataService
             ]);
 
         $totalQuotes = (int) (clone $quotesBaseQuery)->count();
+        $totalApprovedQuotes = (int) (clone $quotesBaseQuery)
+            ->where('status', Quote::STATUS_APPROVED)
+            ->count();
+        $totalApprovedQuoteValue = round((float) (clone $quotesBaseQuery)
+            ->where('status', Quote::STATUS_APPROVED)
+            ->sum('grand_total'), 2);
         $totalIssuedDocuments = (int) (clone $issuedDocumentsBaseQuery)->count();
         $totalIssuedSales = round((float) (clone $issuedDocumentsBaseQuery)->sum('grand_total'), 2);
+        $totalIssuedFromQuotes = (int) (clone $issuedDocumentsBaseQuery)
+            ->where('source_type', SalesDocument::SOURCE_QUOTE)
+            ->count();
         $totalReceived = round((float) (clone $receiptsBaseQuery)
             ->where('status', SalesDocumentReceipt::STATUS_ISSUED)
             ->sum('amount'), 2);
 
         $balance = round($totalIssuedSales - $totalReceived, 2);
         $openAmount = $balance > 0 ? $balance : 0.0;
+        $overdueOpenAmount = round((float) $openSalesDocuments
+            ->where('is_overdue', true)
+            ->sum('open_amount'), 2);
+        $quoteApprovalRate = $totalQuotes > 0
+            ? round(($totalApprovedQuotes / $totalQuotes) * 100, 1)
+            : 0.0;
+        $quoteToIssuedRate = $totalApprovedQuotes > 0
+            ? round(($totalIssuedFromQuotes / $totalApprovedQuotes) * 100, 1)
+            : 0.0;
 
         $paymentStatusCounts = [
             SalesDocument::PAYMENT_STATUS_UNPAID => 0,
@@ -153,14 +211,21 @@ class CustomerShowDataService
             'recentQuotes' => $recentQuotes,
             'recentSalesDocuments' => $recentSalesDocuments,
             'recentReceipts' => $recentReceipts,
+            'openSalesDocuments' => $openSalesDocuments,
             'kpis' => [
                 'total_quotes' => $totalQuotes,
+                'total_approved_quotes' => $totalApprovedQuotes,
+                'total_approved_quote_value' => $totalApprovedQuoteValue,
                 'total_issued_documents' => $totalIssuedDocuments,
+                'total_issued_from_quotes' => $totalIssuedFromQuotes,
                 'total_issued_sales' => $totalIssuedSales,
                 'open_amount' => $openAmount,
+                'overdue_open_amount' => $overdueOpenAmount,
                 'total_received' => $totalReceived,
                 'contacts_count' => (int) $customer->contacts->count(),
                 'last_sale_date' => $lastSaleDate,
+                'quote_approval_rate' => $quoteApprovalRate,
+                'quote_to_issued_rate' => $quoteToIssuedRate,
             ],
             'statementSummary' => [
                 'total_debit' => $totalIssuedSales,

@@ -115,7 +115,12 @@ class UpdateArticleRequest extends FormRequest
                 }),
             ],
 
-            'supplier_id' => ['nullable', 'integer', 'min:1'],
+            'supplier_id' => [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::exists('suppliers', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
             'supplier_reference' => ['nullable', 'string', 'max:120'],
             'ean' => ['nullable', 'regex:/^\d{8,14}$/'],
             'internal_notes' => ['nullable', 'string', 'max:5000'],
@@ -272,4 +277,3 @@ class UpdateArticleRequest extends FormRequest
         return $value;
     }
 }
-

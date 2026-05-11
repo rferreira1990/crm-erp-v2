@@ -19,7 +19,11 @@ Mensagem:
 @endif
 Qualquer esclarecimento, estamos ao dispor.
 
+@if (! empty($signatureText))
+{{ $signatureText }}
+@else
 {{ $companyName }}
+@endif
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif
@@ -41,4 +45,3 @@ Morada: {{ $contact['address'] }}
 @if (! empty($contact['location']))
 {{ $contact['location'] }}
 @endif
-

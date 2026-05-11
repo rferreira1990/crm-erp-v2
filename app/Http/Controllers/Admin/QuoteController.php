@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Throwable;
 
 class QuoteController extends Controller
 {
@@ -445,13 +447,14 @@ class QuoteController extends Controller
         $quoteModel = $this->findCompanyQuoteOrFail($companyId, $quote);
         $this->authorize('view', $quoteModel);
 
-        if (! $quoteModel->pdf_path || ! Storage::disk('local')->exists($quoteModel->pdf_path)) {
+        if (! $quoteModel->pdf_path) {
             abort(404);
         }
 
-        return Storage::disk('local')->download(
-            $quoteModel->pdf_path,
-            Str::slug($quoteModel->number).'.pdf'
+        return $this->localDiskDownload(
+            (string) $quoteModel->pdf_path,
+            Str::slug($quoteModel->number).'.pdf',
+            ['quotes/'.$companyId.'/'.$quoteModel->id.'/pdf']
         );
     }
 
@@ -485,7 +488,28 @@ class QuoteController extends Controller
             $mailer->cc($ccRecipients);
         }
 
-        $mailer->send(new QuoteSentMail($quoteModel, $subject, $message));
+        try {
+            $mailable = new QuoteSentMail($quoteModel, $subject, $message);
+            if (config('mail.queue_enabled')) {
+                $mailer->queue($mailable);
+            } else {
+                $mailer->send($mailable);
+            }
+        } catch (Throwable $exception) {
+            Log::warning('Quote email send failed', [
+                'context' => 'quote_email',
+                'quote_id' => (int) $quoteModel->id,
+                'company_id' => (int) $quoteModel->company_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('admin.quotes.show', $quoteModel->id)
+                ->withInput()
+                ->withErrors([
+                    'quote_email' => $this->friendlyEmailError($exception),
+                ]);
+        }
 
         DB::transaction(function () use ($quoteModel, $to, $ccRecipients, $request): void {
             $fromStatus = $quoteModel->status;
@@ -515,6 +539,23 @@ class QuoteController extends Controller
         return redirect()
             ->route('admin.quotes.show', $quoteModel->id)
             ->with('status', 'Orcamento enviado por email com sucesso.');
+    }
+
+    private function friendlyEmailError(Throwable $exception): string
+    {
+        $message = mb_strtolower($exception->getMessage());
+
+        if ($exception instanceof TransportExceptionInterface) {
+            if (str_contains($message, 'auth') || str_contains($message, '535') || str_contains($message, 'username') || str_contains($message, 'password')) {
+                return 'Falha de autenticacao SMTP. Verifique username e password.';
+            }
+
+            if (str_contains($message, 'connection') || str_contains($message, 'timed out') || str_contains($message, 'refused') || str_contains($message, 'getaddrinfo') || str_contains($message, 'network')) {
+                return 'Falha de ligacao SMTP. Verifique host, porta e encriptacao.';
+            }
+        }
+
+        return 'Falha no envio do orcamento por email. Verifique a configuracao SMTP e tente novamente.';
     }
 
     /**

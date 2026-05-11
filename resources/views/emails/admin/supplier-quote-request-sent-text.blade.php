@@ -20,7 +20,11 @@ Mensagem:
 @endif
 Aguardamos o vosso melhor preco e prazo de entrega.
 
+@if (! empty($signatureText))
+{{ $signatureText }}
+@else
 {{ $companyName }}
+@endif
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif
@@ -42,4 +46,3 @@ Morada: {{ $contact['address'] }}
 @if (! empty($contact['location']))
 {{ $contact['location'] }}
 @endif
-

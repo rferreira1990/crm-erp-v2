@@ -128,6 +128,36 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Taxa aprovacao de orcamentos</div>
+                    <div class="h4 mb-0">{{ number_format((float) ($kpis['quote_approval_rate'] ?? 0), 1, ',', '.') }}%</div>
+                    <div class="text-body-tertiary fs-10">{{ (int) ($kpis['total_approved_quotes'] ?? 0) }} aprovados / {{ (int) ($kpis['total_quotes'] ?? 0) }} total</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Conversao ORC - Documento</div>
+                    <div class="h4 mb-0">{{ number_format((float) ($kpis['quote_to_issued_rate'] ?? 0), 1, ',', '.') }}%</div>
+                    <div class="text-body-tertiary fs-10">{{ (int) ($kpis['total_issued_from_quotes'] ?? 0) }} docs de orcamento</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-body-tertiary fs-10">Vencido por receber</div>
+                    <div class="h4 mb-0 text-danger">{{ number_format((float) ($kpis['overdue_open_amount'] ?? 0), 2, ',', '.') }} &euro;</div>
+                    <div class="text-body-tertiary fs-10">Documentos emitidos com vencimento ultrapassado</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <ul class="nav nav-tabs mb-3" id="customerDetailsTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tab-summary" data-bs-toggle="tab" data-bs-target="#pane-summary" type="button" role="tab" aria-controls="pane-summary" aria-selected="true">Resumo</button>
@@ -419,6 +449,70 @@
                         <span class="badge badge-phoenix badge-phoenix-danger">Por pagar: {{ $paymentStatusCounts[\App\Models\SalesDocument::PAYMENT_STATUS_UNPAID] ?? 0 }}</span>
                         <span class="badge badge-phoenix badge-phoenix-warning">Parcial: {{ $paymentStatusCounts[\App\Models\SalesDocument::PAYMENT_STATUS_PARTIAL] ?? 0 }}</span>
                         <span class="badge badge-phoenix badge-phoenix-success">Pago: {{ $paymentStatusCounts[\App\Models\SalesDocument::PAYMENT_STATUS_PAID] ?? 0 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Documentos por receber</h5>
+                    @can('company.customer_statement.view')
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('admin.customers.statement.show', [$customer->id, 'statement_view' => 'open']) }}" class="btn btn-phoenix-secondary btn-sm">Em aberto</a>
+                            <a href="{{ route('admin.customers.statement.show', [$customer->id, 'statement_view' => 'overdue']) }}" class="btn btn-phoenix-secondary btn-sm">Vencidas</a>
+                            <a href="{{ route('admin.customers.statement.show', [$customer->id, 'statement_view' => 'settled']) }}" class="btn btn-phoenix-secondary btn-sm">Liquidadas</a>
+                        </div>
+                    @endcan
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm fs-9 mb-0">
+                            <thead class="bg-body-tertiary">
+                                <tr>
+                                    <th class="ps-3">Documento</th>
+                                    <th>Emissao</th>
+                                    <th>Vencimento</th>
+                                    <th>Total</th>
+                                    <th>Em aberto</th>
+                                    <th>Estado</th>
+                                    <th class="text-end pe-3">Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($openSalesDocuments as $document)
+                                    <tr>
+                                        <td class="ps-3 fw-semibold"><a href="{{ route('admin.sales-documents.show', $document->id) }}">{{ $document->number }}</a></td>
+                                        <td>{{ $document->issue_date?->format('Y-m-d') ?? '-' }}</td>
+                                        <td>
+                                            @if ($document->due_date)
+                                                <span class="{{ $document->is_overdue ? 'text-danger fw-semibold' : '' }}">{{ $document->due_date->format('Y-m-d') }}</span>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td>{{ number_format((float) $document->grand_total, 2, ',', '.') }} {{ $document->currency }}</td>
+                                        <td class="fw-semibold {{ $document->is_overdue ? 'text-danger' : '' }}">{{ number_format((float) $document->open_amount, 2, ',', '.') }} {{ $document->currency }}</td>
+                                        <td>
+                                            <span class="badge badge-phoenix {{ $document->paymentStatusBadgeClass() }}">
+                                                {{ $document->paymentStatusLabel() }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <div class="d-inline-flex gap-1">
+                                                <a href="{{ route('admin.sales-documents.show', $document->id) }}" class="btn btn-phoenix-secondary btn-sm">Ficha</a>
+                                                @can('company.sales_document_receipts.create')
+                                                    <a href="{{ route('admin.sales-document-receipts.create', $document->id) }}" class="btn btn-primary btn-sm">Emitir recibo</a>
+                                                @endcan
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-body-tertiary">Sem documentos em aberto.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

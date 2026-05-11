@@ -6,6 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseOrderReceipt;
 use App\Models\PurchaseOrderReceiptItem;
+use App\Models\PurchaseDocument;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -310,6 +311,18 @@ class PurchaseOrderReceiptService
         if (! $purchaseOrder->canReceiveMaterial()) {
             throw ValidationException::withMessages([
                 'purchase_order' => 'A encomenda selecionada nao permite registo de rececao no estado atual.',
+            ]);
+        }
+
+        $hasConfirmedPurchaseDocument = PurchaseDocument::query()
+            ->forCompany((int) $purchaseOrder->company_id)
+            ->where('purchase_order_id', (int) $purchaseOrder->id)
+            ->where('status', PurchaseDocument::STATUS_CONFIRMED)
+            ->exists();
+
+        if ($hasConfirmedPurchaseDocument) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'Esta encomenda ja foi integrada por Documento de Compra confirmado. Use esse fluxo para entrada de stock.',
             ]);
         }
     }

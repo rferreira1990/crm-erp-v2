@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\ConstructionSite;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreConstructionSiteMaterialUsageRequest extends FormRequest
 {
@@ -40,9 +42,27 @@ class StoreConstructionSiteMaterialUsageRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user
+        $authorized = $user
             && $user->isCompanyUser()
             && $user->can('company.construction_site_material_usages.create');
+
+        if (! $authorized) {
+            return false;
+        }
+
+        $constructionSiteId = (int) ($this->route('constructionSite') ?? 0);
+        if ($constructionSiteId > 0) {
+            $siteExists = ConstructionSite::query()
+                ->forCompany((int) $user->company_id)
+                ->whereKey($constructionSiteId)
+                ->exists();
+
+            if (! $siteExists) {
+                abort(404);
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -50,11 +70,18 @@ class StoreConstructionSiteMaterialUsageRequest extends FormRequest
      */
     public function rules(): array
     {
+        $companyId = (int) $this->user()->company_id;
+
         return [
             'usage_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'items' => ['required', 'array', 'min:1', 'max:300'],
-            'items.*.article_id' => ['required', 'integer', 'min:1', 'exists:articles,id'],
+            'items.*.article_id' => [
+                'required',
+                'integer',
+                'min:1',
+                Rule::exists('articles', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
             'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
             'items.*.notes' => ['nullable', 'string', 'max:1000'],

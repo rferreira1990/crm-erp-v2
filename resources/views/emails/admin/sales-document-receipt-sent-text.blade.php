@@ -17,7 +17,11 @@ Mensagem:
 @endif
 Qualquer esclarecimento, estamos ao dispor.
 
+@if (! empty($signatureText))
+{{ $signatureText }}
+@else
 {{ $companyName }}
+@endif
 @if (! empty($contact['phone']))
 Telefone: {{ $contact['phone'] }}
 @endif

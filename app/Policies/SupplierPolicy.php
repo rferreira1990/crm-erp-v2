@@ -23,6 +23,12 @@ class SupplierPolicy extends BaseCompanyPolicy
             && $user->can('company.suppliers.view');
     }
 
+    public function viewStatement(User $user, Supplier $supplier): bool
+    {
+        return $this->canAccessCompanyResource($user, $supplier)
+            && $user->can('company.supplier_statement.view');
+    }
+
     public function create(User $user): bool
     {
         return $user->is_active

@@ -60,7 +60,15 @@
 
                 <div class="col-12 col-lg-6">
                     <label for="customer_id" class="form-label">Cliente</label>
-                    <select id="customer_id" name="customer_id" class="form-select @error('customer_id') is-invalid @enderror" required>
+                    <select
+                        id="customer_id"
+                        name="customer_id"
+                        class="form-select @error('customer_id') is-invalid @enderror"
+                        data-ajax-search-url="{{ route('admin.api.customers.search') }}"
+                        data-ajax-search-placeholder="Pesquisar cliente..."
+                        data-ajax-search-empty-label="Selecionar cliente"
+                        required
+                    >
                         <option value="">Selecionar cliente</option>
                         @foreach ($customers as $customer)
                             <option value="{{ $customer->id }}" @selected((string) $customerIdValue === (string) $customer->id)>{{ $customer->name }}</option>
@@ -450,4 +458,3 @@
         });
     </script>
 @endpush
-

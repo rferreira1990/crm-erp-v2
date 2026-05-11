@@ -43,7 +43,7 @@ class StoreBrandRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:5000'],
             'website_url' => ['nullable', 'url:http,https', 'max:255'],
-            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'files' => ['nullable', 'array', 'max:10'],
             'files.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,txt', 'max:10240'],
         ];

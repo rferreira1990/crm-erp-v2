@@ -13,7 +13,7 @@ class PurchaseOrderReceiptPdfService
     public function generateAndStore(PurchaseOrderReceipt $receipt): string
     {
         $receipt->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,website,logo_path,pdf_layout',
             'receiver:id,name',
             'purchaseOrder:id,number,status,currency,supplier_name_snapshot,supplier_email_snapshot,supplier_phone_snapshot,supplier_address_snapshot,supplier_quote_request_id',
             'purchaseOrder.rfq:id,number',
@@ -22,7 +22,12 @@ class PurchaseOrderReceiptPdfService
 
         $companyLogoDataUri = $this->companyLogoDataUri($receipt->company?->logo_path);
 
-        $html = view('admin.purchase-order-receipts.pdf', [
+        $layout = (string) ($receipt->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.purchase-order-receipts.pdf-modern'
+            : 'admin.purchase-order-receipts.pdf';
+
+        $html = view($template, [
             'receipt' => $receipt,
             'companyLogoDataUri' => $companyLogoDataUri,
         ])->render();

@@ -15,10 +15,15 @@ class CustomerStatementPdfService
     public function render(Customer $customer, array $statement): string
     {
         $customer->loadMissing([
-            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path',
+            'company:id,name,nif,address,postal_code,locality,city,email,phone,mobile,logo_path,pdf_layout',
         ]);
 
-        $html = view('admin.customers.statement-pdf', [
+        $layout = (string) ($customer->company?->pdf_layout ?? 'classic');
+        $template = $layout === 'modern'
+            ? 'admin.customers.statement-pdf-modern'
+            : 'admin.customers.statement-pdf';
+
+        $html = view($template, [
             'customer' => $customer,
             'companyLogoDataUri' => $this->companyLogoDataUri((string) ($customer->company?->logo_path ?? '')),
             'movements' => $statement['movements'],

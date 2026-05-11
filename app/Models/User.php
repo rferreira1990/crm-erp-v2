@@ -34,6 +34,7 @@ class User extends Authenticatable
         'is_super_admin',
         'is_active',
         'hourly_cost',
+        'calendar_color',
     ];
 
     /**
@@ -59,6 +60,7 @@ class User extends Authenticatable
             'is_super_admin' => 'boolean',
             'is_active' => 'boolean',
             'hourly_cost' => 'decimal:2',
+            'calendar_color' => 'string',
         ];
     }
 
@@ -105,6 +107,16 @@ class User extends Authenticatable
     public function telegramEmailDrafts(): HasMany
     {
         return $this->hasMany(TelegramEmailDraft::class);
+    }
+
+    public function calendarEvents(): HasMany
+    {
+        return $this->hasMany(CalendarEvent::class, 'user_id');
+    }
+
+    public function calendarIntegrations(): HasMany
+    {
+        return $this->hasMany(CompanyCalendarIntegration::class);
     }
 
     public function isSuperAdmin(): bool

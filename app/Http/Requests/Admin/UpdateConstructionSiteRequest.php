@@ -51,11 +51,25 @@ class UpdateConstructionSiteRequest extends FormRequest
      */
     public function rules(): array
     {
+        $companyId = (int) $this->user()->company_id;
+
         return [
             'name' => ['required', 'string', 'max:190'],
-            'customer_id' => ['required', 'integer', Rule::exists('customers', 'id')],
-            'customer_contact_id' => ['nullable', 'integer', Rule::exists('customer_contacts', 'id')],
-            'quote_id' => ['nullable', 'integer', Rule::exists('quotes', 'id')],
+            'customer_id' => [
+                'required',
+                'integer',
+                Rule::exists('customers', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
+            'customer_contact_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('customer_contacts', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
+            'quote_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('quotes', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
 
             'address' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'regex:/^\d{4}-\d{3}$/'],
@@ -63,7 +77,14 @@ class UpdateConstructionSiteRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:120'],
             'country_id' => ['nullable', 'integer', Rule::exists('countries', 'id')],
 
-            'assigned_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'assigned_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(function ($query) use ($companyId): void {
+                    $query->where('company_id', $companyId)
+                        ->where('is_super_admin', false);
+                }),
+            ],
             'status' => ['required', Rule::in(ConstructionSite::statuses())],
 
             'planned_start_date' => ['nullable', 'date'],

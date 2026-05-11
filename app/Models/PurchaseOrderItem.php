@@ -94,8 +94,17 @@ class PurchaseOrderItem extends Model
 
     public function totalReceivedQuantity(bool $postedOnly = true): float
     {
+        $fromPurchaseDocuments = round((float) PurchaseDocumentItem::query()
+            ->where('purchase_order_item_id', (int) $this->id)
+            ->whereIn('purchase_document_id', function ($subQuery): void {
+                $subQuery->select('id')
+                    ->from('purchase_documents')
+                    ->where('status', PurchaseDocument::STATUS_CONFIRMED);
+            })
+            ->sum('quantity'), 3);
+
         if ($this->relationLoaded('receiptItems')) {
-            return round((float) $this->receiptItems
+            $fromReceipts = round((float) $this->receiptItems
                 ->filter(function (PurchaseOrderReceiptItem $item) use ($postedOnly): bool {
                     if (! $postedOnly) {
                         return true;
@@ -106,6 +115,8 @@ class PurchaseOrderItem extends Model
                         : ($item->receipt()->value('status') === PurchaseOrderReceipt::STATUS_POSTED);
                 })
                 ->sum(fn (PurchaseOrderReceiptItem $item): float => (float) $item->received_quantity), 3);
+
+            return round($fromReceipts + $fromPurchaseDocuments, 3);
         }
 
         $query = PurchaseOrderReceiptItem::query()
@@ -119,7 +130,7 @@ class PurchaseOrderItem extends Model
             });
         }
 
-        return round((float) $query->sum('received_quantity'), 3);
+        return round((float) $query->sum('received_quantity') + $fromPurchaseDocuments, 3);
     }
 
     public function remainingQuantity(bool $postedOnly = true): float

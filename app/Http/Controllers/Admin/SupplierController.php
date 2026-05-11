@@ -8,7 +8,11 @@ use App\Http\Requests\Admin\UpdateSupplierRequest;
 use App\Models\Country;
 use App\Models\PaymentMethod;
 use App\Models\PaymentTerm;
+use App\Models\PurchaseDocument;
+use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
+use App\Models\SupplierQuoteRequestSupplier;
 use App\Models\VatRate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -185,8 +189,167 @@ class SupplierController extends Controller
                 ->orderBy('id'),
         ]);
 
+        $totalPayable = round((float) PurchaseDocument::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->where('status', PurchaseDocument::STATUS_CONFIRMED)
+            ->sum('grand_total'), 2);
+
+        $totalPaid = round((float) SupplierPayment::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->where('status', SupplierPayment::STATUS_ISSUED)
+            ->sum('amount'), 2);
+
+        $recentPurchaseDocuments = PurchaseDocument::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['id', 'number', 'status', 'payment_status', 'issue_date', 'grand_total', 'currency']);
+
+        $openPurchaseDocuments = PurchaseDocument::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->where('status', PurchaseDocument::STATUS_CONFIRMED)
+            ->whereIn('payment_status', [
+                PurchaseDocument::PAYMENT_STATUS_UNPAID,
+                PurchaseDocument::PAYMENT_STATUS_PARTIAL,
+            ])
+            ->withSum([
+                'payments as issued_paid_total' => fn ($query) => $query
+                    ->where('status', SupplierPayment::STATUS_ISSUED),
+            ], 'amount')
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get(['id', 'number', 'issue_date', 'due_date', 'grand_total', 'currency', 'payment_status']);
+
+        $openPurchaseDocuments = $openPurchaseDocuments
+            ->map(function (PurchaseDocument $document): PurchaseDocument {
+                $issuedPaidTotal = round((float) ($document->issued_paid_total ?? 0), 2);
+                $openAmount = round(max(0, (float) $document->grand_total - $issuedPaidTotal), 2);
+                $todayStart = now()->startOfDay();
+
+                $document->setAttribute('issued_paid_total', $issuedPaidTotal);
+                $document->setAttribute('open_amount', $openAmount);
+                $document->setAttribute(
+                    'is_overdue',
+                    $document->due_date !== null && $document->due_date->lt($todayStart)
+                );
+
+                return $document;
+            })
+            ->filter(fn (PurchaseDocument $document): bool => (float) $document->open_amount > 0)
+            ->values();
+
+        $overdueOpenAmount = round((float) $openPurchaseDocuments
+            ->where('is_overdue', true)
+            ->sum('open_amount'), 2);
+
+        $recentSupplierPayments = SupplierPayment::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->orderByDesc('payment_date')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['id', 'number', 'status', 'payment_date', 'amount']);
+
+        $pendingPurchaseOrders = PurchaseOrder::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->whereIn('status', [
+                PurchaseOrder::STATUS_SENT,
+                PurchaseOrder::STATUS_CONFIRMED,
+                PurchaseOrder::STATUS_PARTIALLY_RECEIVED,
+            ])
+            ->withCount('items')
+            ->orderByRaw("CASE WHEN status = 'partially_received' THEN 0 ELSE 1 END")
+            ->orderBy('expected_delivery_date')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get(['id', 'number', 'status', 'issue_date', 'expected_delivery_date', 'grand_total', 'currency']);
+
+        $rfqInvitesBaseQuery = SupplierQuoteRequestSupplier::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id);
+
+        $rfqInvitesTotal = (clone $rfqInvitesBaseQuery)->count();
+        $rfqRespondedCount = (clone $rfqInvitesBaseQuery)
+            ->where('status', SupplierQuoteRequestSupplier::STATUS_RESPONDED)
+            ->count();
+        $rfqDeclinedCount = (clone $rfqInvitesBaseQuery)
+            ->where('status', SupplierQuoteRequestSupplier::STATUS_DECLINED)
+            ->count();
+        $rfqAwaitingCount = (clone $rfqInvitesBaseQuery)
+            ->whereIn('status', [
+                SupplierQuoteRequestSupplier::STATUS_DRAFT,
+                SupplierQuoteRequestSupplier::STATUS_SENT,
+                SupplierQuoteRequestSupplier::STATUS_NO_RESPONSE,
+            ])
+            ->count();
+        $rfqAwardedCount = PurchaseOrder::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->whereNotNull('supplier_quote_request_id')
+            ->distinct('supplier_quote_request_id')
+            ->count('supplier_quote_request_id');
+
+        $rfqResponseRate = $rfqInvitesTotal > 0
+            ? round(($rfqRespondedCount / $rfqInvitesTotal) * 100, 1)
+            : 0.0;
+        $rfqConversionRate = $rfqRespondedCount > 0
+            ? round(($rfqAwardedCount / $rfqRespondedCount) * 100, 1)
+            : 0.0;
+
+        $recentRfqActivity = SupplierQuoteRequestSupplier::query()
+            ->forCompany($companyId)
+            ->where('supplier_id', (int) $supplierModel->id)
+            ->with([
+                'supplierQuoteRequest:id,number,title,status,issue_date,response_deadline',
+                'supplierQuote:id,supplier_quote_request_supplier_id,status,grand_total,received_at',
+            ])
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get([
+                'id',
+                'supplier_quote_request_id',
+                'status',
+                'sent_at',
+                'responded_at',
+            ]);
+
+        $pendingOrdersValue = round((float) $pendingPurchaseOrders->sum('grand_total'), 2);
+
         return view('admin.suppliers.show', [
             'supplier' => $supplierModel,
+            'statementSummary' => [
+                'total_payable' => $totalPayable,
+                'total_paid' => $totalPaid,
+                'balance' => round($totalPayable - $totalPaid, 2),
+            ],
+            'kpis' => [
+                'open_docs_count' => $openPurchaseDocuments->count(),
+                'overdue_open_amount' => $overdueOpenAmount,
+                'pending_orders_count' => $pendingPurchaseOrders->count(),
+                'pending_orders_value' => $pendingOrdersValue,
+                'rfq_invites_total' => $rfqInvitesTotal,
+                'rfq_responded_count' => $rfqRespondedCount,
+                'rfq_declined_count' => $rfqDeclinedCount,
+                'rfq_awaiting_count' => $rfqAwaitingCount,
+                'rfq_awarded_count' => $rfqAwardedCount,
+                'rfq_response_rate' => $rfqResponseRate,
+                'rfq_conversion_rate' => $rfqConversionRate,
+            ],
+            'openPurchaseDocuments' => $openPurchaseDocuments,
+            'pendingPurchaseOrders' => $pendingPurchaseOrders,
+            'recentPurchaseDocuments' => $recentPurchaseDocuments,
+            'recentSupplierPayments' => $recentSupplierPayments,
+            'recentRfqActivity' => $recentRfqActivity,
         ]);
     }
 
@@ -200,9 +363,10 @@ class SupplierController extends Controller
             abort(404);
         }
 
-        return Storage::disk('local')->response(
-            $supplierModel->logo_path,
-            'supplier-'.$supplierModel->id.'-logo.'.pathinfo($supplierModel->logo_path, PATHINFO_EXTENSION)
+        return $this->localDiskResponse(
+            (string) $supplierModel->logo_path,
+            'supplier-'.$supplierModel->id.'-logo.'.pathinfo((string) $supplierModel->logo_path, PATHINFO_EXTENSION),
+            ['suppliers/'.$companyId.'/'.$supplierModel->id.'/logo']
         );
     }
 

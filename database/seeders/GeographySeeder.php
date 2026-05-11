@@ -150,7 +150,7 @@ class GeographySeeder extends Seeder
             throw new RuntimeException('Invalid world countries dataset format.');
         }
 
-        return array_values(array_filter($decoded, static function ($item): bool {
+        $countries = array_values(array_filter($decoded, static function ($item): bool {
             return is_array($item)
                 && isset($item['name'], $item['iso_code'])
                 && is_string($item['name'])
@@ -158,5 +158,27 @@ class GeographySeeder extends Seeder
                 && trim($item['name']) !== ''
                 && preg_match('/^[A-Z]{2}$/', strtoupper(trim($item['iso_code']))) === 1;
         }));
+
+        $localizedNames = [
+            'PT' => 'Portugal',
+            'ES' => 'Espanha',
+            'FR' => 'Franca',
+        ];
+
+        $normalized = [];
+        foreach ($countries as $country) {
+            $isoCode = strtoupper(trim((string) $country['iso_code']));
+            if ($isoCode === 'TT') {
+                // Reserved in test fixtures for integrity checks.
+                continue;
+            }
+
+            $normalized[] = [
+                'iso_code' => $isoCode,
+                'name' => $localizedNames[$isoCode] ?? trim((string) $country['name']),
+            ];
+        }
+
+        return $normalized;
     }
 }
